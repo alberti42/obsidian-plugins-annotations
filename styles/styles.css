@@ -1,10 +1,24 @@
 /* styles.css */
+
+/* Ensure the parent container uses full width */
+.setting-item-info {
+	width: 100%;
+}
+
+/* Make sure the input field takes the full width of its parent */
+.plugin-comment {
+	width: 100%;
+	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
+}
+
+/* Additional styles for consistency */
 .plugin-comment-label {
 	padding-top: 5px;
 }
 
-.plugin-comment {
+.plugin-comment-annotation {
 	padding-top: 5px;
+
 	font-style: italic;
 	width: 100%;
 	margin-top: 5px;

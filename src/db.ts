@@ -37,9 +37,11 @@ export async function loadAnnotations(vault: Vault): Promise<PluginAnnotation> {
 
 export async function saveAnnotations(vault: Vault, annotations: PluginAnnotation): Promise<void> {
   const filePath = await getDbFilePath(vault);
+  console.log(filePath);
 
   try {
     const data = JSON.stringify(annotations, null, 2);
+    console.log(data);
     await vault.adapter.write(filePath, data);
   } catch (error) {
     console.error('Failed to save annotations:', error);
