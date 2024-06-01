@@ -19,9 +19,6 @@ declare module "obsidian" {
 		name: string;
 		navEl: HTMLElement;
 	}
-	interface Workspace {
-		on(name: "settings-search-loaded", callback: (...args: any[]) => any): EventRef;
-	}
 	interface Setting {
 		onOpen(): void;
 		onClose(): void;
