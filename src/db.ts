@@ -16,8 +16,8 @@ function setPluginId(name: string) {
 	pluginId = name;
 }
 
-function isNodeJsError(error: any): error is NodeJS.ErrnoException {
-	return error && typeof error.code === 'string';
+function isNodeJsError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
 }
 
 async function getDbFilePath(vault: Vault): Promise < string|null > {
