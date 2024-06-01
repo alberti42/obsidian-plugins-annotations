@@ -1,4 +1,9 @@
-import { Plugin, SettingTab, PluginSettingTab, App } from 'obsidian';
+import {
+	Plugin,
+	SettingTab,
+	// PluginSettingTab,
+	// App,
+} from 'obsidian';
 import { around } from 'monkey-around';
 import { loadAnnotations, saveAnnotations } from './db';
 
@@ -100,17 +105,17 @@ export default class PluginComment extends Plugin {
 
 /*
 class CommentSettingTab extends PluginSettingTab {
-	constructor(app: App, plugin: Plugin) {
-		super(app, plugin);
-	}
+  constructor(app: App, plugin: Plugin) {
+    super(app, plugin);
+  }
 
-	display() {
-		const { containerEl } = this;
+  display() {
+    const { containerEl } = this;
 
-		containerEl.empty();
-		containerEl.createEl('h2', { text: 'Plugin Comment Settings' });
+    containerEl.empty();
+    containerEl.createEl('h2', { text: 'Plugin Comment Settings' });
 
-		// Add any settings here if necessary
-	}
+    // Add any settings here if necessary
+  }
 }
 */

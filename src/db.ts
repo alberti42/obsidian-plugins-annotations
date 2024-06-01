@@ -19,7 +19,7 @@ async function getDbFilePath(vault: Vault): Promise<string> {
 
 export async function loadAnnotations(vault: Vault): Promise<PluginAnnotation> {
   const filePath = await getDbFilePath(vault);
-
+  
   try {
     const file = await vault.adapter.read(filePath);
     return JSON.parse(file);
