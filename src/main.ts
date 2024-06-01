@@ -1,3 +1,5 @@
+// main.ts
+
 import {
 	Plugin,
 	Setting,
@@ -14,7 +16,9 @@ interface PluginAnnotation {
 
 export default class PluginComment extends Plugin {
 	private annotations: PluginAnnotation = {};
-	private pluginNameToIdMap?: Record < string, string >;
+	private pluginNameToIdMap ? : Record < string, string > ;
+	private mutationObservers: MutationObserver[] = [];
+	private removeMonkeyPatch: (() => void) | null = null;
 
 	async onload() {
 		console.log('Loading Plugin Comment');
@@ -41,21 +45,19 @@ export default class PluginComment extends Plugin {
 		const self = this;
 
 		// Patch openTab to detect when a tab is opened
-		this.register(
-			around(this.app.setting, {
-				openTab: (next: (tab: SettingTab) => void) => {
-					return function(this: Setting, tab: SettingTab) {
-						const result = next.call(this, tab);
-						if (tab && tab.id === 'community-plugins') {
-							// Create a mapping of plugin names to IDs
-							self.pluginNameToIdMap = self.getPluginNameToIdMap();
-							self.observeTab(tab);
-						}
-						return result;
-					};
-				},
-			})
-		);
+		this.removeMonkeyPatch = around(this.app.setting, {
+			openTab: (next: (tab: SettingTab) => void) => {
+				return function(this: Setting, tab: SettingTab) {
+					const result = next.call(this, tab);
+					if (tab && tab.id === 'community-plugins') {
+						// Create a mapping of plugin names to IDs
+						self.pluginNameToIdMap = self.getPluginNameToIdMap();
+						self.observeTab(tab);
+					}
+					return result;
+				};
+			},
+		});
 	}
 
 	observeTab(tab: SettingTab) {
@@ -64,12 +66,10 @@ export default class PluginComment extends Plugin {
 		});
 
 		observer.observe(tab.containerEl, { childList: true, subtree: true });
+		this.mutationObservers.push(observer);
 
 		// Initial call to add comments to already present plugins
 		this.addComments(tab);
-
-		// Clean up observer on unload
-		this.register(() => observer.disconnect());
 	}
 
 	addComments(tab: SettingTab) {
@@ -82,9 +82,9 @@ export default class PluginComment extends Plugin {
 			if (settingItemInfo) {
 				const pluginNameDiv = plugin.querySelector('.setting-item-name');
 				const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
-				
-				if(this.pluginNameToIdMap === undefined) { return; }
-				if(!pluginName) {
+
+				if (this.pluginNameToIdMap === undefined) { return; }
+				if (!pluginName) {
 					console.warn('Plugin name not found');
 					return;
 				}
@@ -94,13 +94,13 @@ export default class PluginComment extends Plugin {
 					console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
 					return;
 				}
-				
+
 				const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
 				if (descriptionDiv) {
 					const commentDiv = descriptionDiv.querySelector('.plugin-comment');
 					if (!commentDiv) {
 						const comment_container = document.createElement('div');
-						comment_container.className = 'plugin-comment'
+						comment_container.className = 'plugin-comment';
 
 						const label = document.createElement('div');
 						label.innerText = `Personal annotation:`;
@@ -134,22 +134,13 @@ export default class PluginComment extends Plugin {
 
 	onunload() {
 		console.log('Unloading Plugin Comment');
+
+		// Disconnect all mutation observers
+		this.mutationObservers.forEach(observer => observer.disconnect());
+
+		// Uninstall the monkey patch
+		if (this.removeMonkeyPatch) {
+			this.removeMonkeyPatch();
+		}
 	}
 }
-
-/*
-class CommentSettingTab extends PluginSettingTab {
-  constructor(app: App, plugin: Plugin) {
-	super(app, plugin);
-  }
-
-  display() {
-	const { containerEl } = this;
-
-	containerEl.empty();
-	containerEl.createEl('h2', { text: 'Plugin Comment Settings' });
-
-	// Add any settings here if necessary
-  }
-}
-*/
