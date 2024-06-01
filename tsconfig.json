@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+   	"baseUrl": "src",
+   	"outDir": "dist",
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "module": "ESNext",  // or "CommonJS" if you are targeting Node.js
+    "target": "ES2020",  // Modern target for better browser support
+    "allowJs": true,
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "isolatedModules": true,
+	"strictNullChecks": true,
+    "strict": true,  // Enforces strict type checking options
+    "lib": [
+      "DOM",
+      "ES2020"
+    ],
+    //"jsx": "react-jsx", // Required by React
+  },
+
+  "typeRoots": ["./src/types","./node_modules/@types"],
+  "include": [
+	"./src/**/*.ts"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+	"id": "plugins-comment",
+	"name": "Plugin Comment",
+	"version": "1.0.0",
+	"minAppVersion": "1.5.0",
+	"description": "Allows adding personal comments to each installed plugin.",
+	"author": "Obsidian",
+	"authorUrl": "https://www.linkedin.com/in/dr-andrea-alberti/",
+	"fundingUrl": "https://buymeacoffee.com/alberti",
+	"isDesktopOnly": false
+}

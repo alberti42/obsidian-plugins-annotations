@@ -1,0 +1,9 @@
+/* styles.css */
+.plugin-comment-label {
+	padding-top: 5px;
+}
+
+.plugin-comment-annotation {
+	padding-top: 5px;
+	font-style: italic;
+}
