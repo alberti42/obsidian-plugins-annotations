@@ -8,7 +8,7 @@ import {
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { loadAnnotations, saveAnnotations } from './db';
+import { setPluginId, loadAnnotations, saveAnnotations } from './db';
 
 interface PluginAnnotation {
 	[pluginId: string]: string;
@@ -17,11 +17,12 @@ interface PluginAnnotation {
 export default class PluginComment extends Plugin {
 	private annotations: PluginAnnotation = {};
 	private pluginNameToIdMap ? : Record < string, string > ;
-	private mutationObservers: MutationObserver[] = [];
 	private removeMonkeyPatch: (() => void) | null = null;
 
 	async onload() {
 		console.log('Loading Plugin Comment');
+		setPluginId(this.manifest.id);
+
 		this.annotations = await loadAnnotations(this.app.vault);
 
 		this.app.workspace.onLayoutReady(() => {
@@ -48,28 +49,15 @@ export default class PluginComment extends Plugin {
 		this.removeMonkeyPatch = around(this.app.setting, {
 			openTab: (next: (tab: SettingTab) => void) => {
 				return function(this: Setting, tab: SettingTab) {
-					const result = next.call(this, tab);
+					next.call(this, tab);
 					if (tab && tab.id === 'community-plugins') {
 						// Create a mapping of plugin names to IDs
 						self.pluginNameToIdMap = self.getPluginNameToIdMap();
-						self.observeTab(tab);
+						self.addComments(tab);
 					}
-					return result;
 				};
 			},
 		});
-	}
-
-	observeTab(tab: SettingTab) {
-		const observer = new MutationObserver(() => {
-			this.addComments(tab);
-		});
-
-		observer.observe(tab.containerEl, { childList: true, subtree: true });
-		this.mutationObservers.push(observer);
-
-		// Initial call to add comments to already present plugins
-		this.addComments(tab);
 	}
 
 	addComments(tab: SettingTab) {
@@ -112,6 +100,10 @@ export default class PluginComment extends Plugin {
 						comment.contentEditable = 'true';
 						comment.innerText = this.annotations[pluginId] || `Add your personal comment about '${pluginName}' here...`;
 
+						comment_container.addEventListener('click', (event) => {
+							event.stopPropagation();
+						});
+
 						// Prevent click event propagation to parent
 						comment.addEventListener('click', (event) => {
 							event.stopPropagation();
@@ -134,9 +126,6 @@ export default class PluginComment extends Plugin {
 
 	onunload() {
 		console.log('Unloading Plugin Comment');
-
-		// Disconnect all mutation observers
-		this.mutationObservers.forEach(observer => observer.disconnect());
 
 		// Uninstall the monkey patch
 		if (this.removeMonkeyPatch) {
