@@ -11,18 +11,18 @@
 	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
 }
 
+.plugin-comment-annotation.plugin-comment-placeholder {
+	color: #CCCCCC; /* Standard placeholder color */
+	font-style: italic;
+}
+
 /* Additional styles for consistency */
 .plugin-comment-label {
 	padding-top: 5px;
 }
 
+
 .plugin-comment-annotation {
 	padding-top: 5px;
-
-	font-style: italic;
 	width: 100%;
-	margin-top: 5px;
-	border: 1px solid var(--background-modifier-border);
-	padding: 5px;
-	font-style: italic;
 }

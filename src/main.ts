@@ -96,12 +96,33 @@ export default class PluginComment extends Plugin {
 						comment_container.appendChild(label);
 
 						const comment = document.createElement('div');
-						comment.className = 'plugin-comment';
+						comment.className = 'plugin-comment-annotation';
 						comment.contentEditable = 'true';
-						comment.innerText = this.annotations[pluginId] || `Add your personal comment about '${pluginName}' here...`;
+						const placeholder = `Add your personal comment about '${pluginName}' here...`;
+						let isPlaceholder = this.annotations[pluginId] ? false : true;
+						const initialText = this.annotations[pluginId] || placeholder;
 
-						comment_container.addEventListener('click', (event) => {
-							event.stopPropagation();
+						if(isPlaceholder) {
+							comment.addClass('plugin-comment-placeholder');
+						}
+
+						comment.innerText = initialText;
+
+						// Remove placeholder class when user starts typing
+						comment.addEventListener('focus', () => {
+							if (isPlaceholder) {
+								comment.innerText = '';
+								comment.classList.remove('plugin-comment-placeholder');
+								isPlaceholder = false;
+							}
+						});
+
+						comment.addEventListener('blur', () => {
+							if (comment.innerText.trim() === '') {
+								comment.innerText = placeholder;
+								comment.classList.add('plugin-comment-placeholder');
+								isPlaceholder = true;
+							}
 						});
 
 						// Prevent click event propagation to parent
@@ -111,8 +132,16 @@ export default class PluginComment extends Plugin {
 
 						// Save the comment on input change
 						comment.addEventListener('input', () => {
-							this.annotations[pluginId] = comment.innerText;
-							saveAnnotations(this.app.vault, this.annotations);
+							if (comment.innerText.trim() === '') {
+								delete this.annotations[pluginId];
+								comment.classList.add('plugin-comment-placeholder');
+								isPlaceholder = true;
+							} else {
+								this.annotations[pluginId] = comment.innerText;
+								comment.classList.remove('plugin-comment-placeholder');
+								isPlaceholder = false;
+							}
+							saveAnnotations(this.app.vault, this.annotations);	
 						});
 
 						comment_container.appendChild(comment);
@@ -123,6 +152,7 @@ export default class PluginComment extends Plugin {
 			}
 		});
 	}
+
 
 	onunload() {
 		console.log('Unloading Plugin Comment');
