@@ -29,7 +29,7 @@ declare module "obsidian" {
 		openTabById(id: string): void;
 		openTab(tab: SettingTab): void;
 
-		closeActiveTab(tab: SettingTab): void;		
+		closeActiveTab(tab: SettingTab): void;
 
 		isPluginSettingTab(tab: SettingTab): boolean;
 		addSettingTab(tab: SettingTab): void;

@@ -16,8 +16,10 @@ interface PluginAnnotation {
 
 export default class PluginComment extends Plugin {
 	private annotations: PluginAnnotation = {};
-	private pluginNameToIdMap ? : Record < string, string > ;
+	private pluginNameToIdMap ? : Record < string, string >;
+	private mutationObserver: MutationObserver | null = null;
 	private removeMonkeyPatch: (() => void) | null = null;
+	private skipNextAddComments = false;
 
 	async onload() {
 		console.log('Loading Plugin Comment');
@@ -53,11 +55,47 @@ export default class PluginComment extends Plugin {
 					if (tab && tab.id === 'community-plugins') {
 						// Create a mapping of plugin names to IDs
 						self.pluginNameToIdMap = self.getPluginNameToIdMap();
-						self.addComments(tab);
+						self.observeTab(tab);
 					}
 				};
 			},
+			onClose: (next: () => void) => {
+				return function (this: Setting) {
+					const result = next.call(this);
+					// closing settings pane
+					self.disconnectObservers();
+					return result;
+				};
+			}
 		});
+	}
+
+	observeTab(tab: SettingTab) {
+		if(!this.mutationObserver) {
+			const observer = new MutationObserver(() => {
+				if(!this.skipNextAddComments){
+					this.skipNextAddComments = true;
+					this.addComments(tab);	
+				} else {
+					this.skipNextAddComments = false;
+				}
+				
+			});
+
+			observer.observe(tab.containerEl, { childList: true, subtree: true });
+			this.mutationObserver = observer;
+		}
+
+		// Initial call to add comments to already present plugins
+		this.skipNextAddComments = true;
+		this.addComments(tab);
+	}
+
+	disconnectObservers() {
+		if (this.mutationObserver) {
+			this.mutationObserver.disconnect();
+			this.mutationObserver = null;
+		}
 	}
 
 	addComments(tab: SettingTab) {
