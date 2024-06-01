@@ -14,6 +14,7 @@ interface PluginAnnotation {
 
 export default class PluginComment extends Plugin {
 	private annotations: PluginAnnotation = {};
+	private pluginNameToIdMap?: Record < string, string >;
 
 	async onload() {
 		console.log('Loading Plugin Comment');
@@ -22,6 +23,17 @@ export default class PluginComment extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			this.patchSettings();
 		});
+	}
+
+	getPluginNameToIdMap(): Record < string, string > {
+		const map: Record < string, string > = {};
+		for (const pluginId in this.app.plugins.manifests) {
+			const plugin = this.app.plugins.manifests[pluginId];
+			if (plugin) {
+				map[plugin.name] = plugin.id;
+			}
+		}
+		return map;
 	}
 
 	patchSettings() {
@@ -35,6 +47,8 @@ export default class PluginComment extends Plugin {
 					return function(this: Setting, tab: SettingTab) {
 						const result = next.call(this, tab);
 						if (tab && tab.id === 'community-plugins') {
+							// Create a mapping of plugin names to IDs
+							self.pluginNameToIdMap = self.getPluginNameToIdMap();
 							self.observeTab(tab);
 						}
 						return result;
@@ -59,53 +73,64 @@ export default class PluginComment extends Plugin {
 	}
 
 	addComments(tab: SettingTab) {
-	const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
-	if (!pluginsContainer) return;
+		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
+		if (!pluginsContainer) return;
 
-	const plugins = pluginsContainer.querySelectorAll('.setting-item');
-	plugins.forEach(plugin => {
-		const settingItemInfo = plugin.querySelector('.setting-item-info');
-		if (settingItemInfo) {
-			const pluginNameDiv = plugin.querySelector('.setting-item-name');
-			const pluginName = pluginNameDiv ? pluginNameDiv.textContent : 'Unknown Plugin';
-			const pluginId = pluginName.replace(/\s+/g, '-').toLowerCase();
-
-			const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
-			if (descriptionDiv) {
-				const commentDiv = descriptionDiv.querySelector('.plugin-comment');
-				if (!commentDiv) {
-					const comment_container = document.createElement('div');
-					comment_container.className = 'plugin-comment'
-
-					const label = document.createElement('div');
-					label.innerText = `Personal annotation:`;
-					label.className = 'plugin-comment-label';
-					comment_container.appendChild(label);
-
-					const comment = document.createElement('div');
-					comment.className = 'plugin-comment';
-					comment.contentEditable = 'true';
-					comment.innerText = this.annotations[pluginId] || `Add your comment about ${pluginName} here...`;
-
-					// Prevent click event propagation to parent
-					comment.addEventListener('click', (event) => {
-						event.stopPropagation();
-					});
-
-					// Save the comment on input change
-					comment.addEventListener('input', () => {
-						this.annotations[pluginId] = comment.innerText;
-						saveAnnotations(this.app.vault, this.annotations);
-					});
-
-					comment_container.appendChild(comment);
+		const plugins = pluginsContainer.querySelectorAll('.setting-item');
+		plugins.forEach(plugin => {
+			const settingItemInfo = plugin.querySelector('.setting-item-info');
+			if (settingItemInfo) {
+				const pluginNameDiv = plugin.querySelector('.setting-item-name');
+				const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
 				
-					descriptionDiv.appendChild(comment_container);
+				if(this.pluginNameToIdMap === undefined) { return; }
+				if(!pluginName) {
+					console.warn('Plugin name not found');
+					return;
+				}
+
+				const pluginId = this.pluginNameToIdMap[pluginName];
+				if (!pluginId) {
+					console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
+					return;
+				}
+				
+				const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
+				if (descriptionDiv) {
+					const commentDiv = descriptionDiv.querySelector('.plugin-comment');
+					if (!commentDiv) {
+						const comment_container = document.createElement('div');
+						comment_container.className = 'plugin-comment'
+
+						const label = document.createElement('div');
+						label.innerText = `Personal annotation:`;
+						label.className = 'plugin-comment-label';
+						comment_container.appendChild(label);
+
+						const comment = document.createElement('div');
+						comment.className = 'plugin-comment';
+						comment.contentEditable = 'true';
+						comment.innerText = this.annotations[pluginId] || `Add your personal comment about '${pluginName}' here...`;
+
+						// Prevent click event propagation to parent
+						comment.addEventListener('click', (event) => {
+							event.stopPropagation();
+						});
+
+						// Save the comment on input change
+						comment.addEventListener('input', () => {
+							this.annotations[pluginId] = comment.innerText;
+							saveAnnotations(this.app.vault, this.annotations);
+						});
+
+						comment_container.appendChild(comment);
+
+						descriptionDiv.appendChild(comment_container);
+					}
 				}
 			}
-		}
-	});
- }
+		});
+	}
 
 	onunload() {
 		console.log('Unloading Plugin Comment');

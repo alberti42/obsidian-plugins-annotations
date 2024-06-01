@@ -41,7 +41,6 @@ export async function saveAnnotations(vault: Vault, annotations: PluginAnnotatio
 
   try {
     const data = JSON.stringify(annotations, null, 2);
-    console.log(data);
     await vault.adapter.write(filePath, data);
   } catch (error) {
     console.error('Failed to save annotations:', error);
