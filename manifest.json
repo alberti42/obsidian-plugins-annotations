@@ -1,6 +1,6 @@
 {
 	"id": "plugins-comment",
-	"name": "Plugin Comment",
+	"name": "Plugins Comment",
 	"version": "1.0.1",
 	"minAppVersion": "1.5.0",
 	"description": "Allows adding personal comments to each installed plugin.",
