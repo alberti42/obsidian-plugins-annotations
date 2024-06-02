@@ -194,7 +194,7 @@ export default class PluginComment extends Plugin {
 
 	debouncedSaveAnnotations() {
 		// timeout after 250 ms
-		const timeout_ms = 1000;
+		const timeout_ms = 250;
 
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
