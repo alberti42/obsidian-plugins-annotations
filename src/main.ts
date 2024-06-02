@@ -8,7 +8,9 @@ import {
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { setPluginId, loadAnnotations, saveAnnotations } from './db';
+import { setAnnotationFilePath, loadAnnotations, saveAnnotations } from './db';
+import * as fs from 'fs';
+import { join } from 'path';
 
 interface PluginAnnotation {
 	[pluginId: string]: string;
@@ -21,16 +23,40 @@ export default class PluginComment extends Plugin {
 	private removeMonkeyPatch: (() => void) | null = null;
 	private skipNextAddComments = false;
 	private saveTimeout: number | null = null;
+	private fsWatcher: fs.FSWatcher | null = null;
 
 	async onload() {
 		console.log('Loading Plugin Comment');
-		setPluginId(this.manifest.id);
+		
+		const annotationsFilePath = await this.getAnnotationsFilePath();
+		if (!annotationsFilePath) {
+			console.error(`The plugin '${this.manifest.name}' could not be loaded. The path to the annotation file could not be found.`);
+			return;
+		}
+		await this.ensureAnnotationsFileExists(annotationsFilePath);
 
-		this.annotations = await loadAnnotations(this.app.vault);
+		setAnnotationFilePath(annotationsFilePath);
 
 		this.app.workspace.onLayoutReady(() => {
 			this.patchSettings();
 		});
+	}
+
+	async ensureAnnotationsFileExists(filePath: string) {
+		const exists = await this.app.vault.adapter.exists(filePath);
+		if (!exists) {
+			console.warn(`Plugins annotations file does not exist. Creating: ${filePath}`);
+			await this.app.vault.adapter.write(filePath, '{}');
+		}
+	}
+
+	async getAnnotationsFilePath(): Promise<string | null> {
+		if (!this.manifest.id) {
+			return null;
+		}
+		const pluginFolder = this.app.vault.configDir;
+		const filePath = join(pluginFolder,'plugins',this.manifest.id,'plugins-annotations.json');
+		return filePath;
 	}
 
 	getPluginNameToIdMap(): Record < string, string > {
@@ -99,7 +125,9 @@ export default class PluginComment extends Plugin {
 		}
 	}
 
-	addComments(tab: SettingTab) {
+	async addComments(tab: SettingTab) {
+		this.annotations = await loadAnnotations(this.app.vault);
+		
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;
 

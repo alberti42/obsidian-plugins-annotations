@@ -2,40 +2,29 @@
 
 import { Vault } from 'obsidian';
 
-const DB_FILE = 'plugin-annotations.json';
-
-import { join } from 'path';
-
-let pluginId: string | null = null;
+let annotationFilePath: string | null = null;
 
 interface PluginAnnotation {
 	[pluginId: string]: string;
 }
 
-function setPluginId(name: string) {
-	pluginId = name;
+function setAnnotationFilePath(path: string) {
+	annotationFilePath = path;
 }
+
 
 function isNodeJsError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
 }
 
-async function getDbFilePath(vault: Vault): Promise < string|null > {
-	if(!pluginId) { return null; }
-	
-	const pluginFolder = vault.configDir;
-	return join(pluginFolder,'plugins',pluginId,DB_FILE);
-}
-
 async function loadAnnotations(vault: Vault): Promise < PluginAnnotation > {
-	const filePath = await getDbFilePath(vault);
-	if(!filePath) {
+	if(!annotationFilePath) {
 		console.error('Could not load annotations. Failed to retrieve the path of the annotation file.');
 		return {};
 	}
 
 	try {
-		const file = await vault.adapter.read(filePath);
+		const file = await vault.adapter.read(annotationFilePath);
 		return JSON.parse(file);
 	} catch (error) {
 		if (isNodeJsError(error) && error.code === 'ENOENT') {
@@ -50,18 +39,17 @@ async function loadAnnotations(vault: Vault): Promise < PluginAnnotation > {
 }
 
 async function saveAnnotations(vault: Vault, annotations: PluginAnnotation): Promise < void > {
-	const filePath = await getDbFilePath(vault);
-	if(!filePath) {
+	if(!annotationFilePath) {
 		console.error('Could not save annotations. Failed to retrieve the path of the annotation file.');
 		return;
 	}
 	
 	try {
 		const data = JSON.stringify(annotations, null, 2);
-		await vault.adapter.write(filePath, data);
+		await vault.adapter.write(annotationFilePath, data);
 	} catch (error) {
 		console.error('Failed to save annotations:', error);
 	}
 }
 
-export { saveAnnotations, loadAnnotations, setPluginId }
+export { saveAnnotations, loadAnnotations, setAnnotationFilePath }
