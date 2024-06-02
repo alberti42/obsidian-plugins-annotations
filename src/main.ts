@@ -20,6 +20,7 @@ export default class PluginComment extends Plugin {
 	private mutationObserver: MutationObserver | null = null;
 	private removeMonkeyPatch: (() => void) | null = null;
 	private skipNextAddComments = false;
+	private saveTimeout: number | null = null;
 
 	async onload() {
 		console.log('Loading Plugin Comment');
@@ -141,7 +142,7 @@ export default class PluginComment extends Plugin {
 						const initialText = this.annotations[pluginId] || placeholder;
 
 						if(isPlaceholder) {
-							comment.addClass('plugin-comment-placeholder');
+							comment.classList.add('plugin-comment-placeholder');
 						}
 
 						comment.innerText = initialText;
@@ -179,7 +180,7 @@ export default class PluginComment extends Plugin {
 								comment.classList.remove('plugin-comment-placeholder');
 								isPlaceholder = false;
 							}
-							saveAnnotations(this.app.vault, this.annotations);	
+							this.debouncedSaveAnnotations();
 						});
 
 						comment_container.appendChild(comment);
@@ -191,9 +192,25 @@ export default class PluginComment extends Plugin {
 		});
 	}
 
+	debouncedSaveAnnotations() {
+		// timeout after 250 ms
+		const timeout_ms = 1000;
+
+		if (this.saveTimeout) {
+			clearTimeout(this.saveTimeout);
+		}
+		
+		this.saveTimeout = window.setTimeout(() => {
+			saveAnnotations(this.app.vault, this.annotations);
+			this.saveTimeout = null;
+		}, timeout_ms);
+	}
 
 	onunload() {
 		console.log('Unloading Plugin Comment');
+
+		// Just in case, disconnect observers if they still exist
+		this.disconnectObservers();
 
 		// Uninstall the monkey patch
 		if (this.removeMonkeyPatch) {
