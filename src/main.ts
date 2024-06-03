@@ -24,6 +24,7 @@ export default class PluginsAnnotations extends Plugin {
 	private skipNextAddComments = false;
 	private saveTimeout: number | null = null;
 	private fsWatcher: fs.FSWatcher | null = null;
+	private observedTab: SettingTab | null = null;
 
 	async onload() {
 		// console.log('Loading Plugins Annotations');
@@ -38,6 +39,11 @@ export default class PluginsAnnotations extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => {
 			this.patchSettings();
+
+			const activeTab = this.app.setting.activeTab;
+			if (activeTab && activeTab.id === 'community-plugins') {
+				this.observeTab(activeTab);
+			}
 		});
 	}
 
@@ -50,7 +56,7 @@ export default class PluginsAnnotations extends Plugin {
 		return filePath;
 	}
 
-	getPluginNameToIdMap(): Record < string, string > {
+	constructPluginNameToIdMap() {
 		const map: Record < string, string > = {};
 		for (const pluginId in this.app.plugins.manifests) {
 			const plugin = this.app.plugins.manifests[pluginId];
@@ -58,7 +64,7 @@ export default class PluginsAnnotations extends Plugin {
 				map[plugin.name] = plugin.id;
 			}
 		}
-		return map;
+		this.pluginNameToIdMap = map;
 	}
 
 	patchSettings() {
@@ -71,8 +77,6 @@ export default class PluginsAnnotations extends Plugin {
 				return function(this: Setting, tab: SettingTab) {
 					next.call(this, tab);
 					if (tab && tab.id === 'community-plugins') {
-						// Create a mapping of plugin names to IDs
-						self.pluginNameToIdMap = self.getPluginNameToIdMap();
 						self.observeTab(tab);
 					}
 				};
@@ -88,8 +92,13 @@ export default class PluginsAnnotations extends Plugin {
 		});
 	}
 
-	observeTab(tab: SettingTab) {
+	observeTab(tab: SettingTab) {	
+		// Create a mapping of plugin names to IDs
+		this.constructPluginNameToIdMap();
+							
 		if(!this.mutationObserver) {
+			this.observedTab = tab;
+
 			const observer = new MutationObserver(() => {
 				if(!this.skipNextAddComments){
 					this.skipNextAddComments = true;
@@ -113,6 +122,7 @@ export default class PluginsAnnotations extends Plugin {
 		if (this.mutationObserver) {
 			this.mutationObserver.disconnect();
 			this.mutationObserver = null;
+			this.observedTab = null;
 		}
 	}
 
@@ -225,8 +235,20 @@ export default class PluginsAnnotations extends Plugin {
 		}, timeout_ms);
 	}
 
+	removeCommentsFromTab() {
+		if (this.observedTab) {
+			const commentElements = this.observedTab.containerEl.querySelectorAll('.plugin-comment');
+			commentElements.forEach(element => {
+				element.remove();
+			});
+		}
+	}
+
 	onunload() {
 		// console.log('Unloading Plugins Annotations');
+
+		// Remove all comments
+		this.removeCommentsFromTab();
 
 		// Just in case, disconnect observers if they still exist
 		this.disconnectObservers();
@@ -234,6 +256,6 @@ export default class PluginsAnnotations extends Plugin {
 		// Uninstall the monkey patch
 		if (this.removeMonkeyPatch) {
 			this.removeMonkeyPatch();
-		}
+		}		
 	}
 }
