@@ -4,13 +4,13 @@ import {
 	Plugin,
 	Setting,
 	SettingTab,
+	normalizePath,
 	// PluginSettingTab,
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
 import { setAnnotationFilePath, loadAnnotations, saveAnnotations } from './db';
 import * as fs from 'fs';
-import { join } from 'path';
 
 interface PluginAnnotation {
 	[pluginId: string]: string;
@@ -26,9 +26,10 @@ export default class PluginComment extends Plugin {
 	private fsWatcher: fs.FSWatcher | null = null;
 
 	async onload() {
-		console.log('Loading Plugin Comment');
+		// console.log('Loading Plugins Comments');
 		
 		const annotationsFilePath = await this.getAnnotationsFilePath();
+		console.log(annotationsFilePath);
 		if (!annotationsFilePath) {
 			console.error(`The plugin '${this.manifest.name}' could not be loaded. The path to the annotation file could not be found.`);
 			return;
@@ -55,7 +56,7 @@ export default class PluginComment extends Plugin {
 			return null;
 		}
 		const pluginFolder = this.app.vault.configDir;
-		const filePath = join(pluginFolder,'plugins',this.manifest.id,'plugins-annotations.json');
+		const filePath = normalizePath(`${pluginFolder}/plugins/${this.manifest.id}/plugins-annotations.json`);
 		return filePath;
 	}
 
@@ -73,7 +74,7 @@ export default class PluginComment extends Plugin {
 	patchSettings() {
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
-
+		
 		// Patch openTab to detect when a tab is opened
 		this.removeMonkeyPatch = around(this.app.setting, {
 			openTab: (next: (tab: SettingTab) => void) => {

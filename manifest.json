@@ -1,6 +1,6 @@
 {
-	"id": "plugins-comment",
-	"name": "Plugins Comment",
+	"id": "plugins-annotations",
+	"name": "Plugins Annotations",
 	"version": "1.0.4",
 	"minAppVersion": "1.5.0",
 	"description": "Allows adding personal comments to each installed plugin.",

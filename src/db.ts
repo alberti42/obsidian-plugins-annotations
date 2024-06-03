@@ -14,11 +14,11 @@ function setAnnotationFilePath(path: string) {
 
 
 function isNodeJsError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error;
+	return error instanceof Error && 'code' in error;
 }
 
 async function loadAnnotations(vault: Vault): Promise < PluginAnnotation > {
-	if(!annotationFilePath) {
+	if (!annotationFilePath) {
 		console.error('Could not load annotations. Failed to retrieve the path of the annotation file.');
 		return {};
 	}
@@ -32,6 +32,7 @@ async function loadAnnotations(vault: Vault): Promise < PluginAnnotation > {
 			console.warn('Annotations file not found, loading empty annotations.');
 			return {};
 		} else {
+			// Failed, return an empty object
 			console.error('Failed to load annotations:', error);
 			return {};
 		}
@@ -39,11 +40,11 @@ async function loadAnnotations(vault: Vault): Promise < PluginAnnotation > {
 }
 
 async function saveAnnotations(vault: Vault, annotations: PluginAnnotation): Promise < void > {
-	if(!annotationFilePath) {
+	if (!annotationFilePath) {
 		console.error('Could not save annotations. Failed to retrieve the path of the annotation file.');
 		return;
 	}
-	
+
 	try {
 		const data = JSON.stringify(annotations, null, 2);
 		await vault.adapter.write(annotationFilePath, data);
