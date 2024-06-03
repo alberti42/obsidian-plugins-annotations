@@ -11,7 +11,7 @@ Obsidian Plugins Annotations is a plugin for [Obsidian](https://obsidian.md) tha
 ## Installation
 
 1. Download the latest release from the [Releases](https://github.com/alberti42/obsidian-plugins-annotations/releases) page.
-2. Extract the files into your Obsidian plugins folder: `<vault>/.obsidian/plugins/obsidian-plugins-annotations`.
+2. Extract the files into your Obsidian plugins folder: `<vault>/.obsidian/plugins/plugins-annotations`.
 3. Enable the plugin in the "Community plugins" settings pane.
 
 ## Usage
@@ -35,7 +35,7 @@ To contribute to the development of this plugin, follow these steps:
    ```
 3. Navigate to the plugin directory:
    ```sh
-   cd obsidian-plugins-annotations
+   mkdir plugins-annotations
    ```
 4. Install the dependencies:
    ```sh
