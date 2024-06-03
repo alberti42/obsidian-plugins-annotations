@@ -4,6 +4,7 @@ import {
 	Plugin,
 	Setting,
 	SettingTab,
+	Platform,
 	normalizePath,
 	// PluginSettingTab,
 	// App,
@@ -157,10 +158,12 @@ export default class PluginsAnnotations extends Plugin {
 						const comment_container = document.createElement('div');
 						comment_container.className = 'plugin-comment';
 
-						const label = document.createElement('div');
-						label.innerText = `Personal annotation:`;
-						label.className = 'plugin-comment-label';
-						comment_container.appendChild(label);
+						if(!Platform.isMobile){
+							const label = document.createElement('div');
+							label.innerText = `Personal annotation:`;
+							label.className = 'plugin-comment-label';
+							comment_container.appendChild(label);
+						}
 
 						const comment = document.createElement('div');
 						comment.className = 'plugin-comment-annotation';
