@@ -159,13 +159,15 @@ export default class PluginsAnnotations extends Plugin {
 						const comment_container = document.createElement('div');
 						comment_container.className = 'plugin-comment';
 
-						if(!Platform.isMobile){
-							const label = document.createElement('div');
+						const label = document.createElement('div');
+						if(Platform.isMobile){
+							label.innerText = `Annotation`;
+						} else {
 							label.innerText = `Personal annotation:`;
-							label.className = 'plugin-comment-label';
-							comment_container.appendChild(label);
 						}
-
+						label.className = 'plugin-comment-label';
+						comment_container.appendChild(label);
+						
 						const comment = document.createElement('div');
 						comment.className = 'plugin-comment-annotation';
 						comment.contentEditable = 'true';
