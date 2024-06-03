@@ -33,21 +33,12 @@ export default class PluginsAnnotations extends Plugin {
 			console.error(`The plugin '${this.manifest.name}' could not be loaded. The path to the annotation file could not be found.`);
 			return;
 		}
-		await this.ensureAnnotationsFileExists(annotationsFilePath);
 
 		setAnnotationFilePath(annotationsFilePath);
 
 		this.app.workspace.onLayoutReady(() => {
 			this.patchSettings();
 		});
-	}
-
-	async ensureAnnotationsFileExists(filePath: string) {
-		const exists = await this.app.vault.adapter.exists(filePath);
-		if (!exists) {
-			console.warn(`Plugins annotations file does not exist. Creating: ${filePath}`);
-			await this.app.vault.adapter.write(filePath, '{}');
-		}
 	}
 
 	async getAnnotationsFilePath(): Promise<string | null> {

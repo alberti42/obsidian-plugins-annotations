@@ -29,7 +29,7 @@ async function loadAnnotations(vault: Vault): Promise < PluginAnnotation > {
 	} catch (error) {
 		if (isNodeJsError(error) && error.code === 'ENOENT') {
 			// File does not exist, return an empty object
-			console.warn('Annotations file not found, loading empty annotations.');
+			// console.warn('Annotations file not found, loading empty annotations.');
 			return {};
 		} else {
 			// Failed, return an empty object
