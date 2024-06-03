@@ -1,4 +1,4 @@
-# Obsidian Plugin Comment
+# Obsidian Plugins Annotations
 
 Obsidian Plugin Comment is a plugin for [Obsidian](https://obsidian.md) that allows users to add personal annotations to each installed plugin. This is particularly useful for keeping track of why certain plugins are installed and their specific use cases.
 
