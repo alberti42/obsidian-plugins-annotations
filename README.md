@@ -1,6 +1,6 @@
 # Obsidian Plugins Annotations
 
-Obsidian Plugin Comment is a plugin for [Obsidian](https://obsidian.md) that allows users to add personal annotations to each installed plugin. This is particularly useful for keeping track of why certain plugins are installed and their specific use cases.
+Obsidian Plugins Annotations is a plugin for [Obsidian](https://obsidian.md) that allows users to add personal annotations to each installed plugin. This is particularly useful for keeping track of why certain plugins are installed and their specific use cases.
 
 ## Features
 
@@ -10,8 +10,8 @@ Obsidian Plugin Comment is a plugin for [Obsidian](https://obsidian.md) that all
 
 ## Installation
 
-1. Download the latest release from the [Releases](https://github.com/alberti42/obsidian-plugin-comment/releases) page.
-2. Extract the files into your Obsidian plugins folder: `<vault>/.obsidian/plugins/obsidian-plugin-comment`.
+1. Download the latest release from the [Releases](https://github.com/alberti42/obsidian-plugins-annotations/releases) page.
+2. Extract the files into your Obsidian plugins folder: `<vault>/.obsidian/plugins/obsidian-plugins-annotations`.
 3. Enable the plugin in the "Community plugins" settings pane.
 
 ## Usage
@@ -31,11 +31,11 @@ To contribute to the development of this plugin, follow these steps:
 1. Fork the repository on GitHub.
 2. Clone your forked repository:
    ```sh
-   git clone https://github.com/your-username/obsidian-plugin-comment.git
+   git clone https://github.com/your-username/obsidian-plugins-annotations.git
    ```
 3. Navigate to the plugin directory:
    ```sh
-   cd obsidian-plugin-comment
+   cd obsidian-plugins-annotations
    ```
 4. Install the dependencies:
    ```sh
@@ -57,4 +57,4 @@ I would be grateful for any donation to support the development of this plugin.
 - **GitHub Profile:** [alberti42](https://github.com/alberti42)
 - **Donations:** [![Buy Me a Coffee](https://img.shields.io/badge/Donate-Buy%20Me%20a%20Coffee-orange)](https://buymeacoffee.com/alberti)
 
-Feel free to contribute to the development of this plugin or report any issues in the [GitHub repository](https://github.com/alberti42/obsidian-plugin-comment/issues).
+Feel free to contribute to the development of this plugin or report any issues in the [GitHub repository](https://github.com/alberti42/obsidian-plugins-annotations/issues).
