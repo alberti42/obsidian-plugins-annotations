@@ -16,7 +16,7 @@ interface PluginAnnotation {
 	[pluginId: string]: string;
 }
 
-export default class PluginComment extends Plugin {
+export default class PluginsAnnotations extends Plugin {
 	private annotations: PluginAnnotation = {};
 	private pluginNameToIdMap ? : Record < string, string >;
 	private mutationObserver: MutationObserver | null = null;
@@ -26,10 +26,9 @@ export default class PluginComment extends Plugin {
 	private fsWatcher: fs.FSWatcher | null = null;
 
 	async onload() {
-		// console.log('Loading Plugins Comments');
+		// console.log('Loading Plugins Annotations');
 		
 		const annotationsFilePath = await this.getAnnotationsFilePath();
-		console.log(annotationsFilePath);
 		if (!annotationsFilePath) {
 			console.error(`The plugin '${this.manifest.name}' could not be loaded. The path to the annotation file could not be found.`);
 			return;
@@ -236,7 +235,7 @@ export default class PluginComment extends Plugin {
 	}
 
 	onunload() {
-		console.log('Unloading Plugin Comment');
+		// console.log('Unloading Plugins Annotations');
 
 		// Just in case, disconnect observers if they still exist
 		this.disconnectObservers();
