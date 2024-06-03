@@ -11,7 +11,10 @@ Obsidian Plugins Annotations is a plugin for [Obsidian](https://obsidian.md) tha
 ## Installation
 
 1. Download the latest release from the [Releases](https://github.com/alberti42/obsidian-plugins-annotations/releases) page.
-2. Extract the files into your Obsidian plugins folder: `<vault>/.obsidian/plugins/plugins-annotations`.
+2. Extract the downloaded package and copy only the following files to your Obsidian plugins folder: `<vault>/.obsidian/plugins/plugins-annotations`:
+   - `main.js`
+   - `styles.css`
+   - `manifest.json`
 3. Enable the plugin in the "Community plugins" settings pane.
 
 ## Usage
@@ -29,13 +32,13 @@ Obsidian Plugins Annotations is a plugin for [Obsidian](https://obsidian.md) tha
 To contribute to the development of this plugin, follow these steps:
 
 1. Fork the repository on GitHub.
-2. Clone your forked repository:
+2. Clone your forked repository somewhere on your local machine:
    ```sh
    git clone https://github.com/your-username/obsidian-plugins-annotations.git
    ```
-3. Navigate to the plugin directory:
+3. Navigate to the cloned repository directory:
    ```sh
-   mkdir plugins-annotations
+   cd obsidian-plugins-annotations
    ```
 4. Install the dependencies:
    ```sh
@@ -45,14 +48,28 @@ To contribute to the development of this plugin, follow these steps:
    ```sh
    npm run build
    ```
-6. Enable the plugin in Obsidian and start developing!
+6. Create a `plugins-annotations` folder in your Obsidian plugins directory:
+   ```sh
+   mkdir -p <vault>/.obsidian/plugins/plugins-annotations
+   ```
+7. Copy or soft-link the compiled files from the `dist` folder to the `plugins-annotations` folder:
+   ```sh
+   # Copy files
+   cp -r dist/* <vault>/.obsidian/plugins/plugins-annotations/
+   
+   # Or create a soft-link (on Unix-based systems)
+   ln -s <path-to-cloned-repo>/dist <vault>/.obsidian/plugins/plugins-annotations
+   ```
+8. Enable the plugin in Obsidian and start developing!
 
 ## Donations
+
 I would be grateful for any donation to support the development of this plugin.
 
 [<img src="docs/images/buy_me_coffee.png" width=300 alt="Buy Me a Coffee QR Code"/>](https://buymeacoffee.com/alberti)
 
 ## Author
+
 - **Author:** Andrea Alberti
 - **GitHub Profile:** [alberti42](https://github.com/alberti42)
 - **Donations:** [![Buy Me a Coffee](https://img.shields.io/badge/Donate-Buy%20Me%20a%20Coffee-orange)](https://buymeacoffee.com/alberti)
