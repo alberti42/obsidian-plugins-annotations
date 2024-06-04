@@ -198,6 +198,10 @@ export default class PluginsAnnotations extends Plugin {
 							}
 						});
 
+						label.addEventListener('click', (event) => {
+							event.stopPropagation();
+						});
+						
 						// Prevent click event propagation to parent
 						comment.addEventListener('click', (event) => {
 							event.stopPropagation();
