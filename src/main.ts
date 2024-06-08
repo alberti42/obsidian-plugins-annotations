@@ -53,7 +53,7 @@ export default class PluginsAnnotations extends Plugin {
 			return null;
 		}
 		const pluginFolder = this.app.vault.configDir;
-		const filePath = normalizePath(`${pluginFolder}/plugins/${this.manifest.id}/plugins-annotations.json`);
+		const filePath = normalizePath(`${pluginFolder}/plugins/${this.manifest.id}/data.json`);
 		return filePath;
 	}
 
