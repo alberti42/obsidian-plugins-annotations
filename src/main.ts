@@ -5,38 +5,26 @@ import {
 	Setting,
 	SettingTab,
 	Platform,
-	normalizePath,
 	// PluginSettingTab,
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { setAnnotationFilePath, loadAnnotations, saveAnnotations } from './db';
-import * as fs from 'fs';
-
-interface PluginAnnotation {
-	[pluginId: string]: string;
-}
+import * as db from './db';
+import { PluginAnnotationDict } from './types';
 
 export default class PluginsAnnotations extends Plugin {
-	private annotations: PluginAnnotation = {};
+	private annotations: PluginAnnotationDict = {};
 	private pluginNameToIdMap ? : Record < string, string >;
 	private mutationObserver: MutationObserver | null = null;
 	private removeMonkeyPatch: (() => void) | null = null;
 	private skipNextAddComments = false;
 	private saveTimeout: number | null = null;
-	private fsWatcher: fs.FSWatcher | null = null;
 	private observedTab: SettingTab | null = null;
 
 	async onload() {
 		// console.log('Loading Plugins Annotations');
 		
-		const annotationsFilePath = await this.getAnnotationsFilePath();
-		if (!annotationsFilePath) {
-			console.error(`The plugin '${this.manifest.name}' could not be loaded. The path to the annotation file could not be found.`);
-			return;
-		}
-
-		setAnnotationFilePath(annotationsFilePath);
+		db.setPluginObj(this);
 
 		this.app.workspace.onLayoutReady(() => {
 			this.patchSettings();
@@ -46,15 +34,6 @@ export default class PluginsAnnotations extends Plugin {
 				this.observeTab(activeTab);
 			}
 		});
-	}
-
-	async getAnnotationsFilePath(): Promise<string | null> {
-		if (!this.manifest.id) {
-			return null;
-		}
-		const pluginFolder = this.app.vault.configDir;
-		const filePath = normalizePath(`${pluginFolder}/plugins/${this.manifest.id}/data.json`);
-		return filePath;
 	}
 
 	constructPluginNameToIdMap() {
@@ -128,7 +107,7 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	async addComments(tab: SettingTab) {
-		this.annotations = await loadAnnotations(this.app.vault);
+		this.annotations = await db.loadAnnotations(this.app.vault);
 		
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;
@@ -239,7 +218,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 		
 		this.saveTimeout = window.setTimeout(() => {
-			saveAnnotations(this.app.vault, this.annotations);
+			db.saveAnnotations(this.app.vault, this.annotations);
 			this.saveTimeout = null;
 		}, timeout_ms);
 	}

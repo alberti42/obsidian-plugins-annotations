@@ -4,7 +4,7 @@
 	"version": "1.0.10",
 	"minAppVersion": "1.5.0",
 	"description": "Allows adding personal comments to each installed plugin.",
-	"author": "Obsidian",
+	"author": "Andrea Alberti",
 	"authorUrl": "https://www.linkedin.com/in/dr-andrea-alberti/",
 	"fundingUrl": "https://buymeacoffee.com/alberti",
 	"isDesktopOnly": false
