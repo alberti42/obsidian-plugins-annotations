@@ -10,7 +10,7 @@ import {
 } from 'obsidian';
 import { around } from 'monkey-around';
 import * as db from './db';
-import { PluginAnnotationDict } from './types';
+import { PluginAnnotationDict, HTMLDivElementWithInput } from './types';
 
 export default class PluginsAnnotations extends Plugin {
 	private annotations: PluginAnnotationDict = {};
@@ -147,7 +147,7 @@ export default class PluginsAnnotations extends Plugin {
 						label.className = 'plugin-comment-label';
 						comment_container.appendChild(label);
 						
-						const comment = document.createElement('div');
+						const comment = document.createElement('div') as HTMLDivElementWithInput;
 						comment.className = 'plugin-comment-annotation';
 						comment.contentEditable = 'true';
 						const placeholder = `Add your personal comment about '${pluginName}' here...`;
@@ -160,10 +160,13 @@ export default class PluginsAnnotations extends Plugin {
 
 						comment.innerText = initialText;
 
+						// Add a custom property to track input status
+						comment.inputTriggered = false;
+
 						// Remove placeholder class when user starts typing
 						comment.addEventListener('focus', () => {
 							if (isPlaceholder) {
-								comment.innerText = '';
+								// comment.innerText = '';
 								comment.classList.remove('plugin-comment-placeholder');
 								const range = document.createRange();
 								range.selectNodeContents(comment);
@@ -176,12 +179,15 @@ export default class PluginsAnnotations extends Plugin {
 							}
 						});
 
+						// Add placeholder class back if no changes are made
 						comment.addEventListener('blur', () => {
-							if (comment.innerText.trim() === '') {
+							if (!comment.inputTriggered || comment.innerText.trim() === '') {
 								comment.innerText = placeholder;
 								comment.classList.add('plugin-comment-placeholder');
 								isPlaceholder = true;
 							}
+							// Reset the inputTriggered status on blur
+							comment.inputTriggered = false;
 						});
 
 						label.addEventListener('click', (event) => {
@@ -193,8 +199,9 @@ export default class PluginsAnnotations extends Plugin {
 							event.stopPropagation();
 						});
 
-						// Save the comment on input change
+						// Save the comment on input change and update inputTriggered status
 						comment.addEventListener('input', () => {
+							comment.inputTriggered = true; // Update the custom property
 							if (comment.innerText.trim() === '') {
 								delete this.annotations[pluginId];
 								comment.classList.add('plugin-comment-placeholder');
@@ -215,6 +222,7 @@ export default class PluginsAnnotations extends Plugin {
 			}
 		});
 	}
+
 
 	debouncedSaveAnnotations() {
 		// timeout after 250 ms
