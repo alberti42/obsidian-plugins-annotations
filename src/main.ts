@@ -165,6 +165,13 @@ export default class PluginsAnnotations extends Plugin {
 							if (isPlaceholder) {
 								comment.innerText = '';
 								comment.classList.remove('plugin-comment-placeholder');
+								const range = document.createRange();
+								range.selectNodeContents(comment);
+								const selection = window.getSelection();
+								if (selection) {
+									selection.removeAllRanges();
+									selection.addRange(range);
+								}
 								isPlaceholder = false;
 							}
 						});
@@ -216,9 +223,11 @@ export default class PluginsAnnotations extends Plugin {
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
 		}
-		
+
+		const annotations = this.annotations;
+
 		this.saveTimeout = window.setTimeout(() => {
-			db.saveAnnotations(this.app.vault, this.annotations);
+			db.saveAnnotations(this.app.vault, annotations);
 			this.saveTimeout = null;
 		}, timeout_ms);
 	}
