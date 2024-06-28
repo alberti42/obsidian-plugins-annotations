@@ -156,6 +156,7 @@ export default class PluginsAnnotations extends Plugin {
 
 						if(isPlaceholder) {
 							comment.classList.add('plugin-comment-placeholder');
+							comment_container.style.display = 'none';
 						}
 
 						comment.innerText = initialText;
@@ -165,6 +166,7 @@ export default class PluginsAnnotations extends Plugin {
 							if (isPlaceholder) {
 								// comment.innerText = '';
 								comment.classList.remove('plugin-comment-placeholder');
+								comment_container.style.display = 'block';
 								const range = document.createRange();
 								range.selectNodeContents(comment);
 								const selection = window.getSelection();
@@ -180,6 +182,7 @@ export default class PluginsAnnotations extends Plugin {
 							if (isPlaceholder || comment.innerText.trim() === '') {
 								comment.innerText = placeholder;
 								comment.classList.add('plugin-comment-placeholder');
+								comment_container.style.display = 'none';
 								isPlaceholder = true;
 							}
 						});
