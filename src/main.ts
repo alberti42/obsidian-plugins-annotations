@@ -108,7 +108,7 @@ export default class PluginsAnnotations extends Plugin {
 
 	async addComments(tab: SettingTab) {
 		this.annotations = await db.loadAnnotations(this.app.vault);
-		
+
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;
 
@@ -139,7 +139,7 @@ export default class PluginsAnnotations extends Plugin {
 						comment_container.className = 'plugin-comment';
 
 						const label = document.createElement('div');
-						if(Platform.isMobile){
+						if (Platform.isMobile) {
 							label.innerText = `Annotation`;
 						} else {
 							label.innerText = `Personal annotation:`;
@@ -154,7 +154,7 @@ export default class PluginsAnnotations extends Plugin {
 						let isPlaceholder = this.annotations[pluginId] ? false : true;
 						const initialText = this.annotations[pluginId] || placeholder;
 
-						if(isPlaceholder) {
+						if (isPlaceholder) {
 							comment.classList.add('plugin-comment-placeholder');
 							comment_container.classList.add('plugin-comment-placeholder');
 						}
@@ -164,7 +164,7 @@ export default class PluginsAnnotations extends Plugin {
 						// Remove placeholder class when user starts typing
 						comment.addEventListener('focus', () => {
 							if (isPlaceholder) {
-								// comment.innerText = '';
+								comment.innerText = '';
 								comment.classList.remove('plugin-comment-placeholder');
 								comment_container.classList.remove('plugin-comment-placeholder');
 								const range = document.createRange();
@@ -190,7 +190,7 @@ export default class PluginsAnnotations extends Plugin {
 						label.addEventListener('click', (event) => {
 							event.stopPropagation();
 						});
-						
+
 						// Prevent click event propagation to parent
 						comment.addEventListener('click', (event) => {
 							event.stopPropagation();
@@ -219,6 +219,7 @@ export default class PluginsAnnotations extends Plugin {
 			}
 		});
 	}
+
 
 
 	debouncedSaveAnnotations() {
