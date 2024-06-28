@@ -163,14 +163,21 @@ export default class PluginsAnnotations extends Plugin {
 						// Remove placeholder class when user starts typing
 						comment.addEventListener('focus', () => {
 							if (isPlaceholder) {
-								comment.innerText = '';
+								// comment.innerText = '';
 								comment.classList.remove('plugin-comment-placeholder');
-								isPlaceholder = false;
+								const range = document.createRange();
+								range.selectNodeContents(comment);
+								const selection = window.getSelection();
+								if (selection) {
+									selection.removeAllRanges();
+									selection.addRange(range);
+								}
 							}
 						});
 
+						// Add placeholder class back if no changes are made
 						comment.addEventListener('blur', () => {
-							if (comment.innerText.trim() === '') {
+							if (isPlaceholder || comment.innerText.trim() === '') {
 								comment.innerText = placeholder;
 								comment.classList.add('plugin-comment-placeholder');
 								isPlaceholder = true;
@@ -186,13 +193,14 @@ export default class PluginsAnnotations extends Plugin {
 							event.stopPropagation();
 						});
 
-						// Save the comment on input change
+						// Save the comment on input change and update inputTriggered status
 						comment.addEventListener('input', () => {
 							if (comment.innerText.trim() === '') {
+								isPlaceholder = true;
 								delete this.annotations[pluginId];
 								comment.classList.add('plugin-comment-placeholder');
-								isPlaceholder = true;
 							} else {
+								isPlaceholder = false;
 								this.annotations[pluginId] = comment.innerText;
 								comment.classList.remove('plugin-comment-placeholder');
 								isPlaceholder = false;
@@ -208,7 +216,8 @@ export default class PluginsAnnotations extends Plugin {
 			}
 		});
 	}
-	
+
+
 	debouncedSaveAnnotations() {
 		// timeout after 250 ms
 		const timeout_ms = 250;
@@ -216,9 +225,11 @@ export default class PluginsAnnotations extends Plugin {
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
 		}
-		
+
+		const annotations = this.annotations;
+
 		this.saveTimeout = window.setTimeout(() => {
-			db.saveAnnotations(this.app.vault, this.annotations);
+			db.saveAnnotations(this.app.vault, annotations);
 			this.saveTimeout = null;
 		}, timeout_ms);
 	}
