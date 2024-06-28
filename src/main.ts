@@ -208,7 +208,7 @@ export default class PluginsAnnotations extends Plugin {
 			}
 		});
 	}
-
+	
 	debouncedSaveAnnotations() {
 		// timeout after 250 ms
 		const timeout_ms = 250;

@@ -9,6 +9,12 @@
 .plugin-comment-annotation.plugin-comment-placeholder {
 	color: #CCCCCC; /* Standard placeholder color */
 	font-style: italic;
+    display: none;
+}
+
+/* Show placeholder when hovering over the plugin container */
+.setting-item:hover .plugin-comment-placeholder {
+    display: block;
 }
 
 /* Additional styles for consistency */
