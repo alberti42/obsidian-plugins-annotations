@@ -146,7 +146,7 @@ export default class PluginsAnnotations extends Plugin {
 						}
 						label.className = 'plugin-comment-label';
 						comment_container.appendChild(label);
-						
+
 						const comment = document.createElement('div');
 						comment.className = 'plugin-comment-annotation';
 						comment.contentEditable = 'true';
@@ -156,7 +156,7 @@ export default class PluginsAnnotations extends Plugin {
 
 						if(isPlaceholder) {
 							comment.classList.add('plugin-comment-placeholder');
-							comment_container.style.display = 'none';
+							comment_container.classList.add('plugin-comment-placeholder');
 						}
 
 						comment.innerText = initialText;
@@ -166,7 +166,7 @@ export default class PluginsAnnotations extends Plugin {
 							if (isPlaceholder) {
 								// comment.innerText = '';
 								comment.classList.remove('plugin-comment-placeholder');
-								comment_container.style.display = 'block';
+								comment_container.classList.remove('plugin-comment-placeholder');
 								const range = document.createRange();
 								range.selectNodeContents(comment);
 								const selection = window.getSelection();
@@ -182,7 +182,7 @@ export default class PluginsAnnotations extends Plugin {
 							if (isPlaceholder || comment.innerText.trim() === '') {
 								comment.innerText = placeholder;
 								comment.classList.add('plugin-comment-placeholder');
-								comment_container.style.display = 'none';
+								comment_container.classList.add('plugin-comment-placeholder');
 								isPlaceholder = true;
 							}
 						});

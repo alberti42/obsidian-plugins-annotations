@@ -4,6 +4,8 @@
 .plugin-comment {
 	width: 100%;
 	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
+	transition: opacity 0.5s ease-in-out; /* Add transition for opacity */
+	opacity: 0; /* Hidden by default */
 }
 
 .plugin-comment-annotation.plugin-comment-placeholder {
@@ -11,10 +13,14 @@
 	font-style: italic;
 }
 
+.plugin-comment.plugin-comment-placeholder {
+	display: none;
+}
+
 /* Show comment container when hovering over the plugin container */
-.setting-item:hover .plugin-comment,
-.setting-item:hover .plugin-comment-placeholder {
-    display: block;
+.setting-item:hover .plugin-comment.plugin-comment-placeholder {
+	opacity: 1; /* Show with opacity transition */
+	display: block;
 }
 
 /* Additional styles for consistency */
