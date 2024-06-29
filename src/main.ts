@@ -5,14 +5,23 @@ import {
 	Setting,
 	SettingTab,
 	Platform,
+    App,
+    PluginSettingTab,
 	// PluginSettingTab,
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import * as db from './db';
-import { PluginAnnotationDict } from './types';
+import { PluginAnnotationDict, PluginsAnnotationsSettings } from './types';
+
+const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
+	annotations: {},
+	plugins_annotations_uuid: 'FAA70013-38E9-4FDF-B06A-F899F6487C19',
+	hide_placeholders: false,
+	delete_placeholder_string_on_insertion: false,
+}
 
 export default class PluginsAnnotations extends Plugin {
+	settings: PluginsAnnotationsSettings = {...DEFAULT_SETTINGS};
 	private annotations: PluginAnnotationDict = {};
 	private pluginNameToIdMap ? : Record < string, string >;
 	private mutationObserver: MutationObserver | null = null;
@@ -20,12 +29,14 @@ export default class PluginsAnnotations extends Plugin {
 	private skipNextAddComments = false;
 	private saveTimeout: number | null = null;
 	private observedTab: SettingTab | null = null;
-
+	
 	async onload() {
 		// console.log('Loading Plugins Annotations');
-		
-		db.setPluginObj(this);
 
+		// Load and add settings tab
+		await this.loadSettings();
+		this.addSettingTab(new PluginsAnnotationsSettingTab(this.app, this));
+		
 		this.app.workspace.onLayoutReady(() => {
 			this.patchSettings();
 
@@ -34,6 +45,31 @@ export default class PluginsAnnotations extends Plugin {
 				this.observeTab(activeTab);
 			}
 		});
+	}
+
+	async loadSettings() {
+		const data = await this.loadData();
+		
+		let settings: PluginsAnnotationsSettings;
+
+		// Check if theData contains the field 'Annotations' with the right id
+		if (data && data.annotations && data.plugins_annotations_uuid === 'FAA70013-38E9-4FDF-B06A-F899F6487C19') {
+			settings = data;
+		} else {
+			// If not, assume theData itself is the annotations object
+			settings = {...DEFAULT_SETTINGS};
+			settings.annotations = data;
+		}
+
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, settings);
+	}
+
+	async saveSettings(settings:PluginsAnnotationsSettings) {
+		try {
+			await this.saveData(settings);
+		} catch (error) {
+			console.error('Failed to save annotations:', error);
+		}	
 	}
 
 	constructPluginNameToIdMap() {
@@ -107,7 +143,10 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	async addComments(tab: SettingTab) {
-		this.annotations = await db.loadAnnotations(this.app.vault);
+		// force reload - this is convenient because since the loading of the plugin
+		// there could be changes in the settings due to synchronization among devices
+		// which only happens after the plugin is loaded
+		await this.loadSettings();
 
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;
@@ -151,12 +190,14 @@ export default class PluginsAnnotations extends Plugin {
 						comment.className = 'plugin-comment-annotation';
 						comment.contentEditable = 'true';
 						const placeholder = `Add your personal comment about '${pluginName}' here...`;
-						let isPlaceholder = this.annotations[pluginId] ? false : true;
-						const initialText = this.annotations[pluginId] || placeholder;
+						let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
+						const initialText = this.settings.annotations[pluginId] || placeholder;
 
 						if (isPlaceholder) {
 							comment.classList.add('plugin-comment-placeholder');
-							comment_container.classList.add('plugin-comment-placeholder');
+							if (this.settings.hide_placeholders) {
+								comment_container.classList.add('plugin-comment-placeholder');
+							}
 						}
 
 						comment.innerText = initialText;
@@ -164,16 +205,20 @@ export default class PluginsAnnotations extends Plugin {
 						// Remove placeholder class when user starts typing
 						comment.addEventListener('focus', () => {
 							if (isPlaceholder) {
-								comment.innerText = '';
+								if(this.settings.delete_placeholder_string_on_new_input) {
+									comment.innerText = '';
+								}
 								comment.classList.remove('plugin-comment-placeholder');
-								comment_container.classList.remove('plugin-comment-placeholder');
+								if (this.settings.hide_placeholders) {
+									comment_container.classList.remove('plugin-comment-placeholder');
+								}
 								const range = document.createRange();
 								range.selectNodeContents(comment);
 								const selection = window.getSelection();
 								if (selection) {
 									selection.removeAllRanges();
 									selection.addRange(range);
-								}
+								}								
 							}
 						});
 
@@ -182,7 +227,9 @@ export default class PluginsAnnotations extends Plugin {
 							if (isPlaceholder || comment.innerText.trim() === '') {
 								comment.innerText = placeholder;
 								comment.classList.add('plugin-comment-placeholder');
-								comment_container.classList.add('plugin-comment-placeholder');
+								if (this.settings.hide_placeholders) {
+									comment_container.classList.add('plugin-comment-placeholder');
+								}
 								isPlaceholder = true;
 							}
 						});
@@ -200,11 +247,11 @@ export default class PluginsAnnotations extends Plugin {
 						comment.addEventListener('input', () => {
 							if (comment.innerText.trim() === '') {
 								isPlaceholder = true;
-								delete this.annotations[pluginId];
+								delete this.settings.annotations[pluginId];
 								comment.classList.add('plugin-comment-placeholder');
 							} else {
 								isPlaceholder = false;
-								this.annotations[pluginId] = comment.innerText;
+								this.settings.annotations[pluginId] = comment.innerText;
 								comment.classList.remove('plugin-comment-placeholder');
 								isPlaceholder = false;
 							}
@@ -220,8 +267,6 @@ export default class PluginsAnnotations extends Plugin {
 		});
 	}
 
-
-
 	debouncedSaveAnnotations() {
 		// timeout after 250 ms
 		const timeout_ms = 250;
@@ -230,10 +275,10 @@ export default class PluginsAnnotations extends Plugin {
 			clearTimeout(this.saveTimeout);
 		}
 
-		const annotations = this.annotations;
+		const settings = this.settings;
 
 		this.saveTimeout = window.setTimeout(() => {
-			db.saveAnnotations(this.app.vault, annotations);
+			this.saveSettings(settings);
 			this.saveTimeout = null;
 		}, timeout_ms);
 	}
@@ -260,5 +305,43 @@ export default class PluginsAnnotations extends Plugin {
 		if (this.removeMonkeyPatch) {
 			this.removeMonkeyPatch();
 		}		
+	}
+}
+
+
+class PluginsAnnotationsSettingTab extends PluginSettingTab {
+	plugin: PluginsAnnotations;
+
+	constructor(app: App, plugin: PluginsAnnotations) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		const { containerEl } = this;
+
+		containerEl.empty();
+
+		new Setting(containerEl).setName('Display').setHeading();
+		
+		new Setting(containerEl)
+			.setName('Hide empty annotions:')
+			.setDesc('If this option is enabled, only annotations set by the user will be shown. If you want to insert an annotation to a plugin for the first time, hover with the mouse over the chosen plugin in the \'Community plugins\' pane. The annotation field will appear automatically.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.hide_placeholders)
+				.onChange(async (value: boolean) => {
+					this.plugin.settings.hide_placeholders = value;
+					await this.plugin.debouncedSaveAnnotations();
+			}));
+
+		new Setting(containerEl)
+			.setName('Delete placeholder string when inserting a new annotations:')
+			.setDesc('If this option is enabled, you directly input a new annotation without seeing the placeholder string being selected. For some users, it is easier to recognize where to type if the placeholder string is selected (off-status of this toggle). This is a customization of minor importance.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.hide_placeholders)
+				.onChange(async (value: boolean) => {
+					this.plugin.settings.hide_placeholders = value;
+					await this.plugin.debouncedSaveAnnotations();
+			}));
 	}
 }
