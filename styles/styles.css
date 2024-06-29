@@ -1,5 +1,14 @@
 /* styles.css */
 
+/* @settings
+
+name: Plugins Annotations stylesheet
+id: plugins-annotations-stylesheet
+settings:
+
+
+*/
+
 /* Make sure the input field takes the full width of its parent */
 .plugin-comment {
 	width: 100%;
@@ -9,6 +18,7 @@
 .plugin-comment-annotation.plugin-comment-placeholder {
 	color: #CCCCCC; /* Standard placeholder color */
 	font-style: italic;
+	font-size: 20px;
 }
 
 .plugin-comment.plugin-comment-placeholder {

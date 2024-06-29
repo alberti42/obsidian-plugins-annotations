@@ -320,27 +320,51 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 
+		const plugins_pane = createFragment((frag) => {
+				const em = frag.createEl('em');
+				const link = frag.createEl('a', { href: '#', text: 'Community plugins'});
+				link.onclick = () => {
+					this.app.setting.openTabById('community-plugins');
+				};
+				em.appendChild(link)
+			});
+
 		containerEl.empty();
+
+		new Setting(containerEl).setName('Annotations').setHeading();
+
+		const instructions = createFragment((frag) => {
+				frag.appendText('Please enter your personal annotations about the installed plugins directly in the ');
+				frag.appendChild(plugins_pane);
+				frag.appendText(' pane.');
+				});
+
+		containerEl.appendChild(instructions);
 
 		new Setting(containerEl).setName('Display').setHeading();
 		
 		new Setting(containerEl)
-			.setName('Hide empty annotions:')
-			.setDesc('If this option is enabled, only annotations set by the user will be shown. If you want to insert an annotation to a plugin for the first time, hover with the mouse over the chosen plugin in the \'Community plugins\' pane. The annotation field will appear automatically.')
+			.setName('Hide empty annotations:')
+			.setDesc(createFragment((frag) => {
+				frag.appendText('If this option is enabled, only annotations set by the user will be shown. If you want to insert an annotation to a plugin for the first time, hover with the mouse over the chosen plugin in the ');
+				frag.appendChild(plugins_pane);
+				frag.appendText(' pane. The annotation field will appear automatically.');
+			}))
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.hide_placeholders)
 				.onChange(async (value: boolean) => {
 					this.plugin.settings.hide_placeholders = value;
 					await this.plugin.debouncedSaveAnnotations();
-			}));
+				}));
+
 
 		new Setting(containerEl)
-			.setName('Delete placeholder string when inserting a new annotations:')
-			.setDesc('If this option is enabled, you directly input a new annotation without seeing the placeholder string being selected. For some users, it is easier to recognize where to type if the placeholder string is selected (off-status of this toggle). This is a customization of minor importance.')
+			.setName('Delete placeholder text when inserting a new annotation:')
+			.setDesc('If this option is enabled, the placeholder text will be deleted automatically when you start typing a new annotation. If disabled, the placeholder text will be selected for easier replacement. This is a minor customization.')
 			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.hide_placeholders)
+				.setValue(this.plugin.settings.delete_placeholder_string_on_insertion)
 				.onChange(async (value: boolean) => {
-					this.plugin.settings.hide_placeholders = value;
+					this.plugin.settings.delete_placeholder_string_on_insertion = value;
 					await this.plugin.debouncedSaveAnnotations();
 			}));
 	}
