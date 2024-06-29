@@ -7,6 +7,7 @@ import {
 	Platform,
     App,
     PluginSettingTab,
+    MarkdownRenderer,
 	// PluginSettingTab,
 	// App,
 } from 'obsidian';
@@ -178,11 +179,7 @@ export default class PluginsAnnotations extends Plugin {
 						comment_container.className = 'plugin-comment';
 
 						const label = document.createElement('div');
-						if (Platform.isMobile) {
-							label.innerText = `Annotation`;
-						} else {
-							label.innerText = `Personal annotation:`;
-						}
+						label.innerText = Platform.isMobile ? 'Annotation' : 'Personal annotation:';
 						label.className = 'plugin-comment-label';
 						comment_container.appendChild(label);
 
@@ -200,12 +197,22 @@ export default class PluginsAnnotations extends Plugin {
 							}
 						}
 
-						comment.innerText = initialText;
+						comment.innerHTML = initialText;
+
+						// Render the Markdown content
+						const renderMarkdown = async (markdownText: string) => {
+							comment.innerHTML = '';
+							await MarkdownRenderer.renderMarkdown(markdownText, comment, '', this);
+							this.parseLinks(comment);
+						};
+
+						// Initial render
+						renderMarkdown(initialText);
 
 						// Remove placeholder class when user starts typing
 						comment.addEventListener('focus', () => {
 							if (isPlaceholder) {
-								if(this.settings.delete_placeholder_string_on_insertion) {
+								if (this.settings.delete_placeholder_string_on_insertion) {
 									comment.innerText = '';
 								}
 								comment.classList.remove('plugin-comment-placeholder');
@@ -218,7 +225,7 @@ export default class PluginsAnnotations extends Plugin {
 								if (selection) {
 									selection.removeAllRanges();
 									selection.addRange(range);
-								}								
+								}
 							}
 						});
 
@@ -245,27 +252,44 @@ export default class PluginsAnnotations extends Plugin {
 
 						// Save the comment on input change and update inputTriggered status
 						comment.addEventListener('input', () => {
-							if (comment.innerText.trim() === '') {
+							const newText = comment.innerText.trim();
+							if (newText === '') {
 								isPlaceholder = true;
 								delete this.settings.annotations[pluginId];
 								comment.classList.add('plugin-comment-placeholder');
 							} else {
 								isPlaceholder = false;
-								this.settings.annotations[pluginId] = comment.innerText;
+								this.settings.annotations[pluginId] = newText;
 								comment.classList.remove('plugin-comment-placeholder');
 								isPlaceholder = false;
 							}
 							this.debouncedSaveAnnotations();
+							renderMarkdown(newText);
 						});
 
 						comment_container.appendChild(comment);
-
 						descriptionDiv.appendChild(comment_container);
 					}
 				}
 			}
 		});
 	}
+
+	// Helper function to parse links and add click listeners
+	parseLinks(element: HTMLElement) {
+		const links = element.querySelectorAll('a');
+		links.forEach(link => {
+			link.addEventListener('click', (event) => {
+				event.preventDefault();
+				const href = link.getAttribute('href');
+				if (href) {
+					this.app.workspace.openLinkText(href, '', false);
+				}
+			});
+		});
+	}
+
+
 
 	debouncedSaveAnnotations() {
 		// timeout after 250 ms
