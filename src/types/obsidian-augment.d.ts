@@ -39,7 +39,9 @@ declare module "obsidian" {
 		settingTabs: SettingTab[];
 
 		tabContentContainer: HTMLDivElement;
-		tabHeadersEl: HTMLDivElement;	 
+		tabHeadersEl: HTMLDivElement;
+
+		close(): void;
 	}
 	interface Plugins {
 		manifests: Record<string, PluginManifest>;

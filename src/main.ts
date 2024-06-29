@@ -5,9 +5,9 @@ import {
 	Setting,
 	SettingTab,
 	Platform,
-    App,
-    PluginSettingTab,
-    MarkdownRenderer,
+	App,
+	PluginSettingTab,
+	MarkdownRenderer,
 	// PluginSettingTab,
 	// App,
 } from 'obsidian';
@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
 	plugins_annotations_uuid: 'FAA70013-38E9-4FDF-B06A-F899F6487C19',
 	hide_placeholders: false,
 	delete_placeholder_string_on_insertion: false,
+	markdown_notes: false,
 }
 
 export default class PluginsAnnotations extends Plugin {
@@ -197,17 +198,28 @@ export default class PluginsAnnotations extends Plugin {
 							}
 						}
 
-						comment.innerHTML = initialText;
+						comment.innerText = initialText;
 
-						// Render the Markdown content
-						const renderMarkdown = async (markdownText: string) => {
+						// Function to render the annotation based on preamble
+						const renderAnnotation = async (text: string) => {
+							const lines = text.split('\n');
+							const preamble = lines[0].toLowerCase();
+							const content = lines.slice(1).join('\n');
+
 							comment.innerHTML = '';
-							await MarkdownRenderer.renderMarkdown(markdownText, comment, '', this);
-							this.parseLinks(comment);
+							if (preamble.startsWith('html:')) {
+								comment.innerHTML = content;
+							} else if (preamble.startsWith('markdown:')) {
+								await MarkdownRenderer.renderMarkdown(content, comment, '', this);
+							} else if (preamble.startsWith('text:')) {
+								comment.innerText = text;
+							} else {
+								comment.innerText = text;
+							}
 						};
 
 						// Initial render
-						renderMarkdown(initialText);
+						renderAnnotation(initialText);
 
 						// Remove placeholder class when user starts typing
 						comment.addEventListener('focus', () => {
@@ -264,7 +276,7 @@ export default class PluginsAnnotations extends Plugin {
 								isPlaceholder = false;
 							}
 							this.debouncedSaveAnnotations();
-							renderMarkdown(newText);
+							// renderAnnotation(newText);
 						});
 
 						comment_container.appendChild(comment);
@@ -275,6 +287,7 @@ export default class PluginsAnnotations extends Plugin {
 		});
 	}
 
+
 	// Helper function to parse links and add click listeners
 	parseLinks(element: HTMLElement) {
 		const links = element.querySelectorAll('a');
@@ -284,6 +297,7 @@ export default class PluginsAnnotations extends Plugin {
 				const href = link.getAttribute('href');
 				if (href) {
 					this.app.workspace.openLinkText(href, '', false);
+					this.app.setting.close(); // Close the settings pane when a link is clicked
 				}
 			});
 		});
@@ -437,9 +451,9 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				if (Platform.isMobile) {
 					const p = frag.createEl('p');
 					const warning = p.createEl('span', {
-						text: 'Note: On mobile devices, you can hover over plugins with your finger instead of using the mouse.',
+						text: 'On mobile devices, you can hover over plugins with your finger instead of using the mouse.',
 					});
-					warning.style.color = 'red';
+					warning.classList.add('mod-warning');
 					frag.appendChild(p);
 				}
 			}))
@@ -459,6 +473,28 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.delete_placeholder_string_on_insertion = value;
 					await this.plugin.debouncedSaveAnnotations();
 			}));
+
+		new Setting(containerEl).setName('Input mode').setHeading();
+
+		new Setting(containerEl)
+			.setName('Markdown annotations:')
+			.setDesc(createFragment((frag) => {
+				frag.appendText('If this option is enabled, Markdown notes can be used for your personal annotations.');
+				const p = frag.createEl('p');
+				const warning = p.createEl('span', {
+					text: 'Markdown annotations will be displayed just like Obsidian displays them. However, the annotation field is not a fully-fledged Markdown editor. It is recommended to write the Markdown note in Obsidian and then copy & paste it into the annotation field. This allows you full flexibility to use rich text (bold, italics, etc.) and, most importantly, to add links to your Obsidian notes.',
+				});
+				warning.classList.add('mod-warning');				
+				frag.appendChild(p);
+			}))
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.markdown_notes)
+				.onChange(async (value: boolean) => {
+					this.plugin.settings.markdown_notes = value;
+					await this.plugin.debouncedSaveAnnotations();
+				}));
+
+
 
 		this.createUninstalledPluginSettings(containerEl);
 	}
