@@ -58,7 +58,7 @@ export default class PluginsAnnotations extends Plugin {
 		} else {
 			// If not, assume theData itself is the annotations object
 			settings = {...DEFAULT_SETTINGS};
-			settings.annotations = data;
+			settings.annotations = data || DEFAULT_SETTINGS.annotations;
 		}
 
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, settings);
@@ -205,7 +205,7 @@ export default class PluginsAnnotations extends Plugin {
 						// Remove placeholder class when user starts typing
 						comment.addEventListener('focus', () => {
 							if (isPlaceholder) {
-								if(this.settings.delete_placeholder_string_on_new_input) {
+								if(this.settings.delete_placeholder_string_on_insertion) {
 									comment.innerText = '';
 								}
 								comment.classList.remove('plugin-comment-placeholder');
@@ -331,24 +331,25 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 	createUninstalledPluginSettings(containerEl: HTMLElement) {
 		const uninstalledPlugins = this.plugin.getUninstalledPlugins();
-		
+
 		// Check if uninstalledPlugins is empty
 		if (Object.keys(uninstalledPlugins).length === 0) {
 			return;
 		}
 		
-		new Setting(containerEl).setName('Personal annotations  (no longer installed community plugins)').setHeading();
+		const heading = new Setting(containerEl).setName('Personal annotations of no longer installed community plugins').setHeading();
+		const headingEl = heading.settingEl;
 
 		// Append instructions right after the Annotations heading
 		const instructions = containerEl.createDiv();
 		instructions.classList.add('setting-item');
 		instructions.appendChild(createFragment((frag) => {
 			const p = frag.createEl('p');
-			p.appendText('The following plugins are no longer installed. For each plugin, choose whether to remove your annotation from the memory. If you plan to re-install the plugin in the future, keeping your personal annotation is recommended.');
+			p.appendText('The following plugins are no longer installed. For each plugin, you can choose to remove its annotation from memory. If you plan to reinstall the plugin in the future, it is recommended to keep the annotation.');
 			frag.appendChild(p);
 		}));
 
-		Object.keys(uninstalledPlugins).forEach(pluginId => {
+		Object.keys({...uninstalledPlugins}).forEach(pluginId => {
 			const pluginSetting = new Setting(containerEl)
 				.setName(`Plugin ${pluginId}`)
 				.setDesc("Annotation: " + uninstalledPlugins[pluginId])
@@ -357,8 +358,15 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					.setCta()
 					.onClick(async () => {
 						delete this.plugin.settings.annotations[pluginId];
+						delete uninstalledPlugins[pluginId];
 						await this.plugin.debouncedSaveAnnotations();
 						pluginSetting.settingEl.remove();
+							
+						// If no more uninstalled plugins, remove the section container
+						if (Object.keys(uninstalledPlugins).length === 0) {
+							instructions.remove();
+							headingEl.remove();
+						}
 					}));
 		});
 	}
@@ -379,11 +387,10 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl).setName('Personal annotations (currently installed community plugins)').setHeading();
-
+		new Setting(containerEl).setName('Personal annotations').setHeading();
 		const instructions = createFragment((frag) => {
 			const p = frag.createEl('p');
-			p.appendText('To add or edit your personal annotations for installed plugins, go to the ');
+			p.appendText('To add or edit your personal annotations for the installed plugins, go to the ');
 			p.appendChild(createPluginsPaneFragment());
 			p.appendText(' pane and click over the ediable annotation field.');
 			frag.appendChild(p);
@@ -394,8 +401,6 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		instructions_div.classList.add('setting-item');
 		instructions_div.appendChild(instructions);
 
-		this.createUninstalledPluginSettings(containerEl);
-
 		new Setting(containerEl).setName('Display').setHeading();
 
 		new Setting(containerEl)
@@ -404,6 +409,15 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				frag.appendText('If this option is enabled, only annotations set by the user will be shown. If you want to insert an annotation to a plugin for the first time, hover with the mouse over the chosen plugin in the ');
 				frag.appendChild(createPluginsPaneFragment());
 				frag.appendText(' pane. The annotation field will appear automatically.');
+
+				if (!Platform.isMobile) {
+					const p = frag.createEl('p');
+					const warning = p.createEl('span', {
+						text: 'Note: On mobile devices, you cannot hover over plugins, making it not possible to add new annotations if they do not already exist.',
+					});
+					warning.style.color = 'red';
+					frag.appendChild(p);
+				}
 			}))
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.hide_placeholders)
@@ -421,5 +435,7 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.delete_placeholder_string_on_insertion = value;
 					await this.plugin.debouncedSaveAnnotations();
 			}));
+
+		this.createUninstalledPluginSettings(containerEl);
 	}
 }
