@@ -410,10 +410,10 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				frag.appendChild(createPluginsPaneFragment());
 				frag.appendText(' pane. The annotation field will appear automatically.');
 
-				if (!Platform.isMobile) {
+				if (Platform.isMobile) {
 					const p = frag.createEl('p');
 					const warning = p.createEl('span', {
-						text: 'Note: On mobile devices, you cannot hover over plugins, making it not possible to add new annotations if they do not already exist.',
+						text: 'Note: On mobile devices, you can hover over plugins with your finger instead of using the mouse.',
 					});
 					warning.style.color = 'red';
 					frag.appendChild(p);
