@@ -306,6 +306,18 @@ export default class PluginsAnnotations extends Plugin {
 			this.removeMonkeyPatch();
 		}		
 	}
+
+	getUninstalledPlugins(): { [pluginId: string]: string } {
+		const installedPluginIds = new Set(Object.keys(this.app.plugins.manifests));
+		const uninstalledPlugins: { [pluginId: string]: string } = {};
+
+		for (const pluginId in this.settings.annotations) {
+			if (!installedPluginIds.has(pluginId)) {
+				uninstalledPlugins[pluginId] = this.settings.annotations[pluginId];
+			}
+		}
+		return uninstalledPlugins;
+	}
 }
 
 
@@ -315,6 +327,40 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: PluginsAnnotations) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	createUninstalledPluginSettings(containerEl: HTMLElement) {
+		const uninstalledPlugins = this.plugin.getUninstalledPlugins();
+		
+		// Check if uninstalledPlugins is empty
+		if (Object.keys(uninstalledPlugins).length === 0) {
+			return;
+		}
+		
+		new Setting(containerEl).setName('Personal annotations  (no longer installed community plugins)').setHeading();
+
+		// Append instructions right after the Annotations heading
+		const instructions = containerEl.createDiv();
+		instructions.classList.add('setting-item');
+		instructions.appendChild(createFragment((frag) => {
+			const p = frag.createEl('p');
+			p.appendText('The following plugins are no longer installed. For each plugin, choose whether to remove your annotation from the memory. If you plan to re-install the plugin in the future, keeping your personal annotation is recommended.');
+			frag.appendChild(p);
+		}));
+
+		Object.keys(uninstalledPlugins).forEach(pluginId => {
+			const pluginSetting = new Setting(containerEl)
+				.setName(`Plugin ${pluginId}`)
+				.setDesc("Annotation: " + uninstalledPlugins[pluginId])
+				.addButton(button => button
+					.setButtonText('Delete')
+					.setCta()
+					.onClick(async () => {
+						delete this.plugin.settings.annotations[pluginId];
+						await this.plugin.debouncedSaveAnnotations();
+						pluginSetting.settingEl.remove();
+					}));
+		});
 	}
 
 	display(): void {
@@ -333,7 +379,7 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl).setName('Annotations').setHeading();
+		new Setting(containerEl).setName('Personal annotations (currently installed community plugins)').setHeading();
 
 		const instructions = createFragment((frag) => {
 			const p = frag.createEl('p');
@@ -347,6 +393,8 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		const instructions_div = containerEl.createDiv();
 		instructions_div.classList.add('setting-item');
 		instructions_div.appendChild(instructions);
+
+		this.createUninstalledPluginSettings(containerEl);
 
 		new Setting(containerEl).setName('Display').setHeading();
 
