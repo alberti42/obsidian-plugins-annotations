@@ -320,34 +320,41 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 
-		const plugins_pane = createFragment((frag) => {
+		const createPluginsPaneFragment = (): DocumentFragment => {
+			return createFragment((frag) => {
 				const em = frag.createEl('em');
 				const link = frag.createEl('a', { href: '#', text: 'Community plugins'});
 				link.onclick = () => {
 					this.app.setting.openTabById('community-plugins');
 				};
-				em.appendChild(link)
+				em.appendChild(link);
 			});
+		};
 
 		containerEl.empty();
 
 		new Setting(containerEl).setName('Annotations').setHeading();
 
 		const instructions = createFragment((frag) => {
-				frag.appendText('Please enter your personal annotations about the installed plugins directly in the ');
-				frag.appendChild(plugins_pane);
-				frag.appendText(' pane.');
-				});
+			const p = frag.createEl('p');
+			p.appendText('To add or edit your personal annotations for installed plugins, go to the ');
+			p.appendChild(createPluginsPaneFragment());
+			p.appendText(' pane and click over the ediable annotation field.');
+			frag.appendChild(p);
+		});
 
-		containerEl.appendChild(instructions);
+		// Append instructions right after the Annotations heading
+		const instructions_div = containerEl.createDiv();
+		instructions_div.classList.add('setting-item');
+		instructions_div.appendChild(instructions);
 
 		new Setting(containerEl).setName('Display').setHeading();
-		
+
 		new Setting(containerEl)
 			.setName('Hide empty annotations:')
 			.setDesc(createFragment((frag) => {
 				frag.appendText('If this option is enabled, only annotations set by the user will be shown. If you want to insert an annotation to a plugin for the first time, hover with the mouse over the chosen plugin in the ');
-				frag.appendChild(plugins_pane);
+				frag.appendChild(createPluginsPaneFragment());
 				frag.appendText(' pane. The annotation field will appear automatically.');
 			}))
 			.addToggle(toggle => toggle
@@ -356,7 +363,6 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.hide_placeholders = value;
 					await this.plugin.debouncedSaveAnnotations();
 				}));
-
 
 		new Setting(containerEl)
 			.setName('Delete placeholder text when inserting a new annotation:')
