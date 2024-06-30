@@ -24,12 +24,17 @@
   margin-bottom: 0;
 }
 
-/* Show comment container when hovering over the plugin container */
-.setting-item:hover .plugin-comment.plugin-comment-placeholder {
-	display: block;
+.plugin-comment-annotation::after {
+    content: "" !important;
 }
 
 .plugin-comment-annotation {
 	width: 100%;
 }
+
+/* Show comment container when hovering over the plugin container */
+.setting-item:hover .plugin-comment.plugin-comment-placeholder {
+	display: block;
+}
+
 

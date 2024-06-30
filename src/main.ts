@@ -272,8 +272,8 @@ export default class PluginsAnnotations extends Plugin {
 				if (descriptionDiv) {
 					const commentDiv = descriptionDiv.querySelector('.plugin-comment');
 					if (!commentDiv) {
-						const comment_container = document.createElement('div');
-						comment_container.className = 'plugin-comment';
+						const annotation_container = document.createElement('div');
+						annotation_container.className = 'plugin-comment';
 
 						const annotation_div = document.createElement('div');
 						annotation_div.className = 'plugin-comment-annotation';
@@ -285,7 +285,7 @@ export default class PluginsAnnotations extends Plugin {
 						if (isPlaceholder) {
 							annotation_div.classList.add('plugin-comment-placeholder');
 							if (this.settings.hide_placeholders) {
-								comment_container.classList.add('plugin-comment-placeholder');
+								annotation_container.classList.add('plugin-comment-placeholder');
 							}
 						}
 
@@ -316,7 +316,7 @@ export default class PluginsAnnotations extends Plugin {
 								}
 								annotation_div.classList.remove('plugin-comment-placeholder');
 								if (this.settings.hide_placeholders) {
-									comment_container.classList.remove('plugin-comment-placeholder');
+									annotation_container.classList.remove('plugin-comment-placeholder');
 								}
 								const range = document.createRange();
 								range.selectNodeContents(annotation_div);
@@ -339,7 +339,7 @@ export default class PluginsAnnotations extends Plugin {
 								annotation_div.innerText = placeholder;
 								annotation_div.classList.add('plugin-comment-placeholder');
 								if (this.settings.hide_placeholders) {
-									comment_container.classList.add('plugin-comment-placeholder');
+									annotation_container.classList.add('plugin-comment-placeholder');
 								}
 								isPlaceholder = true;
 							} else {
@@ -370,8 +370,8 @@ export default class PluginsAnnotations extends Plugin {
 							this.debouncedSaveAnnotations();
 						});
 
-						comment_container.appendChild(annotation_div);
-						descriptionDiv.appendChild(comment_container);
+						annotation_container.appendChild(annotation_div);
+						descriptionDiv.appendChild(annotation_container);						
 					}
 				}
 			}
