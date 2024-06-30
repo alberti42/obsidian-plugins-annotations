@@ -19,7 +19,6 @@ const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
 	plugins_annotations_uuid: 'FAA70013-38E9-4FDF-B06A-F899F6487C19',
 	hide_placeholders: false,
 	delete_placeholder_string_on_insertion: false,
-	markdown_notes: false,
 	label_mobile: '<b>Annotation:&nbsp;</b>',
 	label_desktop: '<b>Personal annotation:&nbsp;</b>',
 }
@@ -500,11 +499,38 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName('Personal annotations').setHeading();
 		const instructions = createFragment((frag) => {
-			const p = frag.createEl('p');
-			p.appendText('To add or edit your personal annotations for the installed plugins, go to the ');
-			p.appendChild(createPluginsPaneFragment());
-			p.appendText(' pane and click over the ediable annotation field.');
-			frag.appendChild(p);
+			const div = document.createElement('div');
+			div.classList.add('plugin-comment-instructions');
+
+			const p1 = document.createElement('p');
+			p1.appendText('To add or edit your personal annotations for the installed plugins, go to the ');
+			p1.appendChild(createPluginsPaneFragment());
+			p1.appendText(' pane and click over the annotation fields to edit their content');
+			div.appendChild(p1);
+
+			const p2 = document.createElement('p2');
+			p2.innerHTML = "You can enter rich text notes using Markdown and HTML. Markdown annotations will be dispalyed as Obsidian normally renders Markdown text. \
+				To this purpose, your annotation needs to start with a preamble line containing one \
+				of three strings:\
+				 <ul>\
+  					<li>markdown:</li>\
+  					<li>html:</li>\
+  					<li>text:</li>\
+				</ul>\
+				If you do not enter any preamble line, the default <em>text:</em> will be assumed.";
+			div.appendChild(p2);
+
+			const p3 = document.createElement('p');
+			p3.innerHTML = "You can directly link your Obsidian notes from inside your annotations by adding links such as [[My notes/Review of plugin XYZ|my plugin note]].";
+			div.appendChild(p3);
+
+			const p4 = document.createElement('p');
+			p4.innerHTML = "When editing HTML and Markdown annotations, use the placeholder <em>${label}</em> to display the <em>annotation label</em> at the chosen location."
+			div.appendChild(p4);
+
+
+
+			frag.appendChild(div);
 		});
 
 		// Append instructions right after the Annotations heading
@@ -528,7 +554,7 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		} else {
 			new Setting(containerEl)
 					.setName('Annotation label:')
-					.setDesc('Choose the annotation label for the desktop version of Obsidian. Use HTML code if you want to format it. Enter an empty string if you want to hide the label. In HTML and Markdown annotations, use the placeholder ${label} to make the label appear at the chosen location.')
+					.setDesc('Choose the annotation label for the desktop version of Obsidian. Use HTML code if you want to format it. Enter an empty string if you want to hide the label.')
 					.addText(text => {
 						text.setPlaceholder('Annotation label');
 						text.setValue(this.plugin.settings.label_desktop);
@@ -570,28 +596,6 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.delete_placeholder_string_on_insertion = value;
 					await this.plugin.debouncedSaveAnnotations();
 			}));
-
-		new Setting(containerEl).setName('Input mode').setHeading();
-
-		new Setting(containerEl)
-			.setName('Markdown annotations:')
-			.setDesc(createFragment((frag) => {
-				frag.appendText('If this option is enabled, Markdown notes can be used for your personal annotations.');
-				const p = frag.createEl('p');
-				const warning = p.createEl('span', {
-					text: 'Markdown annotations will be displayed just like Obsidian displays them. However, the annotation field is not a fully-fledged Markdown editor. It is recommended to write the Markdown note in Obsidian and then copy & paste it into the annotation field. This allows you full flexibility to use rich text (bold, italics, etc.) and, most importantly, to add links to your Obsidian notes.',
-				});
-				warning.classList.add('mod-warning');				
-				frag.appendChild(p);
-			}))
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.markdown_notes)
-				.onChange(async (value: boolean) => {
-					this.plugin.settings.markdown_notes = value;
-					await this.plugin.debouncedSaveAnnotations();
-				}));
-
-
 
 		this.createUninstalledPluginSettings(containerEl);
 	}

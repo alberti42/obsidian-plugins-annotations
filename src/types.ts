@@ -9,7 +9,6 @@ export interface PluginsAnnotationsSettings {
 	plugins_annotations_uuid: string;
 	hide_placeholders: boolean;
 	delete_placeholder_string_on_insertion: boolean;
-	markdown_notes: boolean;
 	label_mobile: string;
 	label_desktop: string;
 }
