@@ -20,6 +20,8 @@ const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
 	hide_placeholders: false,
 	delete_placeholder_string_on_insertion: false,
 	markdown_notes: false,
+	label_mobile: '<b>Annotation:&nbsp;</b>',
+	label_desktop: '<b>Personal annotation:&nbsp;</b>',
 }
 
 export default class PluginsAnnotations extends Plugin {
@@ -184,19 +186,55 @@ export default class PluginsAnnotations extends Plugin {
 			});
 		}
 
+		const create_label = (): HTMLSpanElement | null => {
+			const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
+			if(label.trim() === "") {
+				return null;
+			} else {
+				const span = document.createElement('span');
+				span.innerHTML = label;
+				span.classList.add('plugin-comment-label');
+				return span;
+			}
+		}
+
 		const render_annotation = async (annotation_div: HTMLDivElement, t:AnnotationType,c:string) => {
 			switch(t) {
 				case AnnotationType.text: {
-					annotation_div.innerText = c;
+					const p = document.createElement('p');
+					p.dir = 'auto';
+					const label = create_label();
+					if(label) {
+						p.appendChild(label);
+						p.appendText(c);
+					}
+					else {
+						p.innerText = c;
+					}					
+					annotation_div.appendChild(p);
 					break;
 				}
 				case AnnotationType.html: {
-					annotation_div.innerHTML = c;
+					const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
+					let c_with_label;
+					if(label.trim()==="") {
+						c_with_label = c;
+					} else {
+						c_with_label = c.replace(/\$\{label\}/g, label);
+					}
+					annotation_div.innerHTML = c_with_label;
 					parse_links(annotation_div);
 					break;
 				}
 				case AnnotationType.markdown: {
-					await MarkdownRenderer.renderMarkdown(c, annotation_div, '', this);
+					const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
+					let c_with_label;
+					if(label.trim()==="") {
+						c_with_label = c;
+					} else {
+						c_with_label = c.replace(/\$\{label\}/g, label);
+					}
+					await MarkdownRenderer.renderMarkdown(c_with_label, annotation_div, '', this);
 					parse_links(annotation_div);
 					break;
 				}
@@ -236,11 +274,6 @@ export default class PluginsAnnotations extends Plugin {
 					if (!commentDiv) {
 						const comment_container = document.createElement('div');
 						comment_container.className = 'plugin-comment';
-
-						const label = document.createElement('div');
-						label.innerText = Platform.isMobile ? 'Annotation' : 'Personal annotation:';
-						label.className = 'plugin-comment-label';
-						comment_container.appendChild(label);
 
 						const annotation_div = document.createElement('div');
 						annotation_div.className = 'plugin-comment-annotation';
@@ -313,10 +346,6 @@ export default class PluginsAnnotations extends Plugin {
 								({type,content} = parse_annotation(annotation_div,annotation_text));
 								render_annotation(annotation_div,type,content);
 							}
-						});
-
-						label.addEventListener('click', (event) => {
-							event.stopPropagation();
 						});
 
 						// Prevent click event propagation to parent
@@ -484,6 +513,30 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		instructions_div.appendChild(instructions);
 
 		new Setting(containerEl).setName('Display').setHeading();
+
+		if (Platform.isMobile) {
+			new Setting(containerEl)
+					.setName('Annotation label:')
+					.setDesc('Choose the annotation label for the mobile version of Obsidian. Use HTML code if you want to format it. Enter an empty string if you want to hide the label.')
+					.addText(text => {
+						text.setPlaceholder('Annotation label');
+						text.setValue(this.plugin.settings.label_mobile);
+						text.onChange(async (value: string) => {
+							this.plugin.settings.label_mobile = value;
+							await this.plugin.debouncedSaveAnnotations();
+					})});
+		} else {
+			new Setting(containerEl)
+					.setName('Annotation label:')
+					.setDesc('Choose the annotation label for the desktop version of Obsidian. Use HTML code if you want to format it. Enter an empty string if you want to hide the label. In HTML and Markdown annotations, use the placeholder ${label} to make the label appear at the chosen location.')
+					.addText(text => {
+						text.setPlaceholder('Annotation label');
+						text.setValue(this.plugin.settings.label_desktop);
+						text.onChange(async (value: string) => {
+							this.plugin.settings.label_desktop = value;
+							await this.plugin.debouncedSaveAnnotations();
+					})});
+		}
 
 		new Setting(containerEl)
 			.setName('Hide empty annotations:')

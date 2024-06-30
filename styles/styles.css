@@ -2,6 +2,7 @@
 
 /* Make sure the input field takes the full width of its parent */
 .plugin-comment {
+	margin-top: 5px;
 	width: 100%;
 	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
 }
@@ -15,16 +16,20 @@
 	display: none;
 }
 
+.plugin-comment-annotation > p:first-child {
+  margin-top: 0;
+}
+
+.plugin-comment-annotation > p:last-child {
+  margin-bottom: 0;
+}
+
 /* Show comment container when hovering over the plugin container */
 .setting-item:hover .plugin-comment.plugin-comment-placeholder {
 	display: block;
 }
 
-/* Additional styles for consistency */
-.plugin-comment-label {
-	padding-top: 5px;
-}
-
 .plugin-comment-annotation {
 	width: 100%;
 }
+
