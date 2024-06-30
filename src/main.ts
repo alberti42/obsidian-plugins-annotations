@@ -279,8 +279,8 @@ export default class PluginsAnnotations extends Plugin {
 						annotation_div.contentEditable = 'true';
 						const placeholder = `Add your personal comment about '${pluginName}' here...`;
 						let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
-						let annotation_text = this.settings.annotations[pluginId] || placeholder;
-
+						let annotation_text = (this.settings.annotations[pluginId] || placeholder).trim();
+						
 						if (isPlaceholder) {
 							annotation_div.classList.add('plugin-comment-placeholder');
 							if (this.settings.hide_placeholders) {
@@ -354,8 +354,8 @@ export default class PluginsAnnotations extends Plugin {
 
 						// Save the comment on input change and update inputTriggered status
 						annotation_div.addEventListener('input', () => {
-							annotation_text = annotation_div.innerText;
-							if (annotation_text.trim() === '') {
+							annotation_text = annotation_div.innerText.trim();
+							if (annotation_text === '') {
 								annotation_text = '';
 								isPlaceholder = true;
 								delete this.settings.annotations[pluginId];
