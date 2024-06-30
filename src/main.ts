@@ -184,72 +184,122 @@ export default class PluginsAnnotations extends Plugin {
 						label.className = 'plugin-comment-label';
 						comment_container.appendChild(label);
 
-						const comment = document.createElement('div');
-						comment.className = 'plugin-comment-annotation';
-						comment.contentEditable = 'true';
+						const annotation_div = document.createElement('div');
+						annotation_div.className = 'plugin-comment-annotation';
+						annotation_div.contentEditable = 'false';
 						const placeholder = `Add your personal comment about '${pluginName}' here...`;
 						let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
-						const initialText = this.settings.annotations[pluginId] || placeholder;
+						let annotation_text = this.settings.annotations[pluginId] || placeholder;
 
 						if (isPlaceholder) {
-							comment.classList.add('plugin-comment-placeholder');
+							annotation_div.classList.add('plugin-comment-placeholder');
 							if (this.settings.hide_placeholders) {
 								comment_container.classList.add('plugin-comment-placeholder');
 							}
 						}
-
-						comment.innerText = initialText;
+ 
+						enum AnnotationType {
+							text,
+							html,
+							markdown,
+						}
 
 						// Function to render the annotation based on preamble
-						const renderAnnotation = async (text: string) => {
+						const parse_annotation = (text: string): {type:AnnotationType,content:string} => {
 							const lines = text.split('\n');
 							const preamble = lines[0].toLowerCase();
-							const content = lines.slice(1).join('\n');
+							const sliced = lines.slice(1).join('\n');
 
-							comment.innerHTML = '';
+							annotation_div.innerHTML = '';
 							if (preamble.startsWith('html:')) {
-								comment.innerHTML = content;
+								return {type: AnnotationType.html, content: sliced};
 							} else if (preamble.startsWith('markdown:')) {
-								await MarkdownRenderer.renderMarkdown(content, comment, '', this);
+								return {type: AnnotationType.markdown, content: sliced};
 							} else if (preamble.startsWith('text:')) {
-								comment.innerText = text;
+								return {type: AnnotationType.text, content: sliced};
 							} else {
-								comment.innerText = text;
+								return {type: AnnotationType.text, content: text};
 							}
 						};
 
+						// Helper function to parse links and add click listeners
+						const parse_links = (element: HTMLElement) => {
+							const links = element.querySelectorAll('a');
+							links.forEach(link => {
+								link.addEventListener('click', (event) => {
+									event.preventDefault();
+									const href = link.getAttribute('href');
+									if (href) {
+										this.app.workspace.openLinkText(href, '', false);
+										this.app.setting.close(); // Close the settings pane when a link is clicked
+									}
+								});
+							});
+						}
+
+						const render_annotation = async (t:AnnotationType,c:string) => {
+							switch(t) {
+								case AnnotationType.text: {
+									annotation_div.innerText = c;
+									break;
+								}
+								case AnnotationType.html: {
+									annotation_div.innerHTML = c;
+									parse_links(annotation_div);
+									break;
+								}
+								case AnnotationType.markdown: {
+									await MarkdownRenderer.renderMarkdown(c, annotation_div, '', this);
+									parse_links(annotation_div);
+									break;
+								}
+							}
+						}
+
+						// Parsing the stored annotation
+						let type:AnnotationType;
+						let content:string;
+						({type,content} = parse_annotation(annotation_text));
+						
 						// Initial render
-						renderAnnotation(initialText);
+						render_annotation(type,content);
+
+						// MarkdownRenderer.renderMarkdown(content, annotation_div, '', this);
 
 						// Remove placeholder class when user starts typing
-						comment.addEventListener('focus', () => {
+						annotation_div.addEventListener('focus', () => {
 							if (isPlaceholder) {
 								if (this.settings.delete_placeholder_string_on_insertion) {
-									comment.innerText = '';
+									annotation_div.innerText = '';
 								}
-								comment.classList.remove('plugin-comment-placeholder');
+								annotation_div.classList.remove('plugin-comment-placeholder');
 								if (this.settings.hide_placeholders) {
 									comment_container.classList.remove('plugin-comment-placeholder');
 								}
 								const range = document.createRange();
-								range.selectNodeContents(comment);
+								range.selectNodeContents(annotation_div);
 								const selection = window.getSelection();
 								if (selection) {
 									selection.removeAllRanges();
 									selection.addRange(range);
 								}
+							} else {
+								annotation_div.innerText = annotation_text;
 							}
 						});
 
 						// Add placeholder class back if no changes are made
-						comment.addEventListener('blur', () => {
-							if (isPlaceholder || comment.innerText.trim() === '') {
-								comment.innerText = placeholder;
-								comment.classList.add('plugin-comment-placeholder');
+						annotation_div.addEventListener('blur', () => {
+							if (isPlaceholder || annotation_div.innerText.trim() === '') {
+								annotation_div.innerText = placeholder;
+								annotation_div.classList.add('plugin-comment-placeholder');
 								if (this.settings.hide_placeholders) {
 									comment_container.classList.add('plugin-comment-placeholder');
 								}
 								isPlaceholder = true;
+							} else {
+								({type,content} = parse_annotation(annotation_text));
+								render_annotation(type,content);
 							}
 						});
 
@@ -258,52 +308,34 @@ export default class PluginsAnnotations extends Plugin {
 						});
 
 						// Prevent click event propagation to parent
-						comment.addEventListener('click', (event) => {
+						annotation_div.addEventListener('click', (event) => {
 							event.stopPropagation();
 						});
 
 						// Save the comment on input change and update inputTriggered status
-						comment.addEventListener('input', () => {
-							const newText = comment.innerText.trim();
-							if (newText === '') {
+						annotation_div.addEventListener('input', () => {
+							annotation_text = annotation_div.innerText;
+							if (annotation_text.trim() === '') {
+								annotation_text = '';
 								isPlaceholder = true;
 								delete this.settings.annotations[pluginId];
-								comment.classList.add('plugin-comment-placeholder');
+								annotation_div.classList.add('plugin-comment-placeholder');
 							} else {
 								isPlaceholder = false;
-								this.settings.annotations[pluginId] = newText;
-								comment.classList.remove('plugin-comment-placeholder');
+								this.settings.annotations[pluginId] = annotation_text;
+								annotation_div.classList.remove('plugin-comment-placeholder');
 								isPlaceholder = false;
 							}
 							this.debouncedSaveAnnotations();
-							// renderAnnotation(newText);
 						});
 
-						comment_container.appendChild(comment);
+						comment_container.appendChild(annotation_div);
 						descriptionDiv.appendChild(comment_container);
 					}
 				}
 			}
 		});
 	}
-
-
-	// Helper function to parse links and add click listeners
-	parseLinks(element: HTMLElement) {
-		const links = element.querySelectorAll('a');
-		links.forEach(link => {
-			link.addEventListener('click', (event) => {
-				event.preventDefault();
-				const href = link.getAttribute('href');
-				if (href) {
-					this.app.workspace.openLinkText(href, '', false);
-					this.app.setting.close(); // Close the settings pane when a link is clicked
-				}
-			});
-		});
-	}
-
-
 
 	debouncedSaveAnnotations() {
 		// timeout after 250 ms
