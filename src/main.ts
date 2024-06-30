@@ -264,7 +264,16 @@ export default class PluginsAnnotations extends Plugin {
 						// Initial render
 						render_annotation(annotation_div,type,content);
 
-						// MarkdownRenderer.renderMarkdown(content, annotation_div, '', this);
+						let clickedLink = false;
+
+						// Handle mousedown event to check if a link was clicked
+						annotation_div.addEventListener('mousedown', (event) => {
+							if (event.target && (event.target as HTMLElement).tagName === 'A') {
+								clickedLink = true;
+							} else {
+								clickedLink = false;
+							}
+						});
 
 						// Remove placeholder class when user starts typing
 						annotation_div.addEventListener('focus', () => {
@@ -284,7 +293,10 @@ export default class PluginsAnnotations extends Plugin {
 									selection.addRange(range);
 								}
 							} else {
-								annotation_div.innerText = annotation_text;
+								// Only update innerText if not clicking on a link
+								if (!clickedLink) {
+									annotation_div.innerText = annotation_text;
+								}
 							}
 						});
 
