@@ -145,6 +145,64 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	async addComments(tab: SettingTab) {
+		enum AnnotationType {
+			text,
+			html,
+			markdown,
+		}
+
+		// Function to render the annotation based on preamble
+		const parse_annotation = (annotation_div: HTMLDivElement, text: string): {type:AnnotationType,content:string} => {
+			const lines = text.split('\n');
+			const preamble = lines[0].toLowerCase();
+			const sliced = lines.slice(1).join('\n');
+
+			annotation_div.innerHTML = '';
+			if (preamble.startsWith('html:')) {
+				return {type: AnnotationType.html, content: sliced};
+			} else if (preamble.startsWith('markdown:')) {
+				return {type: AnnotationType.markdown, content: sliced};
+			} else if (preamble.startsWith('text:')) {
+				return {type: AnnotationType.text, content: sliced};
+			} else {
+				return {type: AnnotationType.text, content: text};
+			}
+		};
+
+		// Helper function to parse links and add click listeners
+		const parse_links = (element: HTMLElement) => {
+			const links = element.querySelectorAll('a');
+			links.forEach(link => {
+				link.addEventListener('click', (event) => {
+					event.preventDefault();
+					const href = link.getAttribute('href');
+					if (href) {
+						this.app.workspace.openLinkText(href, '', false);
+						this.app.setting.close(); // Close the settings pane when a link is clicked
+					}
+				});
+			});
+		}
+
+		const render_annotation = async (annotation_div: HTMLDivElement, t:AnnotationType,c:string) => {
+			switch(t) {
+				case AnnotationType.text: {
+					annotation_div.innerText = c;
+					break;
+				}
+				case AnnotationType.html: {
+					annotation_div.innerHTML = c;
+					parse_links(annotation_div);
+					break;
+				}
+				case AnnotationType.markdown: {
+					await MarkdownRenderer.renderMarkdown(c, annotation_div, '', this);
+					parse_links(annotation_div);
+					break;
+				}
+			}
+		}
+
 		// force reload - this is convenient because since the loading of the plugin
 		// there could be changes in the settings due to synchronization among devices
 		// which only happens after the plugin is loaded
@@ -186,7 +244,7 @@ export default class PluginsAnnotations extends Plugin {
 
 						const annotation_div = document.createElement('div');
 						annotation_div.className = 'plugin-comment-annotation';
-						annotation_div.contentEditable = 'false';
+						annotation_div.contentEditable = 'true';
 						const placeholder = `Add your personal comment about '${pluginName}' here...`;
 						let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
 						let annotation_text = this.settings.annotations[pluginId] || placeholder;
@@ -197,72 +255,14 @@ export default class PluginsAnnotations extends Plugin {
 								comment_container.classList.add('plugin-comment-placeholder');
 							}
 						}
- 
-						enum AnnotationType {
-							text,
-							html,
-							markdown,
-						}
-
-						// Function to render the annotation based on preamble
-						const parse_annotation = (text: string): {type:AnnotationType,content:string} => {
-							const lines = text.split('\n');
-							const preamble = lines[0].toLowerCase();
-							const sliced = lines.slice(1).join('\n');
-
-							annotation_div.innerHTML = '';
-							if (preamble.startsWith('html:')) {
-								return {type: AnnotationType.html, content: sliced};
-							} else if (preamble.startsWith('markdown:')) {
-								return {type: AnnotationType.markdown, content: sliced};
-							} else if (preamble.startsWith('text:')) {
-								return {type: AnnotationType.text, content: sliced};
-							} else {
-								return {type: AnnotationType.text, content: text};
-							}
-						};
-
-						// Helper function to parse links and add click listeners
-						const parse_links = (element: HTMLElement) => {
-							const links = element.querySelectorAll('a');
-							links.forEach(link => {
-								link.addEventListener('click', (event) => {
-									event.preventDefault();
-									const href = link.getAttribute('href');
-									if (href) {
-										this.app.workspace.openLinkText(href, '', false);
-										this.app.setting.close(); // Close the settings pane when a link is clicked
-									}
-								});
-							});
-						}
-
-						const render_annotation = async (t:AnnotationType,c:string) => {
-							switch(t) {
-								case AnnotationType.text: {
-									annotation_div.innerText = c;
-									break;
-								}
-								case AnnotationType.html: {
-									annotation_div.innerHTML = c;
-									parse_links(annotation_div);
-									break;
-								}
-								case AnnotationType.markdown: {
-									await MarkdownRenderer.renderMarkdown(c, annotation_div, '', this);
-									parse_links(annotation_div);
-									break;
-								}
-							}
-						}
 
 						// Parsing the stored annotation
 						let type:AnnotationType;
 						let content:string;
-						({type,content} = parse_annotation(annotation_text));
+						({type,content} = parse_annotation(annotation_div,annotation_text));
 						
 						// Initial render
-						render_annotation(type,content);
+						render_annotation(annotation_div,type,content);
 
 						// MarkdownRenderer.renderMarkdown(content, annotation_div, '', this);
 
@@ -298,8 +298,8 @@ export default class PluginsAnnotations extends Plugin {
 								}
 								isPlaceholder = true;
 							} else {
-								({type,content} = parse_annotation(annotation_text));
-								render_annotation(type,content);
+								({type,content} = parse_annotation(annotation_div,annotation_text));
+								render_annotation(annotation_div,type,content);
 							}
 						});
 
