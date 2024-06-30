@@ -5,8 +5,10 @@ Obsidian Plugins Annotations is a plugin for [Obsidian](https://obsidian.md) tha
 ## Features
 
 - Add personal annotations to any installed plugin in the settings pane.
+- Annotations can be in the form of simple text, Markdown note (preamble line `markdown:`), and HTML-formatted text (preamble line `html:`).
 - Annotations are saved persistently and can be edited at any time.
 - Annotations are displayed directly below the plugin information.
+- Detailed instructions how to edit the annotations are provided in the _setting pane_ of the plugin.
 
 ## Installation
 
