@@ -57,7 +57,7 @@ export default class PluginsAnnotations extends Plugin {
 		let settings: PluginsAnnotationsSettings;
 
 		// Check if theData contains the field 'Annotations' with the right id
-		if (data && data.annotations && data.plugins_annotations_uuid === 'FAA70013-38E9-4FDF-B06A-F899F6487C19') {
+		if (data && data.annotations && data.plugins_annotations_uuid === DEFAULT_SETTINGS.plugins_annotations_uuid) {
 			settings = data;
 		} else {
 			// If not, assume theData itself is the annotations object
@@ -355,26 +355,37 @@ export default class PluginsAnnotations extends Plugin {
 		// Add new icon to the existing icons container
 		const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
 		if (headingContainer) {
-			const newIcon = document.createElement('div');
-			newIcon.classList.add('clickable-icon', 'extra-setting-button');
-			if(this.settings.editable) {
-				newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-				newIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
+			const svg_unlocked = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
 					fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-open">\
 					<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
 					<path d="M7 11V7a5 5 0 0 1 9.9-1"/>\
 				</svg>';
-			} else {
-				newIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
-				newIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" \
+			const svg_locked ='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
 					fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock">\
 					<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
 					<path d="M7 11V7a5 5 0 0 1 10 0v4"/>\
 				</svg>';
+
+			const newIcon = document.createElement('div');
+			newIcon.classList.add('clickable-icon', 'extra-setting-button');
+			if(this.settings.editable) {
+				newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
+				newIcon.innerHTML = svg_unlocked;
+			} else {
+				newIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
+				newIcon.innerHTML = svg_locked;
 			}
 
-			newIcon.addEventListener('click', () => {
+			newIcon.addEventListener('click', (event:MouseEvent) => {
 				this.settings.editable = !this.settings.editable;
+				console.log(this.settings.editable);
+				if(this.settings.editable) {
+					newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
+					newIcon.innerHTML = svg_unlocked;
+				} else {
+					newIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
+					newIcon.innerHTML = svg_locked;
+				}
 				const plugins = tab.containerEl.querySelectorAll('.plugin-comment-annotation');
 				plugins.forEach((div:Element) => {
 					if (div instanceof HTMLDivElement) {
