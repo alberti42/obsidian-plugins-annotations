@@ -12,7 +12,7 @@ import {
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { PluginAnnotationDict, PluginsAnnotationsSettings } from './types';
+import { PluginAnnotationDict, PluginsAnnotationsSettings, AnnotationType } from './types';
 
 const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
 	annotations: {},
@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
 	delete_placeholder_string_on_insertion: false,
 	label_mobile: '<b>Annotation:&nbsp;</b>',
 	label_desktop: '<b>Personal annotation:&nbsp;</b>',
+	editable: true,
 }
 
 export default class PluginsAnnotations extends Plugin {
@@ -128,7 +129,7 @@ export default class PluginsAnnotations extends Plugin {
 				
 			});
 
-			observer.observe(tab.containerEl, { childList: true, subtree: true });
+			observer.observe(tab.containerEl, { childList: true, subtree: false });
 			this.mutationObserver = observer;
 		}
 
@@ -145,105 +146,250 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	async addComments(tab: SettingTab) {
-		enum AnnotationType {
-			text,
-			html,
-			markdown,
+	// Function to render the annotation based on preamble
+	parse_annotation(annotation_div: HTMLDivElement, text: string): {type:AnnotationType,content:string} {
+		const lines = text.split('\n');
+		const preamble = lines[0].toLowerCase();
+		const sliced = lines.slice(1).join('\n');
+
+		annotation_div.innerHTML = '';
+		if (preamble.startsWith('html:')) {
+			return {type: AnnotationType.html, content: sliced};
+		} else if (preamble.startsWith('markdown:')) {
+			return {type: AnnotationType.markdown, content: sliced};
+		} else if (preamble.startsWith('text:')) {
+			return {type: AnnotationType.text, content: sliced};
+		} else {
+			return {type: AnnotationType.text, content: text};
 		}
+	}
 
-		// Function to render the annotation based on preamble
-		const parse_annotation = (annotation_div: HTMLDivElement, text: string): {type:AnnotationType,content:string} => {
-			const lines = text.split('\n');
-			const preamble = lines[0].toLowerCase();
-			const sliced = lines.slice(1).join('\n');
-
-			annotation_div.innerHTML = '';
-			if (preamble.startsWith('html:')) {
-				return {type: AnnotationType.html, content: sliced};
-			} else if (preamble.startsWith('markdown:')) {
-				return {type: AnnotationType.markdown, content: sliced};
-			} else if (preamble.startsWith('text:')) {
-				return {type: AnnotationType.text, content: sliced};
-			} else {
-				return {type: AnnotationType.text, content: text};
-			}
-		};
-
-		// Helper function to parse links and add click listeners
-		const parse_links = (element: HTMLElement) => {
-			const links = element.querySelectorAll('a');
-			links.forEach(link => {
-				link.addEventListener('click', (event) => {
-					event.preventDefault();
-					const href = link.getAttribute('href');
-					if (href) {
-						this.app.workspace.openLinkText(href, '', false);
-						this.app.setting.close(); // Close the settings pane when a link is clicked
-					}
-				});
+	// Helper function to parse links and add click listeners
+	parse_links(element: HTMLElement) {
+		const links = element.querySelectorAll('a');
+		links.forEach(link => {
+			link.addEventListener('click', (event) => {
+				event.preventDefault();
+				const href = link.getAttribute('href');
+				if (href) {
+					this.app.workspace.openLinkText(href, '', false);
+					this.app.setting.close(); // Close the settings pane when a link is clicked
+				}
 			});
+		});
+	}
+
+	create_label(): HTMLSpanElement | null {
+		const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
+		if(label.trim() === "") {
+			return null;
+		} else {
+			const span = document.createElement('span');
+			span.innerHTML = label;
+			span.classList.add('plugin-comment-label');
+			return span;
+		}
+	}
+
+	async render_annotation(annotation_div: HTMLDivElement, t:AnnotationType,c:string) {
+		switch(t) {
+			case AnnotationType.text: {
+				const p = document.createElement('p');
+				p.dir = 'auto';
+				const label = this.create_label();
+				if(label) {
+					p.appendChild(label);
+					p.appendText(c);
+				}
+				else {
+					p.innerText = c;
+				}					
+				annotation_div.appendChild(p);
+				break;
+			}
+			case AnnotationType.html: {
+				const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
+				let c_with_label;
+				if(label.trim()==="") {
+					c_with_label = c;
+				} else {
+					c_with_label = c.replace(/\$\{label\}/g, label);
+				}
+				annotation_div.innerHTML = c_with_label;
+				this.parse_links(annotation_div);
+				break;
+			}
+			case AnnotationType.markdown: {
+				const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
+				let c_with_label;
+				if(label.trim()==="") {
+					c_with_label = c;
+				} else {
+					c_with_label = c.replace(/\$\{label\}/g, label);
+				}
+				await MarkdownRenderer.renderMarkdown(c_with_label, annotation_div, '', this);
+				this.parse_links(annotation_div);
+				break;
+			}
+		}
+	}
+
+	set_annotation(annotation_container:HTMLDivElement,annotation_div:HTMLDivElement,pluginId:string,pluginName:string) {
+		
+		annotation_div.contentEditable = this.settings.editable ? 'true' : 'false';
+
+		const placeholder = `Add your personal comment about '${pluginName}' here...`;
+		let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
+		let annotation_text = (this.settings.annotations[pluginId] || placeholder).trim();
+		
+		if (isPlaceholder) {
+			annotation_div.classList.add('plugin-comment-placeholder');
+			if (this.settings.hide_placeholders) {
+				annotation_container.classList.add('plugin-comment-placeholder');
+			}
 		}
 
-		const create_label = (): HTMLSpanElement | null => {
-			const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-			if(label.trim() === "") {
-				return null;
+		// Parsing the stored annotation
+		let type:AnnotationType;
+		let content:string;
+		({type,content} = this.parse_annotation(annotation_div,annotation_text));
+		
+		// Initial render
+		this.render_annotation(annotation_div,type,content);
+
+		let clickedLink = false;
+		const handleMouseDown = (event:MouseEvent) => {
+			if(!this.settings.editable) { return; }
+			if (event.target && (event.target as HTMLElement).tagName === 'A') {
+				clickedLink = true;
 			} else {
-				const span = document.createElement('span');
-				span.innerHTML = label;
-				span.classList.add('plugin-comment-label');
-				return span;
+				clickedLink = false;
 			}
 		}
 
-		const render_annotation = async (annotation_div: HTMLDivElement, t:AnnotationType,c:string) => {
-			switch(t) {
-				case AnnotationType.text: {
-					const p = document.createElement('p');
-					p.dir = 'auto';
-					const label = create_label();
-					if(label) {
-						p.appendChild(label);
-						p.appendText(c);
-					}
-					else {
-						p.innerText = c;
-					}					
-					annotation_div.appendChild(p);
-					break;
+		// Handle mousedown event to check if a link was clicked
+		annotation_div.addEventListener('mousedown', handleMouseDown);
+
+		const handleFocus = (event:FocusEvent) => {
+			if(!this.settings.editable) { return; }
+			if (isPlaceholder) {
+				if (this.settings.delete_placeholder_string_on_insertion) {
+					annotation_div.innerText = '';
 				}
-				case AnnotationType.html: {
-					const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-					let c_with_label;
-					if(label.trim()==="") {
-						c_with_label = c;
-					} else {
-						c_with_label = c.replace(/\$\{label\}/g, label);
-					}
-					annotation_div.innerHTML = c_with_label;
-					parse_links(annotation_div);
-					break;
+				annotation_div.classList.remove('plugin-comment-placeholder');
+				if (this.settings.hide_placeholders) {
+					annotation_container.classList.remove('plugin-comment-placeholder');
 				}
-				case AnnotationType.markdown: {
-					const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-					let c_with_label;
-					if(label.trim()==="") {
-						c_with_label = c;
-					} else {
-						c_with_label = c.replace(/\$\{label\}/g, label);
-					}
-					await MarkdownRenderer.renderMarkdown(c_with_label, annotation_div, '', this);
-					parse_links(annotation_div);
-					break;
+				const range = document.createRange();
+				range.selectNodeContents(annotation_div);
+				const selection = window.getSelection();
+				if (selection) {
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
+			} else {
+				// Only update innerText if not clicking on a link
+				if (!clickedLink) {
+					annotation_div.innerText = annotation_text;
 				}
 			}
 		}
 
+		// Remove placeholder class when user starts typing
+		annotation_div.addEventListener('focus', handleFocus);
+
+		const handleBlur = (event:FocusEvent) => {
+			if(!this.settings.editable) { return; }
+			if (isPlaceholder || annotation_div.innerText.trim() === '') {
+				annotation_div.innerText = placeholder;
+				annotation_div.classList.add('plugin-comment-placeholder');
+				if (this.settings.hide_placeholders) {
+					annotation_container.classList.add('plugin-comment-placeholder');
+				}
+				isPlaceholder = true;
+			} else {
+				({type,content} = this.parse_annotation(annotation_div,annotation_text));
+				this.render_annotation(annotation_div,type,content);
+			}
+		}
+
+		// Add placeholder class back if no changes are made
+		annotation_div.addEventListener('blur', handleBlur);
+
+		const handleClick = (event:MouseEvent) => {
+			if(!this.settings.editable) { return; }
+			event.stopPropagation();
+		}
+
+		// Prevent click event propagation to parent
+		annotation_div.addEventListener('click', handleClick);
+
+		const handleInput = (event: Event) => {
+			if(!this.settings.editable) { return; }
+			annotation_text = annotation_div.innerText.trim();
+			if (annotation_text === '') {
+				annotation_text = '';
+				isPlaceholder = true;
+				delete this.settings.annotations[pluginId];
+				annotation_div.classList.add('plugin-comment-placeholder');
+			} else {
+				isPlaceholder = false;
+				this.settings.annotations[pluginId] = annotation_text;
+				annotation_div.classList.remove('plugin-comment-placeholder');
+				isPlaceholder = false;
+			}
+			this.debouncedSaveAnnotations();
+		}
+
+		// Save the comment on input change and update inputTriggered status
+		annotation_div.addEventListener('input', handleInput);
+	}
+
+	async addComments(tab: SettingTab) {
+	
 		// force reload - this is convenient because since the loading of the plugin
 		// there could be changes in the settings due to synchronization among devices
 		// which only happens after the plugin is loaded
 		await this.loadSettings();
+
+		// Add new icon to the existing icons container
+		const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
+		if (headingContainer) {
+			const newIcon = document.createElement('div');
+			newIcon.classList.add('clickable-icon', 'extra-setting-button');
+			if(this.settings.editable) {
+				newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
+				newIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
+					fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-open">\
+					<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
+					<path d="M7 11V7a5 5 0 0 1 9.9-1"/>\
+				</svg>';
+			} else {
+				newIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
+				newIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" \
+					fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock">\
+					<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
+					<path d="M7 11V7a5 5 0 0 1 10 0v4"/>\
+				</svg>';
+			}
+
+			newIcon.addEventListener('click', () => {
+				this.settings.editable = !this.settings.editable;
+				const plugins = tab.containerEl.querySelectorAll('.plugin-comment-annotation');
+				plugins.forEach((div:Element) => {
+					if (div instanceof HTMLDivElement) {
+						if(this.settings.editable) {
+							div.contentEditable = 'true';
+						} else {
+							div.contentEditable = 'false';
+						}
+					}
+				});
+			});
+
+			headingContainer.appendChild(newIcon);
+		}
+
 
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;
@@ -276,98 +422,8 @@ export default class PluginsAnnotations extends Plugin {
 
 						const annotation_div = document.createElement('div');
 						annotation_div.className = 'plugin-comment-annotation';
-						annotation_div.contentEditable = 'true';
-						const placeholder = `Add your personal comment about '${pluginName}' here...`;
-						let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
-						let annotation_text = (this.settings.annotations[pluginId] || placeholder).trim();
-						
-						if (isPlaceholder) {
-							annotation_div.classList.add('plugin-comment-placeholder');
-							if (this.settings.hide_placeholders) {
-								annotation_container.classList.add('plugin-comment-placeholder');
-							}
-						}
 
-						// Parsing the stored annotation
-						let type:AnnotationType;
-						let content:string;
-						({type,content} = parse_annotation(annotation_div,annotation_text));
-						
-						// Initial render
-						render_annotation(annotation_div,type,content);
-
-						let clickedLink = false;
-
-						// Handle mousedown event to check if a link was clicked
-						annotation_div.addEventListener('mousedown', (event) => {
-							if (event.target && (event.target as HTMLElement).tagName === 'A') {
-								clickedLink = true;
-							} else {
-								clickedLink = false;
-							}
-						});
-
-						// Remove placeholder class when user starts typing
-						annotation_div.addEventListener('focus', () => {
-							if (isPlaceholder) {
-								if (this.settings.delete_placeholder_string_on_insertion) {
-									annotation_div.innerText = '';
-								}
-								annotation_div.classList.remove('plugin-comment-placeholder');
-								if (this.settings.hide_placeholders) {
-									annotation_container.classList.remove('plugin-comment-placeholder');
-								}
-								const range = document.createRange();
-								range.selectNodeContents(annotation_div);
-								const selection = window.getSelection();
-								if (selection) {
-									selection.removeAllRanges();
-									selection.addRange(range);
-								}
-							} else {
-								// Only update innerText if not clicking on a link
-								if (!clickedLink) {
-									annotation_div.innerText = annotation_text;
-								}
-							}
-						});
-
-						// Add placeholder class back if no changes are made
-						annotation_div.addEventListener('blur', () => {
-							if (isPlaceholder || annotation_div.innerText.trim() === '') {
-								annotation_div.innerText = placeholder;
-								annotation_div.classList.add('plugin-comment-placeholder');
-								if (this.settings.hide_placeholders) {
-									annotation_container.classList.add('plugin-comment-placeholder');
-								}
-								isPlaceholder = true;
-							} else {
-								({type,content} = parse_annotation(annotation_div,annotation_text));
-								render_annotation(annotation_div,type,content);
-							}
-						});
-
-						// Prevent click event propagation to parent
-						annotation_div.addEventListener('click', (event) => {
-							event.stopPropagation();
-						});
-
-						// Save the comment on input change and update inputTriggered status
-						annotation_div.addEventListener('input', () => {
-							annotation_text = annotation_div.innerText.trim();
-							if (annotation_text === '') {
-								annotation_text = '';
-								isPlaceholder = true;
-								delete this.settings.annotations[pluginId];
-								annotation_div.classList.add('plugin-comment-placeholder');
-							} else {
-								isPlaceholder = false;
-								this.settings.annotations[pluginId] = annotation_text;
-								annotation_div.classList.remove('plugin-comment-placeholder');
-								isPlaceholder = false;
-							}
-							this.debouncedSaveAnnotations();
-						});
+						this.set_annotation(annotation_container,annotation_div,pluginId,pluginName);
 
 						annotation_container.appendChild(annotation_div);
 						descriptionDiv.appendChild(annotation_container);						
@@ -513,9 +569,9 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				To this purpose, your annotation needs to start with a preamble line containing one \
 				of three strings:\
 				 <ul>\
-  					<li>markdown:</li>\
-  					<li>html:</li>\
-  					<li>text:</li>\
+					<li>markdown:</li>\
+					<li>html:</li>\
+					<li>text:</li>\
 				</ul>\
 				If you do not enter any preamble line, the default <em>text:</em> will be assumed.";
 			div.appendChild(p2);
@@ -527,8 +583,6 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			const p4 = document.createElement('p');
 			p4.innerHTML = "When editing HTML and Markdown annotations, use the placeholder <em>${label}</em> to display the <em>annotation label</em> at the chosen location."
 			div.appendChild(p4);
-
-
 
 			frag.appendChild(div);
 		});

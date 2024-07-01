@@ -11,4 +11,11 @@ export interface PluginsAnnotationsSettings {
 	delete_placeholder_string_on_insertion: boolean;
 	label_mobile: string;
 	label_desktop: string;
+	editable: boolean;
+}
+
+export enum AnnotationType {
+	text,
+	html,
+	markdown,
 }
