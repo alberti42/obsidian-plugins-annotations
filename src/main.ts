@@ -97,7 +97,10 @@ export default class PluginsAnnotations extends Plugin {
 				return function(this: Setting, tab: SettingTab) {
 					next.call(this, tab);
 					if (tab && tab.id === 'community-plugins') {
-						self.observeTab(tab);
+						if(self.observedTab!==tab)
+						{
+							self.observeTab(tab);
+						}
 					}
 				};
 			},
@@ -113,20 +116,11 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	observeTab(tab: SettingTab) {	
-		// Create a mapping of plugin names to IDs
-		this.constructPluginNameToIdMap();
-							
 		if(!this.mutationObserver) {
 			this.observedTab = tab;
 
 			const observer = new MutationObserver(() => {
-				if(!this.skipNextAddComments){
-					this.skipNextAddComments = true;
-					this.addComments(tab);	
-				} else {
-					this.skipNextAddComments = false;
-				}
-				
+				this.addComments(tab);
 			});
 
 			observer.observe(tab.containerEl, { childList: true, subtree: false });
@@ -134,7 +128,6 @@ export default class PluginsAnnotations extends Plugin {
 		}
 
 		// Initial call to add comments to already present plugins
-		this.skipNextAddComments = true;
 		this.addComments(tab);
 	}
 
@@ -352,6 +345,9 @@ export default class PluginsAnnotations extends Plugin {
 		// which only happens after the plugin is loaded
 		await this.loadSettings();
 
+		// Create a mapping of names to IDs for the installed plugins
+		this.constructPluginNameToIdMap();
+
 		// Add new icon to the existing icons container
 		const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
 		if (headingContainer) {
@@ -372,13 +368,12 @@ export default class PluginsAnnotations extends Plugin {
 				newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
 				newIcon.innerHTML = svg_unlocked;
 			} else {
-				newIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
+				newIcon.setAttribute('aria-label', 'Click to be able to edit personal annotations');
 				newIcon.innerHTML = svg_locked;
 			}
 
 			newIcon.addEventListener('click', (event:MouseEvent) => {
 				this.settings.editable = !this.settings.editable;
-				console.log(this.settings.editable);
 				if(this.settings.editable) {
 					newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
 					newIcon.innerHTML = svg_unlocked;
@@ -396,6 +391,7 @@ export default class PluginsAnnotations extends Plugin {
 						}
 					}
 				});
+				this.debouncedSaveAnnotations();
 			});
 
 			headingContainer.appendChild(newIcon);
@@ -536,8 +532,8 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						delete this.plugin.settings.annotations[pluginId];
 						delete uninstalledPlugins[pluginId];
-						await this.plugin.debouncedSaveAnnotations();
 						pluginSetting.settingEl.remove();
+						this.plugin.debouncedSaveAnnotations();
 							
 						// If no more uninstalled plugins, remove the section container
 						if (Object.keys(uninstalledPlugins).length === 0) {
@@ -614,7 +610,7 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						text.setValue(this.plugin.settings.label_mobile);
 						text.onChange(async (value: string) => {
 							this.plugin.settings.label_mobile = value;
-							await this.plugin.debouncedSaveAnnotations();
+							this.plugin.debouncedSaveAnnotations();
 					})});
 		} else {
 			new Setting(containerEl)
@@ -625,7 +621,7 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						text.setValue(this.plugin.settings.label_desktop);
 						text.onChange(async (value: string) => {
 							this.plugin.settings.label_desktop = value;
-							await this.plugin.debouncedSaveAnnotations();
+							this.plugin.debouncedSaveAnnotations();
 					})});
 		}
 
@@ -649,7 +645,7 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.hide_placeholders)
 				.onChange(async (value: boolean) => {
 					this.plugin.settings.hide_placeholders = value;
-					await this.plugin.debouncedSaveAnnotations();
+					this.plugin.debouncedSaveAnnotations();
 				}));
 
 		new Setting(containerEl)
@@ -659,7 +655,7 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.delete_placeholder_string_on_insertion)
 				.onChange(async (value: boolean) => {
 					this.plugin.settings.delete_placeholder_string_on_insertion = value;
-					await this.plugin.debouncedSaveAnnotations();
+					this.plugin.debouncedSaveAnnotations();
 			}));
 
 		this.createUninstalledPluginSettings(containerEl);
