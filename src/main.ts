@@ -238,7 +238,7 @@ export default class PluginsAnnotations extends Plugin {
 		if (isPlaceholder) {
 			annotation_div.classList.add('plugin-comment-placeholder');
 			if (this.settings.hide_placeholders) {
-				annotation_container.classList.add('plugin-comment-placeholder');
+				annotation_container.classList.add(this.settings.editable ? 'plugin-comment-placeholder' : 'plugin-comment-hidden');
 			}
 		}
 
@@ -374,12 +374,14 @@ export default class PluginsAnnotations extends Plugin {
 
 			newIcon.addEventListener('click', (event:MouseEvent) => {
 				this.settings.editable = !this.settings.editable;
+				this.debouncedSaveAnnotations();
 				if(this.settings.editable) {
 					newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
 					newIcon.innerHTML = svg_unlocked;
 				} else {
 					newIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
 					newIcon.innerHTML = svg_locked;
+
 				}
 				const plugins = tab.containerEl.querySelectorAll('.plugin-comment-annotation');
 				plugins.forEach((div:Element) => {
@@ -391,7 +393,25 @@ export default class PluginsAnnotations extends Plugin {
 						}
 					}
 				});
-				this.debouncedSaveAnnotations();
+
+				// Select all div elements that have both 'plugin-comment' and 'plugin-comment-placeholder' classes
+				const placeholders = document.querySelectorAll<HTMLDivElement>(!this.settings.editable ? 'div.plugin-comment.plugin-comment-placeholder' : 'div.plugin-comment.plugin-comment-hidden');
+
+				// Loop through each element
+				placeholders.forEach((el) => {
+					if(this.settings.editable) {
+						// Add the 'plugin-comment-placeholder' class
+						el.classList.add('plugin-comment-placeholder');
+						// Remove the 'plugin-comment-hidden' class
+						el.classList.remove('plugin-comment-hidden');	
+					} else {
+						// Add the 'plugin-comment-hidden' class
+						el.classList.add('plugin-comment-hidden');
+						// Remove the 'plugin-comment-placeholder' class
+						el.classList.remove('plugin-comment-placeholder');	
+					}
+					
+				});
 			});
 
 			headingContainer.appendChild(newIcon);

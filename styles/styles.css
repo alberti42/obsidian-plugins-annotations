@@ -12,6 +12,7 @@
 	font-style: italic;
 }
 
+.plugin-comment.plugin-comment-hidden,
 .plugin-comment.plugin-comment-placeholder {
 	display: none;
 }
