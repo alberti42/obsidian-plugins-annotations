@@ -9,7 +9,6 @@
 
 .plugin-comment-annotation.plugin-comment-placeholder {
 	color: #CCCCCC; /* Standard placeholder color */
-	font-style: italic;
 }
 
 .plugin-comment.plugin-comment-hidden,
