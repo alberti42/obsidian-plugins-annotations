@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
 	delete_placeholder_string_on_insertion: false,
 	label_mobile: '<b>Annotation:&nbsp;</b>',
 	label_desktop: '<b>Personal annotation:&nbsp;</b>',
+	label_placeholder : "Add your personal comment about <strong>${plugin_name}</strong> here...",
 	editable: true,
 }
 
@@ -184,7 +185,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	async render_annotation(annotation_div: HTMLDivElement, t:AnnotationType,c:string) {
+	async render_annotation(annotation_div: HTMLDivElement, t:AnnotationType, c:string) {
 		switch(t) {
 			case AnnotationType.text: {
 				const p = document.createElement('p');
@@ -231,7 +232,8 @@ export default class PluginsAnnotations extends Plugin {
 		
 		annotation_div.contentEditable = this.settings.editable ? 'true' : 'false';
 
-		const placeholder = `Add your personal comment about '${pluginName}' here...`;
+		const placeholder = (this.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
+
 		let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
 		let annotation_text = (this.settings.annotations[pluginId] || placeholder).trim();
 		
@@ -248,6 +250,9 @@ export default class PluginsAnnotations extends Plugin {
 		({type,content} = this.parse_annotation(annotation_div,annotation_text));
 		
 		// Initial render
+		if(isPlaceholder) {
+			type = AnnotationType.html;
+		}
 		this.render_annotation(annotation_div,type,content);
 
 		let clickedLink = false;
@@ -294,7 +299,7 @@ export default class PluginsAnnotations extends Plugin {
 		const handleBlur = (event:FocusEvent) => {
 			if(!this.settings.editable) { return; }
 			if (isPlaceholder || annotation_div.innerText.trim() === '') {
-				annotation_div.innerText = placeholder;
+				annotation_div.innerHTML = placeholder;
 				annotation_div.classList.add('plugin-comment-placeholder');
 				if (this.settings.hide_placeholders) {
 					annotation_container.classList.add('plugin-comment-placeholder');
@@ -644,6 +649,20 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 							this.plugin.debouncedSaveAnnotations();
 					})});
 		}
+
+		new Setting(containerEl)
+			.setName('Placeholder label:')
+			.setDesc(createFragment((frag) => {
+					frag.appendText('Choose the label appearing where no user annotation is provied yet. Use ');
+					frag.createEl('em').appendText('${plugin_name}');
+					frag.appendText(' to refer to the plugin name.')}))
+			.addText(text => {
+				text.setPlaceholder('Annotation label');
+				text.setValue(this.plugin.settings.label_placeholder);
+				text.onChange(async (value: string) => {
+					this.plugin.settings.label_placeholder = value;
+					this.plugin.debouncedSaveAnnotations();
+			})});
 
 		new Setting(containerEl)
 			.setName('Hide empty annotations:')
