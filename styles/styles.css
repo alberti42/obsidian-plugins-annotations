@@ -24,8 +24,9 @@
   margin-bottom: 0;
 }
 
-.plugin-comment-annotation::after {
-    content: "" !important;
+/* Mobile specific styles */
+.is-mobile .plugin-comment-annotation::after {
+        content: "" !important;
 }
 
 .plugin-comment-annotation {
