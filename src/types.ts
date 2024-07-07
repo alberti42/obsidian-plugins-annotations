@@ -29,7 +29,7 @@ export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotations
 	}
 	return 'annotations' in s
 		&& 'plugins_annotations_uuid' in s
-		&& s.plugins_annotations_uuid === DEFAULT_SETTINGS.plugins_annotations_uuid;
+		&& (s as PluginsAnnotationsSettings).plugins_annotations_uuid === DEFAULT_SETTINGS.plugins_annotations_uuid;
 }
 
 export enum AnnotationType {
@@ -61,7 +61,7 @@ export function isPluginsAnnotationsSettingsWithoutNames(s:unknown): s is Plugin
 
 	return 'annotations' in s
 		&& 'plugins_annotations_uuid' in s
-		&& s.plugins_annotations_uuid === DEFAULT_SETTINGS_WITHOUT_NAMES.plugins_annotations_uuid;
+		&& (s as PluginsAnnotationsSettingsWithoutNames).plugins_annotations_uuid === DEFAULT_SETTINGS_WITHOUT_NAMES.plugins_annotations_uuid;
 }
 
 // For backward compatibility only with very first version (no UUID assigned)
