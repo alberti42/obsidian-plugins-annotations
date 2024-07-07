@@ -18,6 +18,7 @@ export interface PluginsAnnotationsSettings {
 	delete_placeholder_string_on_insertion: boolean;
 	label_mobile: string;
 	label_desktop: string;
+	label_placeholder: string;
 	editable: boolean;
 	automatic_remove: boolean;
 }

@@ -235,7 +235,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	async render_annotation(annotation_div: HTMLDivElement, t:AnnotationType,c:string) {
+	async render_annotation(annotation_div: HTMLDivElement, t:AnnotationType, c:string) {
 		switch(t) {
 			case AnnotationType.text: {
 				const p = document.createElement('p');
@@ -282,7 +282,8 @@ export default class PluginsAnnotations extends Plugin {
 		
 		annotation_div.contentEditable = this.settings.editable ? 'true' : 'false';
 
-		const placeholder = `Add your personal comment about '${pluginName}' here...`;
+		const placeholder = (this.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
+
 		let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
 		let annotation_text = ((this.settings.annotations[pluginId] && this.settings.annotations[pluginId].anno) || placeholder).trim();
 		
@@ -299,6 +300,9 @@ export default class PluginsAnnotations extends Plugin {
 		({type,content} = this.parse_annotation(annotation_div,annotation_text));
 		
 		// Initial render
+		if(isPlaceholder) {
+			type = AnnotationType.html;
+		}
 		this.render_annotation(annotation_div,type,content);
 
 		let clickedLink = false;
@@ -345,7 +349,7 @@ export default class PluginsAnnotations extends Plugin {
 		const handleBlur = (event:FocusEvent) => {
 			if(!this.settings.editable) { return; }
 			if (isPlaceholder || annotation_div.innerText.trim() === '') {
-				annotation_div.innerText = placeholder;
+				annotation_div.innerHTML = placeholder;
 				annotation_div.classList.add('plugin-comment-placeholder');
 				if (this.settings.hide_placeholders) {
 					annotation_container.classList.add('plugin-comment-placeholder');
@@ -404,7 +408,7 @@ export default class PluginsAnnotations extends Plugin {
 			const svg_unlocked = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
 					fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-open">\
 					<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
-					<path d="M7 11V7a5 5 0 0 1 9.9-1"/>\
+					 <path d="M7 11v-4c0-2.8 2.2-5 5-5 1.6 0 3.1.8 4 2"/> \
 				</svg>';
 			const svg_locked ='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
 					fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock">\
@@ -697,6 +701,20 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 							this.plugin.debouncedSaveAnnotations();
 					})});
 		}
+
+		new Setting(containerEl)
+			.setName('Placeholder label:')
+			.setDesc(createFragment((frag) => {
+					frag.appendText('Choose the label appearing where no user annotation is provied yet. Use ');
+					frag.createEl('em').appendText('${plugin_name}');
+					frag.appendText(' to refer to the plugin name.')}))
+			.addText(text => {
+				text.setPlaceholder('Annotation label');
+				text.setValue(this.plugin.settings.label_placeholder);
+				text.onChange(async (value: string) => {
+					this.plugin.settings.label_placeholder = value;
+					this.plugin.debouncedSaveAnnotations();
+			})});
 
 		new Setting(containerEl)
 			.setName('Hide empty annotations:')

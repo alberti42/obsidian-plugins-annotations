@@ -9,7 +9,6 @@
 
 .plugin-comment-annotation.plugin-comment-placeholder {
 	color: #CCCCCC; /* Standard placeholder color */
-	font-style: italic;
 }
 
 .plugin-comment.plugin-comment-hidden,
@@ -25,8 +24,9 @@
   margin-bottom: 0;
 }
 
-.plugin-comment-annotation::after {
-    content: "" !important;
+/* Mobile specific styles */
+.is-mobile .plugin-comment-annotation::after {
+        content: "" !important;
 }
 
 .plugin-comment-annotation {
