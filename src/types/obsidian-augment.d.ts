@@ -18,6 +18,14 @@ declare module "obsidian" {
 		id: string;
 		name: string;
 		navEl: HTMLElement;
+		// updateSearch(e: string): void;
+		renderInstalledPlugin(
+			pluginManifest: PluginManifest,
+			containerEl: HTMLElement,
+			nameMatch: boolean | null,
+			authorMatch: boolean | null,
+			descriptionMatch: boolean | null
+		): void;
 	}
 	interface Setting {
 		onOpen(): void;

@@ -8,7 +8,8 @@ import {
 	App,
 	PluginSettingTab,
 	MarkdownRenderer,
-	Plugins
+	Plugins,
+	PluginManifest
 	// PluginSettingTab,
 	// App,
 } from 'obsidian';
@@ -24,8 +25,11 @@ export default class PluginsAnnotations extends Plugin {
 	private skipNextAddComments = false;
 	private saveTimeout: number | null = null;
 	private observedTab: SettingTab | null = null;
-	
+	private pluginNameToIdMap: Record<string,string> | null = null;
+
 	async onload() {
+		// console.clear();
+		
 		// console.log('Loading Plugins Annotations');
 
 		// Load and add settings tab
@@ -166,11 +170,49 @@ export default class PluginsAnnotations extends Plugin {
 		this.register(removeMonkeyPatchForPlugins);
 	}
 
-	observeTab(tab: SettingTab) {	
+	observeTab(tab: SettingTab) {
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
+		const self = this;
+
+		// Monkey patch for uninstallPlugin
+		const removeMonkeyPatchForUpdateSearch = around(tab, {
+			renderInstalledPlugin: (next: (
+					pluginManifest: PluginManifest,
+					containerEl:HTMLElement,
+					nameMatch: boolean | null,
+					authorMatch: boolean | null,
+					descriptionMatch: boolean | null
+				) => void ) => {
+
+				return function (this: SettingTab,
+						pluginManifest: PluginManifest,
+						containerEl: HTMLElement,
+						nameMatch: boolean | null,
+						authorMatch: boolean | null,
+						descriptionMatch: boolean | null
+					): void {
+						next.call(this, pluginManifest, containerEl, nameMatch, authorMatch, descriptionMatch);
+
+						// Add your custom code for personal annotations here
+						const annotation = self.settings.annotations[pluginManifest.id];
+						if (annotation) {
+							if(containerEl && containerEl.lastElementChild)
+							{
+								self.addComment(containerEl.lastElementChild)
+							}							
+						}
+				};
+			}
+		});
+
+		// // Register the patch to ensure it gets cleaned up
+		this.register(removeMonkeyPatchForUpdateSearch);	
+
 		if(!this.mutationObserver) {
 			this.observedTab = tab;
 
 			const observer = new MutationObserver(() => {
+				this.addIcon(tab);
 				this.addComments(tab);
 			});
 
@@ -179,6 +221,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 
 		// Initial call to add comments to already present plugins
+		this.addIcon(tab);
 		this.addComments(tab);
 	}
 
@@ -396,12 +439,7 @@ export default class PluginsAnnotations extends Plugin {
 		annotation_div.addEventListener('input', handleInput);
 	}
 
-	async addComments(tab: SettingTab) {
-		// force reload - this is convenient because since the loading of the plugin
-		// there could be changes in the settings due to synchronization among devices
-		// which only happens after the plugin is loaded
-		const pluginNameToIdMap = await this.loadSettings();
-
+	async addIcon(tab: SettingTab) {
 		// Add new icon to the existing icons container
 		const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
 		if (headingContainer) {
@@ -470,46 +508,58 @@ export default class PluginsAnnotations extends Plugin {
 
 			headingContainer.appendChild(newIcon);
 		}
+	}
 
+	addComment(plugin: Element) {
+		if(!this.pluginNameToIdMap) { return; }
+
+		const settingItemInfo = plugin.querySelector('.setting-item-info');
+		if (settingItemInfo) {
+			const pluginNameDiv = plugin.querySelector('.setting-item-name');
+			const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
+
+			if (!pluginName) {
+				console.warn('Plugin name not found');
+				return;
+			}
+
+			const pluginId = this.pluginNameToIdMap[pluginName];
+			if (!pluginId) {
+				console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
+				return;
+			}
+
+			const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
+			if (descriptionDiv) {
+				const commentDiv = descriptionDiv.querySelector('.plugin-comment');
+				if (!commentDiv) {
+					const annotation_container = document.createElement('div');
+					annotation_container.className = 'plugin-comment';
+
+					const annotation_div = document.createElement('div');
+					annotation_div.className = 'plugin-comment-annotation';
+
+					this.set_annotation(annotation_container,annotation_div,pluginId,pluginName);
+
+					annotation_container.appendChild(annotation_div);
+					descriptionDiv.appendChild(annotation_container);						
+				}
+			}
+		}
+	}
+
+	async addComments(tab: SettingTab) {
+		// force reload - this is convenient because since the loading of the plugin
+		// there could be changes in the settings due to synchronization among devices
+		// which only happens after the plugin is loaded
+		this.pluginNameToIdMap = await this.loadSettings();
 
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;
 
 		const plugins = pluginsContainer.querySelectorAll('.setting-item');
 		plugins.forEach(plugin => {
-			const settingItemInfo = plugin.querySelector('.setting-item-info');
-			if (settingItemInfo) {
-				const pluginNameDiv = plugin.querySelector('.setting-item-name');
-				const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
-
-				if (!pluginName) {
-					console.warn('Plugin name not found');
-					return;
-				}
-
-				const pluginId = pluginNameToIdMap[pluginName];
-				if (!pluginId) {
-					console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
-					return;
-				}
-
-				const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
-				if (descriptionDiv) {
-					const commentDiv = descriptionDiv.querySelector('.plugin-comment');
-					if (!commentDiv) {
-						const annotation_container = document.createElement('div');
-						annotation_container.className = 'plugin-comment';
-
-						const annotation_div = document.createElement('div');
-						annotation_div.className = 'plugin-comment-annotation';
-
-						this.set_annotation(annotation_container,annotation_div,pluginId,pluginName);
-
-						annotation_container.appendChild(annotation_div);
-						descriptionDiv.appendChild(annotation_container);						
-					}
-				}
-			}
+			this.addComment(plugin);
 		});
 	}
 
