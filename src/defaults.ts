@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
 	delete_placeholder_string_on_insertion: false,
 	label_mobile: '<b>Annotation:&nbsp;</b>',
 	label_desktop: '<b>Personal annotation:&nbsp;</b>',
+	label_placeholder : "<em>Add your personal comment about <strong>${plugin_name}</strong> here...</em>",
 	editable: true,
 	automatic_remove: false,
 }
