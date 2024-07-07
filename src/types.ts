@@ -1,7 +1,14 @@
 // types.ts
 
+import { DEFAULT_SETTINGS, DEFAULT_SETTINGS_WITHOUT_NAMES } from './defaults';
+
+export interface PluginAnnotation {
+	name: string;  // extended name of the plugin
+	anno: string;  // personal annontation
+}
+
 export interface PluginAnnotationDict {
-	[pluginId: string]: string;
+	[pluginId: string]: PluginAnnotation;
 }
 
 export interface PluginsAnnotationsSettings {
@@ -12,6 +19,16 @@ export interface PluginsAnnotationsSettings {
 	label_mobile: string;
 	label_desktop: string;
 	editable: boolean;
+	automatic_remove: boolean;
+}
+
+export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotationsSettings {
+	if (typeof s !== 'object' || s === null) {
+		return false;
+	}
+	return 'annotations' in s
+		&& 'plugins_annotations_uuid' in s
+		&& s.plugins_annotations_uuid === DEFAULT_SETTINGS.plugins_annotations_uuid;
 }
 
 export enum AnnotationType {
@@ -19,3 +36,32 @@ export enum AnnotationType {
 	html,
 	markdown,
 }
+
+// For backward compatibility only with version 'FAA70013-38E9-4FDF-B06A-F899F6487C19'
+export function isPluginAnnotationDictWithoutNames(d: unknown): d is PluginAnnotationDictWithoutNames {
+	if (typeof d !== 'object' || d === null) {
+		return false;
+	}
+	return Object.values(d).every(value => typeof value === 'string');
+}
+
+export interface PluginAnnotationDictWithoutNames {
+	[pluginId: string]: string;
+}
+// Extend the original interface and override the annotations property
+export interface PluginsAnnotationsSettingsWithoutNames extends Omit<PluginsAnnotationsSettings, 'annotations'> {
+  annotations: PluginAnnotationDictWithoutNames;
+}
+
+export function isPluginsAnnotationsSettingsWithoutNames(s:unknown): s is PluginsAnnotationsSettingsWithoutNames {
+	if (typeof s !== 'object' || s === null) {
+		return false;
+	}
+
+	return 'annotations' in s
+		&& 'plugins_annotations_uuid' in s
+		&& s.plugins_annotations_uuid === DEFAULT_SETTINGS_WITHOUT_NAMES.plugins_annotations_uuid;
+}
+
+// For backward compatibility only with very first version (no UUID assigned)
+export type PluginsAnnotationsSettingsWithoutOptions = string[];

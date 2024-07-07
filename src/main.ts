@@ -8,26 +8,17 @@ import {
 	App,
 	PluginSettingTab,
 	MarkdownRenderer,
+	Plugins
 	// PluginSettingTab,
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { PluginAnnotationDict, PluginsAnnotationsSettings, AnnotationType } from './types';
-
-const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
-	annotations: {},
-	plugins_annotations_uuid: 'FAA70013-38E9-4FDF-B06A-F899F6487C19',
-	hide_placeholders: false,
-	delete_placeholder_string_on_insertion: false,
-	label_mobile: '<b>Annotation:&nbsp;</b>',
-	label_desktop: '<b>Personal annotation:&nbsp;</b>',
-	editable: true,
-}
+import { PluginAnnotationDict, PluginsAnnotationsSettingsWithoutNames, isPluginAnnotationDictWithoutNames, isPluginsAnnotationsSettings, isPluginsAnnotationsSettingsWithoutNames, PluginsAnnotationsSettings, AnnotationType } from './types';
+import { DEFAULT_SETTINGS, DEFAULT_SETTINGS_WITHOUT_NAMES } from './defaults';
 
 export default class PluginsAnnotations extends Plugin {
 	settings: PluginsAnnotationsSettings = {...DEFAULT_SETTINGS};
 	private annotations: PluginAnnotationDict = {};
-	private pluginNameToIdMap ? : Record < string, string >;
 	private mutationObserver: MutationObserver | null = null;
 	private removeMonkeyPatch: (() => void) | null = null;
 	private skipNextAddComments = false;
@@ -51,21 +42,48 @@ export default class PluginsAnnotations extends Plugin {
 		});
 	}
 
-	async loadSettings() {
-		const data = await this.loadData();
-		
-		let settings: PluginsAnnotationsSettings;
+	async loadSettings(): Promise<Record<string,string>> {
+		// Create a mapping of names to IDs for the installed plugins
+		const pluginNameToIdMap = this.constructPluginNameToIdMap();
 
-		// Check if theData contains the field 'Annotations' with the right id
-		if (data && data.annotations && data.plugins_annotations_uuid === DEFAULT_SETTINGS.plugins_annotations_uuid) {
-			settings = data;
-		} else {
-			// If not, assume theData itself is the annotations object
-			settings = {...DEFAULT_SETTINGS};
-			settings.annotations = data || DEFAULT_SETTINGS.annotations;
+		const getSettingsFromData = (data:unknown): unknown =>
+		{
+			if (isPluginsAnnotationsSettings(data)) {
+				const settings: PluginsAnnotationsSettings = data;
+				return settings;
+			} else if (isPluginsAnnotationsSettingsWithoutNames(data)) { // previous versions where the name of the plugins was not stored
+				// Upgrade annotations format
+				const upgradedAnnotations:PluginAnnotationDict = {};
+				const idMapToPluginName = this.generateInvertedMap(pluginNameToIdMap);
+
+				for (const pluginId in data.annotations) {
+					const annotation = data.annotations[pluginId];
+					upgradedAnnotations[pluginId] = {
+						name: idMapToPluginName[pluginId] || pluginId,
+						anno: annotation
+					};
+				}
+				const oldSettings:PluginsAnnotationsSettingsWithoutNames = data;
+				
+				// Update the data with the new format
+				const newSettings: PluginsAnnotationsSettings = {
+					...oldSettings,
+					annotations: upgradedAnnotations,
+					plugins_annotations_uuid: DEFAULT_SETTINGS.plugins_annotations_uuid,
+				};
+
+				return getSettingsFromData(newSettings);
+			} else {
+				// Very first version of the plugin -- no options were stored, only the dictionary of annotations
+				const newSettings:PluginsAnnotationsSettingsWithoutNames = {...DEFAULT_SETTINGS_WITHOUT_NAMES};
+				newSettings.annotations = isPluginAnnotationDictWithoutNames(data) ? data : DEFAULT_SETTINGS_WITHOUT_NAMES.annotations;
+				return getSettingsFromData(newSettings);
+			}
 		}
 
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, settings);
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, getSettingsFromData(await this.loadData()));
+
+		return pluginNameToIdMap;
 	}
 
 	async saveSettings(settings:PluginsAnnotationsSettings) {
@@ -76,7 +94,7 @@ export default class PluginsAnnotations extends Plugin {
 		}	
 	}
 
-	constructPluginNameToIdMap() {
+	constructPluginNameToIdMap(): Record < string, string > {
 		const map: Record < string, string > = {};
 		for (const pluginId in this.app.plugins.manifests) {
 			const plugin = this.app.plugins.manifests[pluginId];
@@ -84,7 +102,19 @@ export default class PluginsAnnotations extends Plugin {
 				map[plugin.name] = plugin.id;
 			}
 		}
-		this.pluginNameToIdMap = map;
+		return map;
+	}
+
+	// Function to generate the inverted map
+	generateInvertedMap(originalMap: Record < string, string >) {
+		const invertedMap: Record < string, string > = {};
+		for (const key in originalMap) {
+			if (originalMap.hasOwnProperty(key)) {
+				const value = originalMap[key];
+				invertedMap[value] = key;
+			}
+		}
+		return invertedMap;
 	}
 
 	patchSettings() {
@@ -92,7 +122,7 @@ export default class PluginsAnnotations extends Plugin {
 		const self = this;
 		
 		// Patch openTab to detect when a tab is opened
-		this.removeMonkeyPatch = around(this.app.setting, {
+		const removeMonkeyPatchForSetting = around(this.app.setting, {
 			openTab: (next: (tab: SettingTab) => void) => {
 				return function(this: Setting, tab: SettingTab) {
 					next.call(this, tab);
@@ -113,6 +143,27 @@ export default class PluginsAnnotations extends Plugin {
 				};
 			}
 		});
+
+		// Register the cleanup for openTab patch
+		this.register(removeMonkeyPatchForSetting);
+
+		// Monkey patch for uninstallPlugin
+		const removeMonkeyPatchForPlugins = around(this.app.plugins, {
+			uninstallPlugin: (next: (pluginId: string) => Promise<void>) => {
+				return async function (this: Plugins, pluginId: string): Promise<void> {
+					await next.call(this, pluginId);
+					// Plugin has been uninstalled
+					if (self.settings.automatic_remove && self.settings.annotations.hasOwnProperty(pluginId)) {
+						// If automatic_remove is enabled and there is an annotation, remove the annotation 
+						delete self.settings.annotations[pluginId];
+						self.debouncedSaveAnnotations();
+					}
+				};
+			},
+		});
+
+		// Register the patch to ensure it gets cleaned up
+		this.register(removeMonkeyPatchForPlugins);
 	}
 
 	observeTab(tab: SettingTab) {	
@@ -233,7 +284,7 @@ export default class PluginsAnnotations extends Plugin {
 
 		const placeholder = `Add your personal comment about '${pluginName}' here...`;
 		let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
-		let annotation_text = (this.settings.annotations[pluginId] || placeholder).trim();
+		let annotation_text = ((this.settings.annotations[pluginId] && this.settings.annotations[pluginId].anno) || placeholder).trim();
 		
 		if (isPlaceholder) {
 			annotation_div.classList.add('plugin-comment-placeholder');
@@ -327,7 +378,10 @@ export default class PluginsAnnotations extends Plugin {
 				annotation_div.classList.add('plugin-comment-placeholder');
 			} else {
 				isPlaceholder = false;
-				this.settings.annotations[pluginId] = annotation_text;
+				this.settings.annotations[pluginId] = {
+					anno: annotation_text,
+					name: pluginName,
+				};
 				annotation_div.classList.remove('plugin-comment-placeholder');
 				isPlaceholder = false;
 			}
@@ -339,14 +393,10 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	async addComments(tab: SettingTab) {
-	
 		// force reload - this is convenient because since the loading of the plugin
 		// there could be changes in the settings due to synchronization among devices
 		// which only happens after the plugin is loaded
-		await this.loadSettings();
-
-		// Create a mapping of names to IDs for the installed plugins
-		this.constructPluginNameToIdMap();
+		const pluginNameToIdMap = await this.loadSettings();
 
 		// Add new icon to the existing icons container
 		const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
@@ -428,13 +478,12 @@ export default class PluginsAnnotations extends Plugin {
 				const pluginNameDiv = plugin.querySelector('.setting-item-name');
 				const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
 
-				if (this.pluginNameToIdMap === undefined) { return; }
 				if (!pluginName) {
 					console.warn('Plugin name not found');
 					return;
 				}
 
-				const pluginId = this.pluginNameToIdMap[pluginName];
+				const pluginId = pluginNameToIdMap[pluginName];
 				if (!pluginId) {
 					console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
 					return;
@@ -493,16 +542,11 @@ export default class PluginsAnnotations extends Plugin {
 
 		// Just in case, disconnect observers if they still exist
 		this.disconnectObservers();
-
-		// Uninstall the monkey patch
-		if (this.removeMonkeyPatch) {
-			this.removeMonkeyPatch();
-		}		
 	}
 
-	getUninstalledPlugins(): { [pluginId: string]: string } {
+	getUninstalledPlugins(): PluginAnnotationDict {
 		const installedPluginIds = new Set(Object.keys(this.app.plugins.manifests));
-		const uninstalledPlugins: { [pluginId: string]: string } = {};
+		const uninstalledPlugins: PluginAnnotationDict = {};
 
 		for (const pluginId in this.settings.annotations) {
 			if (!installedPluginIds.has(pluginId)) {
@@ -523,29 +567,37 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	}
 
 	createUninstalledPluginSettings(containerEl: HTMLElement) {
-		const uninstalledPlugins = this.plugin.getUninstalledPlugins();
+		const uninstalledPlugins:PluginAnnotationDict = this.plugin.getUninstalledPlugins();
+		
+		const heading = new Setting(containerEl).setName('Personal annotations of no longer installed community plugins').setHeading();
+		const headingEl = heading.settingEl;
+
+		new Setting(containerEl)
+			.setName('Automatically remove personal annotations of uninstalled plugins:')
+			.setDesc('If this option is enabled, whenever a plugin is uninstalled, the attached personal annotation is automatically removed. \
+				If this option is disabled, you can still  manually remove the personal annotations of any plugin that is no longer installed. \
+				The list of the no longer installed plugins is shown below, when the list is not empty.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.automatic_remove)
+				.onChange(async (value: boolean) => {
+					this.plugin.settings.automatic_remove = value;
+					this.plugin.debouncedSaveAnnotations();
+				}));
 
 		// Check if uninstalledPlugins is empty
 		if (Object.keys(uninstalledPlugins).length === 0) {
 			return;
 		}
+
+		const list_uninstalled_label = new Setting(containerEl)
+			.setName('List of no longer installed plugins:')
+			.setDesc('If you plan to reinstall the plugin in the future, it is recommended not to remove your annotations, as you can reuse them later.');
 		
-		const heading = new Setting(containerEl).setName('Personal annotations of no longer installed community plugins').setHeading();
-		const headingEl = heading.settingEl;
-
-		// Append instructions right after the Annotations heading
-		const instructions = containerEl.createDiv();
-		instructions.classList.add('setting-item');
-		instructions.appendChild(createFragment((frag) => {
-			const p = frag.createEl('p');
-			p.appendText('The following plugins are no longer installed. For each plugin, you can choose to remove its annotation from memory. If you plan to reinstall the plugin in the future, it is recommended to keep the annotation.');
-			frag.appendChild(p);
-		}));
-
+		// Iterate over uninstalled plugins and add settings to the new subcontainer
 		Object.keys({...uninstalledPlugins}).forEach(pluginId => {
 			const pluginSetting = new Setting(containerEl)
-				.setName(`Plugin ${pluginId}`)
-				.setDesc("Annotation: " + uninstalledPlugins[pluginId])
+				.setName(`Plugin ${uninstalledPlugins[pluginId].name}`)
+				.setDesc("Annotation: " + uninstalledPlugins[pluginId].anno)
 				.addButton(button => button
 					.setButtonText('Delete')
 					.setCta()
@@ -557,10 +609,11 @@ class PluginsAnnotationsSettingTab extends PluginSettingTab {
 							
 						// If no more uninstalled plugins, remove the section container
 						if (Object.keys(uninstalledPlugins).length === 0) {
-							instructions.remove();
 							headingEl.remove();
+							list_uninstalled_label.settingEl.remove();
 						}
 					}));
+			pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
 		});
 	}
 
