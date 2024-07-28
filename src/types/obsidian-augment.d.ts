@@ -51,13 +51,17 @@ declare module "obsidian" {
 
 		close(): void;
 	}
+	
 	interface Plugins {
 		manifests: Record<string, PluginManifest>;
 		plugins: Record<string, Plugin>;
 		getPlugin(id: string): Plugin;
 		uninstallPlugin(pluginId: string): Promise<void>;
     }
+    
 	interface InternalPlugins {
-		plugins: Record<string,{ _loaded: boolean; instance: { name: string; id: string } }>;
+		plugins: Record<string, Plugin>;
+		getPluginById(id: string): Plugin;
 	}
+
 }
