@@ -3,7 +3,7 @@
 import PluginsAnnotations from "main";
 import { AbstractInputSuggest, App, Platform, PluginSettingTab, prepareFuzzySearch, SearchResult, Setting, TFile } from "obsidian";
 import { PluginAnnotationDict } from "types";
-import { parseFilePath } from 'utils';
+import { showConfirmationDialog } from "utils";
 
 class FileSuggestion extends AbstractInputSuggest<TFile> {
 	files: TFile[];
@@ -44,27 +44,6 @@ class FileSuggestion extends AbstractInputSuggest<TFile> {
 		this.textInputEl.focus()
 		this.close();
 	}
-}
-
-// Helper function to show a confirmation dialog
-function showConfirmationDialog(app: App, title: string, message: string): Promise<boolean> {
-	return new Promise((resolve) => {
-		const modal = new Modal(app);
-		modal.titleEl.setText(title);
-		modal.contentEl.createEl('p', { text: message });
-
-		const buttonContainer = modal.contentEl.createDiv({ cls: 'modal-button-container' });
-		buttonContainer.createEl('button', { text: 'Yes' }).addEventListener('click', () => {
-			resolve(true);
-			modal.close();
-		});
-		buttonContainer.createEl('button', { text: 'No' }).addEventListener('click', () => {
-			resolve(false);
-			modal.close();
-		});
-
-		modal.open();
-	});
 }
 
 export class PluginsAnnotationsSettingTab extends PluginSettingTab {
@@ -193,13 +172,18 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			.addText(text => {
 				text.setPlaceholder('Enter the path to the markdown file');
 				text.setValue(this.plugin.settings.markdown_file_path);
-				text.onChange(async (filepath) => {
-					// await this.handleFilePathChange(filepath);
-					console.log("CHANGED");
-				});
 
 				const inputEl = text.inputEl;
 				new FileSuggestion(this.app, inputEl);
+
+				inputEl.addEventListener('blur', async () => {
+					const filepath = inputEl.value;
+
+					if(filepath!==this.plugin.settings.markdown_file_path) {
+						this.plugin.handleMarkdownFilePathChange(filepath);
+					}
+
+				});
 			});
 
 		file_path_field.settingEl.style.display = this.plugin.settings.markdown_file_path === '' ? 'none' : '';
@@ -218,6 +202,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		// Append the settings
 		containerEl.appendChild(toggle_md_file.settingEl);
 		containerEl.appendChild(file_path_field.settingEl);
+
 
 
 		new Setting(containerEl).setName('Display').setHeading();
