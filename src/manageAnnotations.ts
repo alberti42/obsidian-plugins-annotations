@@ -1,22 +1,15 @@
 // manageAnnotations.ts
 
 import PluginsAnnotations from "main";
-import { normalizePath, Platform, TFile } from "obsidian";
-import { joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
+import { Platform, TFile } from "obsidian";
+import { createFolderIfNotExists, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
 import { parse, SyntaxError } from "./peggy.mjs";
-import { PluginAnnotation, PluginAnnotationDict } from "types";
+import { PluginAnnotationDict } from "types";
 
-export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, filepath: string): Promise<void> {
-	const parsed_filepath = parseFilePath(filepath);
-
-	if (parsed_filepath.ext !== '.md') {
-		console.log('The filename extension must be .md');
-		return;
-	}
-
+export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, filepath: string): Promise<boolean> {
 	const file = plugin.app.vault.getAbstractFileByPath(filepath);
 
-	const {base} = parseFilePath(filepath);
+	const {base,dir} = parseFilePath(filepath);
 	
 	if (!file) {
 		const message = createFragment((frag) => {
@@ -30,8 +23,11 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
 		});
 
 		// File doesn't exist, ask user if they want to create it
-		const createFile = await showConfirmationDialog(plugin.app, 'Create File', message);
-		if (!createFile) return;
+		const createFile = await showConfirmationDialog(plugin.app, 'Create file', message);
+		if (!createFile) return false;
+
+		createFolderIfNotExists(plugin.app.vault,dir);
+
 		await plugin.app.vault.create(filepath, '');
 	} else {
 		// File exists, ask user if they want to overwrite it
@@ -57,46 +53,37 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
 					text: base
 				});
 			}
-			frag.appendText(' already exists. Do you want to overwrite it?');
+			frag.appendText(' already exists. Do you want to replace the file with your personal annotations about the installed plugins? If you reply yes, the existing file is moved to the trash.');
 		});
 		
-		const overwriteFile = await showConfirmationDialog(plugin.app, 'Overwrite File', message);
-		if (!overwriteFile) return;
+		const overwriteFile = await showConfirmationDialog(plugin.app, 'Overwrite file', message);
+		if (!overwriteFile) return false;
+		await plugin.app.vault.adapter.trashSystem(file.path);
 	}
-
-	plugin.settings.markdown_file_path = filepath;
-	plugin.saveSettings(plugin.settings);
-	writeAnnotationsToFile(plugin);
+	return true;
 }
 
-export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promise<Record<string, { name: string; anno: string }>> {
+export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promise<void> {
 	const filePath = plugin.settings.markdown_file_path;
 	try {
 		const file = plugin.app.vault.getAbstractFileByPath(filePath);
-		if (!file) return {};
+		if (!file) return;
 
-		const content = await plugin.app.vault.read(file as TFile);
+		const md_content = await plugin.app.vault.read(file as TFile);
 
-		const content_parsed = parse(content);
-
-		const annotations: PluginAnnotationDict = {};
-
-		// const dictionary = content_parsed.reduce((acc: PluginAnnotationDict, current: unknown) => {
-		// 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		// 	const {_, ...theRest} = current;
-		// 	acc[current.id] = theRest;
-		// 	return acc;
-		// }, {});
-
-		console.log(content_parsed);
-
-		// content_parsed.map((item:PluginAnnotation) => {console.log(item)});
-
-
-		return annotations;
+		try {
+			const md_content_parsed = parse(md_content) as PluginAnnotationDict;
+			plugin.settings.annotations = md_content_parsed;
+		} catch(error) {			 
+			if (error instanceof SyntaxError) {
+				console.error("Syntax error:", error);
+			} else {
+				console.error("Unexpected error:", error);
+			}
+		}		
 	} catch (error) {
 		console.error('Failed to read annotations from file:', error);
-		return {};
+		return;
 	}
 }
 
@@ -110,11 +97,6 @@ export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
 	try {
 		const content: string[] = [];
 		for (const pluginId in annotations) {
-			
-			// console.log(pluginId);
-			// console.log(annotations[pluginId].anno);
-			// console.log(annotations[pluginId].name);
-			// console.log('---');
 			content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].anno}\n<!-- END ANNOTATION -->\n`);
 		}
 

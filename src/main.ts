@@ -49,7 +49,10 @@ export default class PluginsAnnotations extends Plugin {
 		});
 
 		this.app.vault.on('modify', (modifiedFile: TAbstractFile) => {
+			if(this.settings.markdown_file_path === '') return;
+
             if (modifiedFile.path === this.settings.markdown_file_path) {
+					
                 readAnnotationsFromFile(this);
             }
         });
@@ -605,8 +608,12 @@ export default class PluginsAnnotations extends Plugin {
 
 		const settings = this.settings;
 
-		this.saveTimeout = window.setTimeout(() => {
+		this.saveTimeout = window.setTimeout(async () => {
 			this.saveSettings(settings);
+			if(this.settings.markdown_file_path!=='') {
+				console.log(this.settings.markdown_file_path);
+				writeAnnotationsToFile(this);	
+			}
 			this.saveTimeout = null;
 		}, timeout_ms);
 	}

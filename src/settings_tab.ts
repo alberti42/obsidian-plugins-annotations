@@ -4,6 +4,7 @@ import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { AbstractInputSuggest, App, Platform, PluginSettingTab, prepareFuzzySearch, SearchResult, Setting, TFile } from "obsidian";
 import { PluginAnnotationDict } from "types";
+import { parseFilePath } from "utils";
 
 class FileSuggestion extends AbstractInputSuggest<TFile> {
 	files: TFile[];
@@ -163,14 +164,19 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		// Add new setting for storing annotations in a Markdown file
 		const toggle_md_file = new Setting(containerEl)
 			.setName('Store annotations in a Markdown file:')
-			.setDesc('If this option is enabled, you can select a Markdown file in your vault to contain your personal annotations about the installed plugins.');
+			.setDesc('If this option is enabled, you can select a Markdown file in your vault to contain your personal annotations about the installed plugins. This feature is for power users who may prefer to edit annotations directly from a Markdown file. A second advantage of this mode is that, if you use links to some  your notes in the vault, these links are automatically updated if your notes are later renamed.');
 
+		let md_filepath_error_div: HTMLDivElement;
 		// Add new setting for markdown file path
 		const file_path_field = new Setting(containerEl)
 			.setName('Markdown File Path')
-			.setDesc('Path to the markdown file where annotations will be stored.')
+			.setDesc(createFragment((frag) => {
+					frag.appendText('Path to the markdown file where the plugins\' annotations will be stored.');
+					md_filepath_error_div = frag.createDiv({text: 'Error: the filename must end with .md extension.', cls: "mod-warning" });
+					md_filepath_error_div.style.display = 'none';
+				}))
 			.addText(text => {
-				text.setPlaceholder('Enter the path to the markdown file');
+				text.setPlaceholder('E.g.: 00 Meta/Plugins annotations.md');
 				text.setValue(this.plugin.settings.markdown_file_path);
 
 				const inputEl = text.inputEl;
@@ -179,8 +185,19 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				inputEl.addEventListener('blur', async () => {
 					const filepath = inputEl.value;
 
-					if(filepath!==this.plugin.settings.markdown_file_path) {
-						handleMarkdownFilePathChange(this.plugin, filepath);
+					if(filepath!==this.plugin.settings.markdown_file_path) { // if the path has changed
+
+						if (parseFilePath(filepath).ext !== '.md') {
+							md_filepath_error_div.style.display = '';
+							this.plugin.settings.markdown_file_path = '';
+							return;
+						}
+
+						md_filepath_error_div.style.display = 'none';
+						if(await handleMarkdownFilePathChange(this.plugin, filepath)) {
+							this.plugin.settings.markdown_file_path = filepath;
+							this.plugin.debouncedSaveAnnotations();
+						}
 					}
 
 				});
@@ -196,14 +213,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				} else {
 					file_path_field.settingEl.style.display = 'none';
 				}
-				await this.plugin.saveSettings(this.plugin.settings);
 			}));
 
 		// Append the settings
 		containerEl.appendChild(toggle_md_file.settingEl);
 		containerEl.appendChild(file_path_field.settingEl);
-
-
 
 		new Setting(containerEl).setName('Display').setHeading();
 
