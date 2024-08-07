@@ -156,7 +156,7 @@ export default class PluginsAnnotations extends Plugin {
 			uninstallPlugin: (next: (pluginId: string) => Promise<void>) => {
 				return async function (this: Plugins, pluginId: string): Promise<void> {
 					await next.call(this, pluginId);
-					// Plugin has been uninstalled
+					// Triggered when pluginId has been uninstalled
 					if (self.settings.automatic_remove && self.settings.annotations.hasOwnProperty(pluginId)) {
 						// If automatic_remove is enabled and there is an annotation, remove the annotation 
 						delete self.settings.annotations[pluginId];
