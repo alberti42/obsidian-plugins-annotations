@@ -64,4 +64,8 @@ declare module "obsidian" {
 		getPluginById(id: string): Plugin;
 	}
 
+	interface AbstractInputSuggest<T> extends PopoverSuggest<T> {
+		textInputEl: HTMLInputElement;
+	}
+
 }

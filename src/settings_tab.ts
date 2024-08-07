@@ -1,31 +1,59 @@
 // settings_tab.ts
 
 import PluginsAnnotations from "main";
-import { App, Platform, PluginSettingTab, Setting } from "obsidian";
+import { AbstractInputSuggest, App, Platform, PluginSettingTab, prepareFuzzySearch, SearchResult, Setting, TFile } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath } from 'utils';
 
-// class FileSuggestion extends AbstractInputSuggest<TFile> {
-//     constructor(app: App, inputEl: HTMLInputElement) {
-//         super(app, inputEl);
-//     }
+class FileSuggestion extends AbstractInputSuggest<TFile> {
+	files: TFile[];
 
-//     getSuggestions(inputStr: string): TFile[] {
-//         const files = this.app.vault.getFiles();
-//         const lowerCaseInputStr = inputStr.toLowerCase();
-//         return files.filter(file => file.path.toLowerCase().contains(lowerCaseInputStr) && file.extension === 'md');
-//     }
+	constructor(app: App, inputEl: HTMLInputElement, private onSelectCb: (file: TFile) => void = (v:TFile)=>{console.log(v);}) {
+		super(app, inputEl);
 
-//     renderSuggestion(file: TFile, el: HTMLElement): void {
-//         el.setText(file.path);
-//     }
+		// load the list of files
+		this.files = this.app.vault.getFiles().filter((f)=>f.extension === "md")
+		console.log(this);
+	}
 
-//     selectSuggestion(file: TFile, evt: MouseEvent | KeyboardEvent): void {
-//         this.inputEl.value = file.path;
-//         this.inputEl.blur();
-//         this.close();
-//     }
-// }
+	doSimpleSearch(target:string) : TFile[] {
+		if( ! target || target.length < 2 ) return []
+		const lowerCaseInputStr = target.toLocaleLowerCase();
+		const t = this.files.filter((content) =>
+			content.path.toLocaleLowerCase().contains(lowerCaseInputStr)
+		);
+		return t
+	}
+
+	doFuzzySearch(target:string,maxResults=20,minScore=-2) : TFile[] {
+		if( ! target || target.length < 2 ) return []
+		const fuzzy = prepareFuzzySearch(target)
+		const matches:[TFile,SearchResult | null][] = this.files.map((c)=>[c,fuzzy(c.path)])
+		const goodMatches = matches.filter((i)=>(i[1] && i[1]['score'] > minScore))
+		if(!goodMatches) return [];
+		goodMatches.sort((c)=>c[1] ? c[1]['score']: 0);
+		const ret = goodMatches.map((c)=>c[0])
+		return ret.slice(0,maxResults)
+	}
+
+	getSuggestions(inputStr: string): TFile[] {
+		return this.doFuzzySearch(inputStr)
+	}
+
+	renderSuggestion(file: TFile, el: HTMLElement): void {
+		el.setText(file.path);
+	}
+
+	selectSuggestion(selection: TFile, evt: MouseEvent | KeyboardEvent): void {
+		this.onSelectCb(selection);
+		this.textInputEl.value = selection.path;
+		this.textInputEl.dispatchEvent(new Event("change"))
+		this.textInputEl.setSelectionRange(0, 1)
+		this.textInputEl.setSelectionRange(this.textInputEl.value.length,this.textInputEl.value.length)
+		this.textInputEl.focus()
+		this.close();
+	}
+}
 
 export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	plugin: PluginsAnnotations;
@@ -149,10 +177,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		const file_path_field = new Setting(containerEl)
 			.setName('Markdown File Path')
 			.setDesc('Path to the markdown file where annotations will be stored.')
-			.addText(text => text
-				.setPlaceholder('Enter the path to the markdown file')
-				.setValue(this.plugin.settings.markdown_file_path)
-				.onChange(async (filepath) => {
+			.addText(text => {
+				text.setPlaceholder('Enter the path to the markdown file');
+				text.setValue(this.plugin.settings.markdown_file_path);
+				text.onChange(async (filepath) => {
 					const parsed_filepath = parseFilePath(filepath)
 					if(parsed_filepath.ext === '.md') {
 						this.plugin.settings.markdown_file_path = filepath;
@@ -160,8 +188,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					} else {
 						console.log('The filename extension must be .md');
 					}
-				})
-				.inputEl.addClass('markdown-file-path'));
+				});
+
+				const inputEl = text.inputEl;
+				new FileSuggestion(this.app, inputEl);
+			});
 
 		file_path_field.settingEl.style.display = this.plugin.settings.markdown_file_path==='' ? 'none' : ''
 
@@ -174,8 +205,6 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						file_path_field.settingEl.style.display = 'none';
 					}
 			}));
-
-
 
 		new Setting(containerEl).setName('Display').setHeading();
 
