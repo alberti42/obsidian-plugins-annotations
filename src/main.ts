@@ -46,18 +46,18 @@ export default class PluginsAnnotations extends Plugin {
 		});
 	}
 
-	async loadSettings(): Promise<Record<string,string>> {
+	async loadSettings(): Promise<Record<string, string>> {
 		// Create a mapping of names to IDs for the installed plugins
 		const pluginNameToIdMap = this.constructPluginNameToIdMap();
 
-		const getSettingsFromData = (data:unknown): unknown =>
-		{
+		// Nested function to handle different versions of settings
+		const getSettingsFromData = (data: unknown): unknown => {
 			if (isPluginsAnnotationsSettings(data)) {
 				const settings: PluginsAnnotationsSettings = data;
 				return settings;
 			} else if (isPluginsAnnotationsSettingsWithoutNames(data)) { // previous versions where the name of the plugins was not stored
 				// Upgrade annotations format
-				const upgradedAnnotations:PluginAnnotationDict = {};
+				const upgradedAnnotations: PluginAnnotationDict = {};
 				const idMapToPluginName = this.generateInvertedMap(pluginNameToIdMap);
 
 				for (const pluginId in data.annotations) {
@@ -67,7 +67,7 @@ export default class PluginsAnnotations extends Plugin {
 						anno: annotation
 					};
 				}
-				const oldSettings:PluginsAnnotationsSettingsWithoutNames = data;
+				const oldSettings: PluginsAnnotationsSettingsWithoutNames = data;
 				
 				// Update the data with the new format
 				const newSettings: PluginsAnnotationsSettings = {
@@ -75,16 +75,16 @@ export default class PluginsAnnotations extends Plugin {
 					annotations: upgradedAnnotations,
 					plugins_annotations_uuid: DEFAULT_SETTINGS.plugins_annotations_uuid,
 				};
-
 				return getSettingsFromData(newSettings);
 			} else {
 				// Very first version of the plugin -- no options were stored, only the dictionary of annotations
-				const newSettings:PluginsAnnotationsSettingsWithoutNames = {...DEFAULT_SETTINGS_WITHOUT_NAMES};
+				const newSettings: PluginsAnnotationsSettingsWithoutNames = { ...DEFAULT_SETTINGS_WITHOUT_NAMES };
 				newSettings.annotations = isPluginAnnotationDictWithoutNames(data) ? data : DEFAULT_SETTINGS_WITHOUT_NAMES.annotations;
 				return getSettingsFromData(newSettings);
 			}
-		}
+		};
 
+		// Merge loaded settings with default settings
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, getSettingsFromData(await this.loadData()));
 
 		return pluginNameToIdMap;
