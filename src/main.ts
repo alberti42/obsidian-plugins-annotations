@@ -9,7 +9,8 @@ import {
 	Plugins,
 	PluginManifest,
 	FileSystemAdapter,
-    // PluginSettingTab,
+    TAbstractFile,
+	// PluginSettingTab,
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
@@ -17,6 +18,7 @@ import { PluginAnnotationDict, PluginsAnnotationsSettingsWithoutNames, isPluginA
 import { DEFAULT_SETTINGS, DEFAULT_SETTINGS_WITHOUT_NAMES } from './defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
+import { readAnnotationsFromFile, writeAnnotationsToFile } from 'manageAnnotations';
 
 export default class PluginsAnnotations extends Plugin {
 	settings: PluginsAnnotationsSettings = {...DEFAULT_SETTINGS};
@@ -45,6 +47,12 @@ export default class PluginsAnnotations extends Plugin {
 				this.observeTab(activeTab);
 			}
 		});
+
+		this.app.vault.on('modify', (modifiedFile: TAbstractFile) => {
+            if (modifiedFile.path === this.settings.markdown_file_path) {
+                readAnnotationsFromFile(this);
+            }
+        });
 	}
 
 	async loadSettings(): Promise<void> {
@@ -87,6 +95,16 @@ export default class PluginsAnnotations extends Plugin {
 
 		// Merge loaded settings with default settings
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, getSettingsFromData(await this.loadData()));
+
+		if(this.settings.markdown_file_path!=='') {
+			const file = this.app.vault.getAbstractFileByPath(this.settings.markdown_file_path);
+			if(file) {
+				readAnnotationsFromFile(this);
+			} else {
+				// writeAnnotationsToFile(this);
+			}
+		
+		}
 	}
 
 	// Store the path to the vault
@@ -567,7 +585,7 @@ export default class PluginsAnnotations extends Plugin {
 		// there could be changes in the settings due to synchronization among devices
 		// which only happens after the plugin is loaded
 		await this.loadSettings();
-
+		
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;
 

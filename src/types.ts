@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS, DEFAULT_SETTINGS_WITHOUT_NAMES } from './defaults';
 export interface PluginAnnotation {
 	name: string;  // extended name of the plugin
 	anno: string;  // personal annontation
+	type: AnnotationType; // type of annotation
 }
 
 export interface PluginAnnotationDict {
@@ -34,9 +35,9 @@ export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotations
 }
 
 export enum AnnotationType {
-	text,
-	html,
-	markdown,
+	text = 'text',
+	html = 'html',
+	markdown = 'markdown',
 }
 
 // For backward compatibility only with version 'FAA70013-38E9-4FDF-B06A-F899F6487C19'

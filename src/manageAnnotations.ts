@@ -1,8 +1,10 @@
 // manageAnnotations.ts
 
 import PluginsAnnotations from "main";
-import { Platform, TFile } from "obsidian";
+import { normalizePath, Platform, TFile } from "obsidian";
 import { joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
+import { parse, SyntaxError } from "./peggy.mjs";
+import { PluginAnnotation, PluginAnnotationDict } from "types";
 
 export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, filepath: string): Promise<void> {
 	const parsed_filepath = parseFilePath(filepath);
@@ -64,11 +66,44 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
 
 	plugin.settings.markdown_file_path = filepath;
 	plugin.saveSettings(plugin.settings);
-	writeAnnotationsToFile(plugin, filepath);
+	writeAnnotationsToFile(plugin);
 }
 
-export async function writeAnnotationsToFile(plugin: PluginsAnnotations, filePath: string) {
+export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promise<Record<string, { name: string; anno: string }>> {
+	const filePath = plugin.settings.markdown_file_path;
+	try {
+		const file = plugin.app.vault.getAbstractFileByPath(filePath);
+		if (!file) return {};
+
+		const content = await plugin.app.vault.read(file as TFile);
+
+		const content_parsed = parse(content);
+
+		const annotations: PluginAnnotationDict = {};
+
+		const dictionary = content_parsed.reduce((acc: PluginAnnotationDict, current: unknown) => {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const {_, ...theRest} = current;
+			acc[current.id] = theRest;
+			return acc;
+		}, {});
+
+		console.log(dictionary);
+
+		// content_parsed.map((item:PluginAnnotation) => {console.log(item)});
+
+
+		return annotations;
+	} catch (error) {
+		console.error('Failed to read annotations from file:', error);
+		return {};
+	}
+}
+
+export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
 	if(!plugin.pluginNameToIdMap) return;
+
+	const filePath = plugin.settings.markdown_file_path;
 
 	const annotations = plugin.settings.annotations;
 	
@@ -76,10 +111,10 @@ export async function writeAnnotationsToFile(plugin: PluginsAnnotations, filePat
 		let content = '';
 		for (const pluginId in annotations) {
 			
-			console.log(pluginId);
-			console.log(annotations[pluginId].anno);
-			console.log(annotations[pluginId].name);
-			console.log('---');
+			// console.log(pluginId);
+			// console.log(annotations[pluginId].anno);
+			// console.log(annotations[pluginId].name);
+			// console.log('---');
 			content += `# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].anno}\n<!-- END ANNOTATION -->\n`;
 		}
 
