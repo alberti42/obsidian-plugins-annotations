@@ -21,6 +21,7 @@ export interface PluginsAnnotationsSettings {
 	label_placeholder: string;
 	editable: boolean;
 	automatic_remove: boolean;
+	markdown_file_path: string;
 }
 
 export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotationsSettings {
@@ -62,6 +63,14 @@ export function isPluginsAnnotationsSettingsWithoutNames(s:unknown): s is Plugin
 	return 'annotations' in s
 		&& 'plugins_annotations_uuid' in s
 		&& (s as PluginsAnnotationsSettingsWithoutNames).plugins_annotations_uuid === DEFAULT_SETTINGS_WITHOUT_NAMES.plugins_annotations_uuid;
+}
+
+export interface ParsedPath {
+	dir: string,
+	base: string,
+	filename: string,
+	ext: string,
+	path: string
 }
 
 // For backward compatibility only with very first version (no UUID assigned)

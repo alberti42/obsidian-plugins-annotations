@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
 	label_placeholder : "<em>Add your personal comment about <strong>${plugin_name}</strong> here...</em>",
 	editable: true,
 	automatic_remove: false,
+	markdown_file_path: '',
 }
 
 export const DEFAULT_SETTINGS_WITHOUT_NAMES: PluginsAnnotationsSettingsWithoutNames = {
