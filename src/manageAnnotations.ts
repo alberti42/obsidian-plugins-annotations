@@ -81,14 +81,14 @@ export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promi
 
 		const annotations: PluginAnnotationDict = {};
 
-		const dictionary = content_parsed.reduce((acc: PluginAnnotationDict, current: unknown) => {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const {_, ...theRest} = current;
-			acc[current.id] = theRest;
-			return acc;
-		}, {});
+		// const dictionary = content_parsed.reduce((acc: PluginAnnotationDict, current: unknown) => {
+		// 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		// 	const {_, ...theRest} = current;
+		// 	acc[current.id] = theRest;
+		// 	return acc;
+		// }, {});
 
-		console.log(dictionary);
+		console.log(content_parsed);
 
 		// content_parsed.map((item:PluginAnnotation) => {console.log(item)});
 
@@ -108,21 +108,21 @@ export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
 	const annotations = plugin.settings.annotations;
 	
 	try {
-		let content = '';
+		const content: string[] = [];
 		for (const pluginId in annotations) {
 			
 			// console.log(pluginId);
 			// console.log(annotations[pluginId].anno);
 			// console.log(annotations[pluginId].name);
 			// console.log('---');
-			content += `# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].anno}\n<!-- END ANNOTATION -->\n`;
+			content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].anno}\n<!-- END ANNOTATION -->\n`);
 		}
 
 		let file = plugin.app.vault.getAbstractFileByPath(filePath);
 		if (!file) {
-			file = await plugin.app.vault.create(filePath, content);
+			file = await plugin.app.vault.create(filePath, content.join('\n'));
 		} else {
-			await plugin.app.vault.modify(file as TFile, content);
+			await plugin.app.vault.modify(file as TFile, content.join('\n'));
 		}
 	} catch (error) {
 		console.error('Failed to write annotations to file:', error);

@@ -1,37 +1,75 @@
+{
+  function addToDictionary(dict, block) {
+    if (block.id) {
+      const { id, ...rest } = block; // Destructure to remove the id property
+      dict[id] = rest; // Add the rest of the properties to the dictionary
+    }
+    return dict;
+  }
+  
+  const mandatory_tags = ['id'];
+}
+
 main
-  = blocks:block* { return blocks; }
+  = blocks:block* { 
+      const dictionary = blocks.reduce((acc, block) => {
+      	if(block){ addToDictionary(acc, block); }
+        return acc;
+      }, {});
+      return dictionary;
+  }
 
 block
-  = annotation_block1 / annotation_block / loose_line 
-
-annotation_block1
-  = name:plugin_name id:id_field type:type_field? begin_cmd anno:annotation_text end_cmd { return {
-  	id: id,
-    name: name,
-  	anno: anno,
-    type: type ? type : "markdown",
-  } }
+  = annotation_block / loose_line
 
 annotation_block
-  = plugin_name newline+ id_field b:begin_cmd annotation_text end_cmd { console.log(b); return b; }
+  = name:plugin_name tags:tag+ begin_cmd anno:annotation_text end_cmd {
+
+  	const tags_dict = tags.reduce((acc, block) => {
+      	acc[block.tag] = block.arg;
+        return acc;
+      }, {});
+
+    let integral = true;
+	for (let tag of mandatory_tags) {
+	  if(!(tag in tags_dict)) {
+        integral = false;
+		break;
+      }
+	}
+
+    if(integral) {
+      return {
+        id: tags_dict['id'],
+        name: name,
+        anno: anno,
+        type: tags_dict['type'] || 'markdown',
+      };
+    } else {
+      return null;
+    }
+  }
 
 plugin_name
   = "#" _ @name:$not_newline newline+
 
 id_field
-  = "<!--" _* "id:" _ @$(!"-->" !_ .)+ _* "-->" newline+
+  = "<!--" _* "id:" _ id:$(!"-->" !_ .)+ _* "-->" newline+ { return { 'tag': 'id', 'arg': id }; }
 
 type_field
-  = "<!--" _* "type:" _* @valid_types _* "-->" newline+
+  = "<!--" _* "type:" _* type:valid_types _* "-->" newline+ { return { 'tag': 'type', 'arg': type }; }
+    
+tag
+  = id_field / type_field
   
 valid_types
   = $("markdown"i / "html"i / "text"i) { return text().toLowerCase(); }
 
 begin_cmd
-  = $("<!--" _* "BEGIN ANNOTATION" _* "-->" newline+)
+  = $("<!--" _* "BEGIN" _* "ANNOTATION" _* "-->" newline+)
 
 end_cmd
-  = $("<!--" _* "END ANNOTATION" _* "-->" newline+)
+  = $("<!--" _* "END" _* "ANNOTATION" _* "-->" newline+)
 
 annotation_text
   = $(!end_cmd .)*

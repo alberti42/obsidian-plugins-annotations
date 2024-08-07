@@ -205,15 +205,19 @@ function peg$parse(input, options) {
   var peg$e12 = peg$classExpectation(["\n", "\r"], false, false);
   var peg$e13 = peg$classExpectation([" ", "\f", "\t", "\v", " ", "\xA0", "\u1680", ["\u2000", "\u200A"], "\u2028", "\u2029", "\u202F", "\u205F", "\u3000", "\uFEFF"], false, false);
 
-  var peg$f0 = function(blocks) { return blocks; };
-  var peg$f1 = function(name, id, type, anno) { return {
-  	id: id,
-    name: name,
-  	anno: anno,
-    type: type ? type : "markdown",
-  } };
-  var peg$f2 = function(b) { console.log(b); return b; };
-  var peg$f3 = function() { return text().toLowerCase(); };
+  var peg$f0 = function(blocks) { 
+      const dictionary = blocks.reduce((acc, block) => addToDictionary(acc, block), {});
+      return dictionary;
+  };
+  var peg$f1 = function(name, id, type, anno) { 
+    return {
+      id: id,
+      name: name,
+      anno: anno,
+      type: type ? type : "markdown",
+    }; 
+  };
+  var peg$f2 = function() { return text().toLowerCase(); };
   var peg$currPos = options.peg$currPos | 0;
   var peg$savedPos = peg$currPos;
   var peg$posDetailsCache = [{ line: 1, column: 1 }];
@@ -396,7 +400,7 @@ function peg$parse(input, options) {
   function peg$parseblock() {
     var s0;
 
-    s0 = peg$parseannotation_block1();
+    s0 = peg$parseannotation_block();
     if (s0 === peg$FAILED) {
       s0 = peg$parseannotation_block();
       if (s0 === peg$FAILED) {
@@ -407,7 +411,7 @@ function peg$parse(input, options) {
     return s0;
   }
 
-  function peg$parseannotation_block1() {
+  function peg$parseannotation_block() {
     var s0, s1, s2, s3, s4, s5, s6;
 
     s0 = peg$currPos;
@@ -426,56 +430,6 @@ function peg$parse(input, options) {
           if (s6 !== peg$FAILED) {
             peg$savedPos = s0;
             s0 = peg$f1(s1, s2, s3, s5);
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-    } else {
-      peg$currPos = s0;
-      s0 = peg$FAILED;
-    }
-
-    return s0;
-  }
-
-  function peg$parseannotation_block() {
-    var s0, s1, s2, s3, s4, s5, s6;
-
-    s0 = peg$currPos;
-    s1 = peg$parseplugin_name();
-    if (s1 !== peg$FAILED) {
-      s2 = [];
-      s3 = peg$parsenewline();
-      if (s3 !== peg$FAILED) {
-        while (s3 !== peg$FAILED) {
-          s2.push(s3);
-          s3 = peg$parsenewline();
-        }
-      } else {
-        s2 = peg$FAILED;
-      }
-      if (s2 !== peg$FAILED) {
-        s3 = peg$parseid_field();
-        if (s3 !== peg$FAILED) {
-          s4 = peg$parsebegin_cmd();
-          if (s4 !== peg$FAILED) {
-            s5 = peg$parseannotation_text();
-            s6 = peg$parseend_cmd();
-            if (s6 !== peg$FAILED) {
-              peg$savedPos = s0;
-              s0 = peg$f2(s4);
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
           } else {
             peg$currPos = s0;
             s0 = peg$FAILED;
@@ -870,7 +824,7 @@ function peg$parse(input, options) {
     }
     if (s1 !== peg$FAILED) {
       peg$savedPos = s0;
-      s1 = peg$f3();
+      s1 = peg$f2();
     }
     s0 = s1;
 
@@ -1261,6 +1215,15 @@ function peg$parse(input, options) {
     }
 
     return s0;
+  }
+
+
+  function addToDictionary(dict, block) {
+    if (block.id) {
+      const { id, ...rest } = block; // Destructure to remove the id property
+      dict[id] = rest; // Add the rest of the properties to the dictionary
+    }
+    return dict;
   }
 
   peg$result = peg$startRuleFunction();
