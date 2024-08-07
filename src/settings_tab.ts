@@ -8,36 +8,27 @@ import { parseFilePath } from 'utils';
 class FileSuggestion extends AbstractInputSuggest<TFile> {
 	files: TFile[];
 
-	constructor(app: App, inputEl: HTMLInputElement, private onSelectCb: (file: TFile) => void = (v:TFile)=>{console.log(v);}) {
+	constructor(app: App, inputEl: HTMLInputElement, private onSelectCallback: (file: TFile) => void = (v: TFile) => {}) {
 		super(app, inputEl);
 
-		// load the list of files
-		this.files = this.app.vault.getFiles().filter((f)=>f.extension === "md")
-		console.log(this);
+		// Load the list of files
+		this.files = this.app.vault.getFiles().filter((f) => f.extension === "md");
 	}
 
-	doSimpleSearch(target:string) : TFile[] {
-		if( ! target || target.length < 2 ) return []
-		const lowerCaseInputStr = target.toLocaleLowerCase();
-		const t = this.files.filter((content) =>
-			content.path.toLocaleLowerCase().contains(lowerCaseInputStr)
-		);
-		return t
-	}
-
-	doFuzzySearch(target:string,maxResults=20,minScore=-2) : TFile[] {
-		if( ! target || target.length < 2 ) return []
-		const fuzzy = prepareFuzzySearch(target)
-		const matches:[TFile,SearchResult | null][] = this.files.map((c)=>[c,fuzzy(c.path)])
-		const goodMatches = matches.filter((i)=>(i[1] && i[1]['score'] > minScore))
-		if(!goodMatches) return [];
-		goodMatches.sort((c)=>c[1] ? c[1]['score']: 0);
-		const ret = goodMatches.map((c)=>c[0])
-		return ret.slice(0,maxResults)
+	doFuzzySearch(target: string, maxResults = 20, minScore = -2): TFile[] {
+		if (!target || target.length < 2) return [];
+		const fuzzy = prepareFuzzySearch(target);
+		const matches: [TFile, SearchResult | null][] = this.files.map((c) => [c, fuzzy(c.path)]);
+		// Filter out the null matches
+		const validMatches = matches.filter(([, result]) => result !== null && result.score > minScore);
+		// Sort the valid matches by score
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		validMatches.sort(([, a], [, b]) => b!.score - a!.score);
+		return matches.map((c) => c[0]).slice(0, maxResults);
 	}
 
 	getSuggestions(inputStr: string): TFile[] {
-		return this.doFuzzySearch(inputStr)
+		return this.doFuzzySearch(inputStr);
 	}
 
 	renderSuggestion(file: TFile, el: HTMLElement): void {
@@ -45,7 +36,7 @@ class FileSuggestion extends AbstractInputSuggest<TFile> {
 	}
 
 	selectSuggestion(selection: TFile, evt: MouseEvent | KeyboardEvent): void {
-		this.onSelectCb(selection);
+		this.onSelectCallback(selection);
 		this.textInputEl.value = selection.path;
 		this.textInputEl.dispatchEvent(new Event("change"))
 		this.textInputEl.setSelectionRange(0, 1)
@@ -53,6 +44,27 @@ class FileSuggestion extends AbstractInputSuggest<TFile> {
 		this.textInputEl.focus()
 		this.close();
 	}
+}
+
+// Helper function to show a confirmation dialog
+function showConfirmationDialog(app: App, title: string, message: string): Promise<boolean> {
+	return new Promise((resolve) => {
+		const modal = new Modal(app);
+		modal.titleEl.setText(title);
+		modal.contentEl.createEl('p', { text: message });
+
+		const buttonContainer = modal.contentEl.createDiv({ cls: 'modal-button-container' });
+		buttonContainer.createEl('button', { text: 'Yes' }).addEventListener('click', () => {
+			resolve(true);
+			modal.close();
+		});
+		buttonContainer.createEl('button', { text: 'No' }).addEventListener('click', () => {
+			resolve(false);
+			modal.close();
+		});
+
+		modal.open();
+	});
 }
 
 export class PluginsAnnotationsSettingTab extends PluginSettingTab {
@@ -169,6 +181,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		instructions_div.classList.add('setting-item');
 		instructions_div.appendChild(instructions);
 
+		// Add new setting for storing annotations in a Markdown file
 		const toggle_md_file = new Setting(containerEl)
 			.setName('Store annotations in a Markdown file:')
 			.setDesc('If this option is enabled, you can select a Markdown file in your vault to contain your personal annotations about the installed plugins.');
@@ -181,30 +194,31 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				text.setPlaceholder('Enter the path to the markdown file');
 				text.setValue(this.plugin.settings.markdown_file_path);
 				text.onChange(async (filepath) => {
-					const parsed_filepath = parseFilePath(filepath)
-					if(parsed_filepath.ext === '.md') {
-						this.plugin.settings.markdown_file_path = filepath;
-						this.plugin.debouncedSaveAnnotations();
-					} else {
-						console.log('The filename extension must be .md');
-					}
+					// await this.handleFilePathChange(filepath);
+					console.log("CHANGED");
 				});
 
 				const inputEl = text.inputEl;
 				new FileSuggestion(this.app, inputEl);
 			});
 
-		file_path_field.settingEl.style.display = this.plugin.settings.markdown_file_path==='' ? 'none' : ''
+		file_path_field.settingEl.style.display = this.plugin.settings.markdown_file_path === '' ? 'none' : '';
 
 		toggle_md_file.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.markdown_file_path!=='')
-				.onChange(async (value: boolean) => {
-					if(value) {
-						file_path_field.settingEl.style.display = '';
-					} else {
-						file_path_field.settingEl.style.display = 'none';
-					}
+			.setValue(this.plugin.settings.markdown_file_path !== '')
+			.onChange(async (value: boolean) => {
+				if (value) {
+					file_path_field.settingEl.style.display = '';
+				} else {
+					file_path_field.settingEl.style.display = 'none';
+				}
+				await this.plugin.saveSettings(this.plugin.settings);
 			}));
+
+		// Append the settings
+		containerEl.appendChild(toggle_md_file.settingEl);
+		containerEl.appendChild(file_path_field.settingEl);
+
 
 		new Setting(containerEl).setName('Display').setHeading();
 
