@@ -9,21 +9,23 @@ import {
 	Plugins,
 	PluginManifest,
 	FileSystemAdapter,
-	// PluginSettingTab,
+    // PluginSettingTab,
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
 import { PluginAnnotationDict, PluginsAnnotationsSettingsWithoutNames, isPluginAnnotationDictWithoutNames, isPluginsAnnotationsSettings, isPluginsAnnotationsSettingsWithoutNames, PluginsAnnotationsSettings, AnnotationType } from './types';
 import { DEFAULT_SETTINGS, DEFAULT_SETTINGS_WITHOUT_NAMES } from './defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
-import { joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from 'utils';
 import * as path from 'path';
+
 export default class PluginsAnnotations extends Plugin {
 	settings: PluginsAnnotationsSettings = {...DEFAULT_SETTINGS};
+	pluginNameToIdMap: Record<string,string> = {};
+	pluginIdToNameMap: Record<string,string> = {};
+
 	private mutationObserver: MutationObserver | null = null;
 	private saveTimeout: number | null = null;
 	private observedTab: SettingTab | null = null;
-	private pluginNameToIdMap: Record<string,string> | null = null;
 	private vaultPath: string | null = null;
 
 	async onload() {
@@ -45,10 +47,11 @@ export default class PluginsAnnotations extends Plugin {
 		});
 	}
 
-	async loadSettings(): Promise<Record<string, string>> {
+	async loadSettings(): Promise<void> {
 		// Create a mapping of names to IDs for the installed plugins
-		const pluginNameToIdMap = this.constructPluginNameToIdMap();
-
+		this.pluginNameToIdMap = this.constructPluginNameToIdMap();
+		this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
+		
 		// Nested function to handle different versions of settings
 		const getSettingsFromData = (data: unknown): unknown => {
 			if (isPluginsAnnotationsSettings(data)) {
@@ -57,12 +60,11 @@ export default class PluginsAnnotations extends Plugin {
 			} else if (isPluginsAnnotationsSettingsWithoutNames(data)) { // previous versions where the name of the plugins was not stored
 				// Upgrade annotations format
 				const upgradedAnnotations: PluginAnnotationDict = {};
-				const idMapToPluginName = this.generateInvertedMap(pluginNameToIdMap);
-
+				
 				for (const pluginId in data.annotations) {
 					const annotation = data.annotations[pluginId];
 					upgradedAnnotations[pluginId] = {
-						name: idMapToPluginName[pluginId] || pluginId,
+						name: this.pluginIdToNameMap[pluginId] || pluginId,
 						anno: annotation
 					};
 				}
@@ -85,8 +87,6 @@ export default class PluginsAnnotations extends Plugin {
 
 		// Merge loaded settings with default settings
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, getSettingsFromData(await this.loadData()));
-
-		return pluginNameToIdMap;
 	}
 
 	// Store the path to the vault
@@ -112,68 +112,6 @@ export default class PluginsAnnotations extends Plugin {
 		} catch (error) {
 			console.error('Failed to save annotations:', error);
 		}	
-	}
-
-	async handleMarkdownFilePathChange(filepath: string): Promise<void> {
-		const parsed_filepath = parseFilePath(filepath);
-
-		if (parsed_filepath.ext !== '.md') {
-			console.log('The filename extension must be .md');
-			return;
-		}
-
-		const file = this.app.vault.getAbstractFileByPath(filepath);
-
-		const {base} = parseFilePath(filepath);
-		
-		if (!file) {
-			const message = createFragment((frag) => {
-				frag.appendText('The file ');
-
-				frag.createEl('strong', {
-					text: base
-				});
-
-				frag.appendText(' does not exist. Do you want to create it?');
-			});
-
-			// File doesn't exist, ask user if they want to create it
-			const createFile = await showConfirmationDialog(this.app, 'Create File', message);
-			if (!createFile) return;
-			await this.app.vault.create(filepath, '');
-		} else {
-			// File exists, ask user if they want to overwrite it
-
-			const {base} = parseFilePath(filepath);
-			
-			const message = createFragment((frag) => {
-				frag.appendText('The file ');
-
-				if (Platform.isDesktopApp) {
-					const fileLink = frag.createEl('a', {
-						text: base,
-						href: '#',
-					});
-					fileLink.addEventListener('click', (e) => {
-						e.preventDefault(); // Prevent the default anchor behavior
-						// Open the folder in the system's default file explorer
-
-						window.require('electron').remote.shell.showItemInFolder(makePosixPathOScompatible(joinPaths(this.getVaultPath(),filepath))); // Adjust as necessary
-					});
-				} else {
-					frag.createEl('strong', {
-						text: base
-					});
-				}
-				frag.appendText(' already exists. Do you want to overwrite it?');
-			});
-			
-			const overwriteFile = await showConfirmationDialog(this.app, 'Overwrite File', message);
-			if (!overwriteFile) return;
-		}
-
-		this.settings.markdown_file_path = filepath;
-		this.debouncedSaveAnnotations();
 	}
 
 	constructPluginNameToIdMap(): Record < string, string > {
@@ -589,8 +527,6 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	addComment(plugin: Element) {
-		if(!this.pluginNameToIdMap) { return; }
-
 		const settingItemInfo = plugin.querySelector('.setting-item-info');
 		if (settingItemInfo) {
 			const pluginNameDiv = plugin.querySelector('.setting-item-name');
@@ -630,7 +566,7 @@ export default class PluginsAnnotations extends Plugin {
 		// force reload - this is convenient because since the loading of the plugin
 		// there could be changes in the settings due to synchronization among devices
 		// which only happens after the plugin is loaded
-		this.pluginNameToIdMap = await this.loadSettings();
+		await this.loadSettings();
 
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;

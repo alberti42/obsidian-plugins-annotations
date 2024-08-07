@@ -1,9 +1,9 @@
 // settings_tab.ts
 
 import PluginsAnnotations from "main";
+import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { AbstractInputSuggest, App, Platform, PluginSettingTab, prepareFuzzySearch, SearchResult, Setting, TFile } from "obsidian";
 import { PluginAnnotationDict } from "types";
-import { showConfirmationDialog } from "utils";
 
 class FileSuggestion extends AbstractInputSuggest<TFile> {
 	files: TFile[];
@@ -24,7 +24,7 @@ class FileSuggestion extends AbstractInputSuggest<TFile> {
 		// Sort the valid matches by score
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		validMatches.sort(([, a], [, b]) => b!.score - a!.score);
-		return matches.map((c) => c[0]).slice(0, maxResults);
+		return validMatches.map((c) => c[0]).slice(0, maxResults);
 	}
 
 	getSuggestions(inputStr: string): TFile[] {
@@ -180,7 +180,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					const filepath = inputEl.value;
 
 					if(filepath!==this.plugin.settings.markdown_file_path) {
-						this.plugin.handleMarkdownFilePathChange(filepath);
+						handleMarkdownFilePathChange(this.plugin, filepath);
 					}
 
 				});
