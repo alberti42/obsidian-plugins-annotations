@@ -164,7 +164,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		// Add new setting for storing annotations in a Markdown file
 		const toggle_md_file = new Setting(containerEl)
 			.setName('Store annotations in a Markdown file:')
-			.setDesc('If this option is enabled, you can select a Markdown file in your vault to contain your personal annotations about the installed plugins. This feature is for power users who may prefer to edit annotations directly from a Markdown file. A second advantage of this mode is that, if you use links to some  your notes in the vault, these links are automatically updated if your notes are later renamed.');
+			.setDesc('With this option enabled, you can select a Markdown file in your vault to contain your personal annotations for the installed plugins. This feature is intended for power users who prefer to edit annotations directly from a Markdown file. A second advantage of this mode is that if you use links to some of your notes in the vault, those links will be automatically updated if your notes are later renamed.');
 
 		let md_filepath_error_div: HTMLDivElement;
 		// Add new setting for markdown file path
