@@ -2,7 +2,7 @@
 
 import PluginsAnnotations from "main";
 import { Platform, TFile } from "obsidian";
-import { createFolderIfNotExists, doesFileExist, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
+import { createFolderIfNotExists, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
 import { parse, SyntaxError } from "./peggy.mjs";
 import { PluginAnnotationDict } from "types";
 
@@ -96,19 +96,26 @@ export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
 	const annotations = plugin.settings.annotations;
 	if(Object.keys(annotations).length === 0) return;
 
-	const content: string[] = [];
+	const header = 'Make changes only within the annotation blocks marked by <!-- BEGIN ANNOTATION --> and <!-- END ANNOTATION -->. Any other change made elsewhere will be overwritten.'
+
+	const content: string[] = [header];
 	for (const pluginId in annotations) {
 		content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].anno}\n<!-- END ANNOTATION -->\n`);
 	}
 
 	try {
-		if (!(await doesFileExist(plugin.app.vault,filePath))) {
-			const {dir} = parseFilePath(filePath);
-			await createFolderIfNotExists(plugin.app.vault,dir);
-			await plugin.app.vault.create(filePath, content.join('\n'));
+		let file = plugin.app.vault.getFileByPath(filePath);
+		if (!file) {
+			try {
+				const {dir} = parseFilePath(filePath);
+				await createFolderIfNotExists(plugin.app.vault,dir);
+			} catch (error) {
+				console.error('Failed to create folder for Markdown file with annotations:', error);
+				return;
+			}
+			file = await plugin.app.vault.create(filePath, content.join('\n'));
 		} else {
-			console.log("found");
-			// await plugin.app.vault.modify(file as TFile, content.join('\n'));
+			await plugin.app.vault.modify(file as TFile, content.join('\n'));
 		}
 	} catch (error) {
 		console.error('Failed to write Markdown file with annotations:', error);

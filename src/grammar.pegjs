@@ -69,7 +69,7 @@ begin_cmd
   = $("<!--" _* "BEGIN" _* "ANNOTATION" _* "-->" newline+)
 
 end_cmd
-  = $("<!--" _* "END" _* "ANNOTATION" _* "-->" newline+)
+  = $(newline+ "<!--" _* "END" _* "ANNOTATION" _* "-->" newline+)
 
 annotation_text
   = $(!end_cmd .)*
