@@ -2,14 +2,14 @@
 
 import PluginsAnnotations from "main";
 import { Platform, TFile } from "obsidian";
-import { createFolderIfNotExists, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
+import { createFolderIfNotExists, doesFileExist, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
 import { parse, SyntaxError } from "./peggy.mjs";
 import { PluginAnnotationDict } from "types";
 
 export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, filepath: string): Promise<boolean> {
 	const file = plugin.app.vault.getAbstractFileByPath(filepath);
 
-	const {base,dir} = parseFilePath(filepath);
+	const {base} = parseFilePath(filepath);
 	
 	if (!file) {
 		const message = createFragment((frag) => {
@@ -25,10 +25,6 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
 		// File doesn't exist, ask user if they want to create it
 		const createFile = await showConfirmationDialog(plugin.app, 'Create file', message);
 		if (!createFile) return false;
-
-		createFolderIfNotExists(plugin.app.vault,dir);
-
-		await plugin.app.vault.create(filepath, '');
 	} else {
 		// File exists, ask user if they want to overwrite it
 
@@ -65,11 +61,17 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
 
 export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promise<void> {
 	const filePath = plugin.settings.markdown_file_path;
-	try {
-		const file = plugin.app.vault.getAbstractFileByPath(filePath);
-		if (!file) return;
 
-		const md_content = await plugin.app.vault.read(file as TFile);
+	const file = plugin.app.vault.getFileByPath(filePath);
+
+	if(!file) {
+		// If the file does not exist but we have annotation in memory, write them down
+		writeAnnotationsToFile(plugin);
+		return;
+	}
+
+	try {
+		const md_content = await plugin.app.vault.read(file);
 
 		try {
 			const md_content_parsed = parse(md_content) as PluginAnnotationDict;
@@ -89,24 +91,27 @@ export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promi
 
 export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
 	if(!plugin.pluginNameToIdMap) return;
-
 	const filePath = plugin.settings.markdown_file_path;
-
+	if(filePath === "") return;
 	const annotations = plugin.settings.annotations;
-	
-	try {
-		const content: string[] = [];
-		for (const pluginId in annotations) {
-			content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].anno}\n<!-- END ANNOTATION -->\n`);
-		}
+	if(Object.keys(annotations).length === 0) return;
 
-		let file = plugin.app.vault.getAbstractFileByPath(filePath);
-		if (!file) {
-			file = await plugin.app.vault.create(filePath, content.join('\n'));
+	const content: string[] = [];
+	for (const pluginId in annotations) {
+		content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].anno}\n<!-- END ANNOTATION -->\n`);
+	}
+
+	try {
+		if (!(await doesFileExist(plugin.app.vault,filePath))) {
+			const {dir} = parseFilePath(filePath);
+			await createFolderIfNotExists(plugin.app.vault,dir);
+			await plugin.app.vault.create(filePath, content.join('\n'));
 		} else {
-			await plugin.app.vault.modify(file as TFile, content.join('\n'));
+			console.log("found");
+			// await plugin.app.vault.modify(file as TFile, content.join('\n'));
 		}
 	} catch (error) {
-		console.error('Failed to write annotations to file:', error);
+		console.error('Failed to write Markdown file with annotations:', error);
+		return;
 	}
 }

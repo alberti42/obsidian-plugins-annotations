@@ -52,26 +52,22 @@ export function joinPaths(...paths: string[]): string {
 	return paths.join('/');
 }
 
-export function isInstanceOfFolder(file: TAbstractFile): file is TFolder {
-	return file instanceof TFolder;
+export async function doesFolderExist(vault: Vault, folderPath: string): Promise<boolean> {
+	if(!(await vault.adapter.exists(folderPath))) return false;
+	const stat = await vault.adapter.stat(folderPath);
+	if(!stat) return false;
+	return stat.type==='folder';
 }
 
-export function isInstanceOfFile(file: TAbstractFile): file is TFile {
-	return file instanceof TFile;
-}
-
-export function doesFolderExist(vault: Vault, relativePath: string): boolean {
-	const file: TAbstractFile | null = vault.getAbstractFileByPath(relativePath);
-	return !!file && isInstanceOfFolder(file);
-}
-
-export function doesFileExist(vault: Vault, relativePath: string): boolean {
-	const file: TAbstractFile | null = vault.getAbstractFileByPath(relativePath);
-	return !!file && isInstanceOfFile(file);
+export async function doesFileExist(vault: Vault, folderPath: string): Promise<boolean> {
+	if(!(await vault.adapter.exists(folderPath))) return false;
+	const stat = await vault.adapter.stat(folderPath);
+	if(!stat) return false;
+	return stat.type==='file';
 }
 
 export async function createFolderIfNotExists(vault: Vault, folderPath: string) {
-	if(doesFolderExist(vault,folderPath)) return;
+	if(await doesFolderExist(vault,folderPath)) return;
 
 	try {
 		await vault.createFolder(folderPath);

@@ -197,6 +197,8 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						if(await handleMarkdownFilePathChange(this.plugin, filepath)) {
 							this.plugin.settings.markdown_file_path = filepath;
 							this.plugin.debouncedSaveAnnotations();
+						} else {
+							text.setValue(this.plugin.settings.markdown_file_path);
 						}
 					}
 

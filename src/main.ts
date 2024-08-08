@@ -9,7 +9,7 @@ import {
 	Plugins,
 	PluginManifest,
 	FileSystemAdapter,
-    TAbstractFile,
+	TAbstractFile,
 	// PluginSettingTab,
 	// App,
 } from 'obsidian';
@@ -36,7 +36,7 @@ export default class PluginsAnnotations extends Plugin {
 		// console.log('Loading Plugins Annotations');
 
 		// Load and add settings tab
-		await this.loadSettings();
+		// await this.loadSettings();
 		this.addSettingTab(new PluginsAnnotationsSettingTab(this.app, this));
 		
 		this.app.workspace.onLayoutReady(() => {
@@ -49,13 +49,12 @@ export default class PluginsAnnotations extends Plugin {
 		});
 
 		this.app.vault.on('modify', (modifiedFile: TAbstractFile) => {
-			if(this.settings.markdown_file_path === '') return;
-
-            if (modifiedFile.path === this.settings.markdown_file_path) {
-					
-                readAnnotationsFromFile(this);
-            }
-        });
+			if(this.settings.markdown_file_path !== '') {
+				if (modifiedFile.path === this.settings.markdown_file_path) {
+					readAnnotationsFromFile(this);
+				}
+			}
+		});
 	}
 
 	async loadSettings(): Promise<void> {
@@ -76,7 +75,8 @@ export default class PluginsAnnotations extends Plugin {
 					const annotation = data.annotations[pluginId];
 					upgradedAnnotations[pluginId] = {
 						name: this.pluginIdToNameMap[pluginId] || pluginId,
-						anno: annotation
+						anno: annotation,
+						type: AnnotationType.markdown,
 					};
 				}
 				const oldSettings: PluginsAnnotationsSettingsWithoutNames = data;
@@ -100,13 +100,7 @@ export default class PluginsAnnotations extends Plugin {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, getSettingsFromData(await this.loadData()));
 
 		if(this.settings.markdown_file_path!=='') {
-			const file = this.app.vault.getAbstractFileByPath(this.settings.markdown_file_path);
-			if(file) {
-				readAnnotationsFromFile(this);
-			} else {
-				// writeAnnotationsToFile(this);
-			}
-		
+			readAnnotationsFromFile(this);
 		}
 	}
 
@@ -465,6 +459,7 @@ export default class PluginsAnnotations extends Plugin {
 				this.settings.annotations[pluginId] = {
 					anno: annotation_text,
 					name: pluginName,
+					type: AnnotationType.markdown,
 				};
 				annotation_div.classList.remove('plugin-comment-placeholder');
 				isPlaceholder = false;
@@ -611,7 +606,6 @@ export default class PluginsAnnotations extends Plugin {
 		this.saveTimeout = window.setTimeout(async () => {
 			this.saveSettings(settings);
 			if(this.settings.markdown_file_path!=='') {
-				console.log(this.settings.markdown_file_path);
 				writeAnnotationsToFile(this);	
 			}
 			this.saveTimeout = null;
