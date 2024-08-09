@@ -3,7 +3,7 @@
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { AbstractInputSuggest, App, Platform, PluginSettingTab, prepareFuzzySearch, SearchResult, Setting, TFile } from "obsidian";
-import { PluginAnnotationDict } from "types";
+import { PluginAnnotationDict_1_4_0 } from "types_legacy";
 import { parseFilePath } from "utils";
 
 class FileSuggestion extends AbstractInputSuggest<TFile> {
@@ -56,7 +56,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	}
 
 	createUninstalledPluginSettings(containerEl: HTMLElement) {
-		const uninstalledPlugins:PluginAnnotationDict = this.plugin.getUninstalledPlugins();
+		const uninstalledPlugins:PluginAnnotationDict_1_4_0 = this.plugin.getUninstalledPlugins();
 		
 		const heading = new Setting(containerEl).setName('Personal annotations of no longer installed community plugins').setHeading();
 		const headingEl = heading.settingEl;

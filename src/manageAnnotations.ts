@@ -4,7 +4,7 @@ import PluginsAnnotations from "main";
 import { Platform, TFile } from "obsidian";
 import { createFolderIfNotExists, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
 import { parse, SyntaxError } from "./peggy.mjs";
-import { PluginAnnotationDict } from "types";
+import { PluginAnnotationDict_1_4_0 } from "types_legacy";
 
 export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, filepath: string): Promise<boolean> {
 	const file = plugin.app.vault.getAbstractFileByPath(filepath);
@@ -74,7 +74,7 @@ export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promi
 		const md_content = await plugin.app.vault.read(file);
 
 		try {
-			const md_content_parsed = parse(md_content) as PluginAnnotationDict;
+			const md_content_parsed = parse(md_content) as PluginAnnotationDict_1_4_0;
 			plugin.settings.annotations = md_content_parsed;
 		} catch(error) {			 
 			if (error instanceof SyntaxError) {
@@ -102,6 +102,8 @@ export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
 	for (const pluginId in annotations) {
 		content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].anno}\n<!-- END ANNOTATION -->\n`);
 	}
+
+	console.log(content.join('\n'));
 
 	try {
 		let file = plugin.app.vault.getFileByPath(filePath);

@@ -14,14 +14,15 @@ import {
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { PluginAnnotationDict, PluginsAnnotationsSettingsWithoutNames, isPluginAnnotationDictWithoutNames, isPluginsAnnotationsSettings, isPluginsAnnotationsSettingsWithoutNames, PluginsAnnotationsSettings, AnnotationType } from './types';
-import { DEFAULT_SETTINGS, DEFAULT_SETTINGS_WITHOUT_NAMES } from './defaults';
+import { AnnotationType } from './types';
+import {  PluginAnnotationDict_1_4_0, isPluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0} from 'types_legacy'
+import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from './defaults_legacy';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromFile, writeAnnotationsToFile } from 'manageAnnotations';
 
 export default class PluginsAnnotations extends Plugin {
-	settings: PluginsAnnotationsSettings = {...DEFAULT_SETTINGS};
+	settings: PluginsAnnotationsSettings_1_4_0 = {...DEFAULT_SETTINGS_1_4_0};
 	pluginNameToIdMap: Record<string,string> = {};
 	pluginIdToNameMap: Record<string,string> = {};
 
@@ -62,42 +63,54 @@ export default class PluginsAnnotations extends Plugin {
 		this.pluginNameToIdMap = this.constructPluginNameToIdMap();
 		this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
 		
+		// Set to true when the settings are updated to the new format
+		let wasUpdated = false;
+		
 		// Nested function to handle different versions of settings
 		const getSettingsFromData = (data: unknown): unknown => {
-			if (isPluginsAnnotationsSettings(data)) {
-				const settings: PluginsAnnotationsSettings = data;
+
+			// type: AnnotationType.markdown,
+
+			if (isPluginsAnnotationsSettings_1_4_0(data)) {
+				const settings: PluginsAnnotationsSettings_1_4_0 = data;
 				return settings;
-			} else if (isPluginsAnnotationsSettingsWithoutNames(data)) { // previous versions where the name of the plugins was not stored
+			} else if (isSettingsFormat_1_3_0(data)) { // previous versions where the name of the plugins was not stored
 				// Upgrade annotations format
-				const upgradedAnnotations: PluginAnnotationDict = {};
+				const upgradedAnnotations: PluginAnnotationDict_1_4_0 = {};
 				
 				for (const pluginId in data.annotations) {
 					const annotation = data.annotations[pluginId];
 					upgradedAnnotations[pluginId] = {
 						name: this.pluginIdToNameMap[pluginId] || pluginId,
 						anno: annotation,
-						type: AnnotationType.markdown,
 					};
 				}
-				const oldSettings: PluginsAnnotationsSettingsWithoutNames = data;
+				const oldSettings: PluginsAnnotationsSettings_1_3_0 = data;
 
 				// Update the data with the new format
-				const newSettings: PluginsAnnotationsSettings = {
+				const newSettings: PluginsAnnotationsSettings_1_4_0 = {
 					...oldSettings,
 					annotations: upgradedAnnotations,
-					plugins_annotations_uuid: DEFAULT_SETTINGS.plugins_annotations_uuid,
+					plugins_annotations_uuid: DEFAULT_SETTINGS_1_4_0.plugins_annotations_uuid,
 				};
+				wasUpdated = true;
 				return getSettingsFromData(newSettings);
 			} else {
-				// Very first version of the plugin -- no options were stored, only the dictionary of annotations
-				const newSettings: PluginsAnnotationsSettingsWithoutNames = { ...DEFAULT_SETTINGS_WITHOUT_NAMES };
-				newSettings.annotations = isPluginAnnotationDictWithoutNames(data) ? data : DEFAULT_SETTINGS_WITHOUT_NAMES.annotations;
+				// Very first version of the plugin 1.0 -- no options were stored, only the dictionary of annotations
+				const newSettings: PluginsAnnotationsSettings_1_3_0 = { ...DEFAULT_SETTINGS_1_3_0 };
+				newSettings.annotations = isPluginAnnotationDictFormat_1_3_0(data) ? data : DEFAULT_SETTINGS_1_3_0.annotations;
+				wasUpdated = true;
 				return getSettingsFromData(newSettings);
 			}
 		};
 
 		// Merge loaded settings with default settings
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, getSettingsFromData(await this.loadData()));
+		this.settings = Object.assign({}, DEFAULT_SETTINGS_1_4_0, getSettingsFromData(await this.loadData()));
+
+		if(wasUpdated) {
+			console.log("SAVED");
+			this.debouncedSaveAnnotations();
+		}
 
 		if(this.settings.markdown_file_path!=='') {
 			readAnnotationsFromFile(this);
@@ -121,7 +134,7 @@ export default class PluginsAnnotations extends Plugin {
 		} else return "";
 	}
 	
-	async saveSettings(settings:PluginsAnnotationsSettings) {
+	async saveSettings(settings:PluginsAnnotationsSettings_1_4_0) {
 		try {
 			await this.saveData(settings);
 		} catch (error) {
@@ -459,7 +472,7 @@ export default class PluginsAnnotations extends Plugin {
 				this.settings.annotations[pluginId] = {
 					anno: annotation_text,
 					name: pluginName,
-					type: AnnotationType.markdown,
+					// type: AnnotationType.markdown,
 				};
 				annotation_div.classList.remove('plugin-comment-placeholder');
 				isPlaceholder = false;
@@ -631,9 +644,9 @@ export default class PluginsAnnotations extends Plugin {
 		this.disconnectObservers();
 	}
 
-	getUninstalledPlugins(): PluginAnnotationDict {
+	getUninstalledPlugins(): PluginAnnotationDict_1_4_0 {
 		const installedPluginIds = new Set(Object.keys(this.app.plugins.manifests));
-		const uninstalledPlugins: PluginAnnotationDict = {};
+		const uninstalledPlugins: PluginAnnotationDict_1_4_0 = {};
 
 		for (const pluginId in this.settings.annotations) {
 			if (!installedPluginIds.has(pluginId)) {
