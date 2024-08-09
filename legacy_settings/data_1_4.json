@@ -229,7 +229,5 @@
     "label_desktop": "<b>Personal annotation:&nbsp;</b>",
     "label_placeholder": "<em>Add your personal comment about <strong>${plugin_name}</strong> here...</em>",
     "editable": true,
-    "automatic_remove": false,
-    "markdown_file_path": "00 Meta/Misc/Plugins annotations.md",
-    "markdown_notes": false
+    "automatic_remove": false
 }

@@ -14,15 +14,16 @@ import {
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { AnnotationType } from './types';
-import {  PluginAnnotationDict_1_4_0, isPluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0} from 'types_legacy'
+import { AnnotationType, isPluginsAnnotationsSettings, PluginAnnotationDict, PluginsAnnotationsSettings } from './types';
+import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parse_annotation_1_4_0, } from 'types_legacy'
 import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from './defaults_legacy';
+import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromFile, writeAnnotationsToFile } from 'manageAnnotations';
 
 export default class PluginsAnnotations extends Plugin {
-	settings: PluginsAnnotationsSettings_1_4_0 = {...DEFAULT_SETTINGS_1_4_0};
+	settings: PluginsAnnotationsSettings = {...DEFAULT_SETTINGS};
 	pluginNameToIdMap: Record<string,string> = {};
 	pluginIdToNameMap: Record<string,string> = {};
 
@@ -71,9 +72,35 @@ export default class PluginsAnnotations extends Plugin {
 
 			// type: AnnotationType.markdown,
 
-			if (isPluginsAnnotationsSettings_1_4_0(data)) {
-				const settings: PluginsAnnotationsSettings_1_4_0 = data;
+			if (isPluginsAnnotationsSettings(data)) {
+				const settings: PluginsAnnotationsSettings = data;
 				return settings;
+			} else if (isSettingsFormat_1_4_0(data)) { // previous versions where the name of the plugins was not stored
+				// Upgrade annotations format
+				const upgradedAnnotations: PluginAnnotationDict = {};
+				for (const pluginId in data.annotations) {
+					const annotation = data.annotations[pluginId];
+					const {type,content} = parse_annotation_1_4_0(annotation.anno);
+					upgradedAnnotations[pluginId] = {
+						name: annotation.name,
+						desc: content,
+						type: type,
+					};
+				}
+
+				const oldSettings: PluginsAnnotationsSettings_1_4_0 = data;
+
+				// Update the data with the new format
+				const newSettings: PluginsAnnotationsSettings = {
+					...oldSettings,
+					annotations: upgradedAnnotations,
+					plugins_annotations_uuid: DEFAULT_SETTINGS.plugins_annotations_uuid,
+					compatibility: DEFAULT_SETTINGS.compatibility,
+					markdown_file_path: DEFAULT_SETTINGS.markdown_file_path
+				};
+				wasUpdated = true;
+				return getSettingsFromData(newSettings);
+				
 			} else if (isSettingsFormat_1_3_0(data)) { // previous versions where the name of the plugins was not stored
 				// Upgrade annotations format
 				const upgradedAnnotations: PluginAnnotationDict_1_4_0 = {};
@@ -105,10 +132,9 @@ export default class PluginsAnnotations extends Plugin {
 		};
 
 		// Merge loaded settings with default settings
-		this.settings = Object.assign({}, DEFAULT_SETTINGS_1_4_0, getSettingsFromData(await this.loadData()));
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, getSettingsFromData(await this.loadData()));
 
 		if(wasUpdated) {
-			console.log("SAVED");
 			this.debouncedSaveAnnotations();
 		}
 
@@ -134,7 +160,7 @@ export default class PluginsAnnotations extends Plugin {
 		} else return "";
 	}
 	
-	async saveSettings(settings:PluginsAnnotationsSettings_1_4_0) {
+	async saveSettings(settings:PluginsAnnotationsSettings) {
 		try {
 			await this.saveData(settings);
 		} catch (error) {
@@ -277,24 +303,6 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	// Function to render the annotation based on preamble
-	parse_annotation(annotation_div: HTMLDivElement, text: string): {type:AnnotationType,content:string} {
-		const lines = text.split('\n');
-		const preamble = lines[0].toLowerCase();
-		const sliced = lines.slice(1).join('\n');
-
-		annotation_div.innerHTML = '';
-		if (preamble.startsWith('html:')) {
-			return {type: AnnotationType.html, content: sliced};
-		} else if (preamble.startsWith('markdown:')) {
-			return {type: AnnotationType.markdown, content: sliced};
-		} else if (preamble.startsWith('text:')) {
-			return {type: AnnotationType.text, content: sliced};
-		} else {
-			return {type: AnnotationType.text, content: text};
-		}
-	}
-
 	// Helper function to parse links and add click listeners
 	parse_links(element: HTMLElement) {
 		const links = element.querySelectorAll('a');
@@ -372,7 +380,7 @@ export default class PluginsAnnotations extends Plugin {
 		const placeholder = (this.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
 
 		let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
-		let annotation_text = ((this.settings.annotations[pluginId] && this.settings.annotations[pluginId].anno) || placeholder).trim();
+		let annotation_text = ((this.settings.annotations[pluginId] && this.settings.annotations[pluginId].desc) || placeholder).trim();
 		
 		if (isPlaceholder) {
 			annotation_div.classList.add('plugin-comment-placeholder');
@@ -384,7 +392,7 @@ export default class PluginsAnnotations extends Plugin {
 		// Parsing the stored annotation
 		let type:AnnotationType;
 		let content:string;
-		({type,content} = this.parse_annotation(annotation_div,annotation_text));
+		({type,content} = parse_annotation_1_4_0(annotation_text));
 		
 		// Initial render
 		if(isPlaceholder) {
@@ -443,7 +451,7 @@ export default class PluginsAnnotations extends Plugin {
 				}
 				isPlaceholder = true;
 			} else {
-				({type,content} = this.parse_annotation(annotation_div,annotation_text));
+				({type,content} = parse_annotation_1_4_0(annotation_text));
 				this.render_annotation(annotation_div,type,content);
 			}
 		}
@@ -470,9 +478,9 @@ export default class PluginsAnnotations extends Plugin {
 			} else {
 				isPlaceholder = false;
 				this.settings.annotations[pluginId] = {
-					anno: annotation_text,
+					desc: annotation_text,
 					name: pluginName,
-					// type: AnnotationType.markdown,
+					type: AnnotationType.markdown, // FIXME
 				};
 				annotation_div.classList.remove('plugin-comment-placeholder');
 				isPlaceholder = false;
@@ -644,9 +652,9 @@ export default class PluginsAnnotations extends Plugin {
 		this.disconnectObservers();
 	}
 
-	getUninstalledPlugins(): PluginAnnotationDict_1_4_0 {
+	getUninstalledPlugins(): PluginAnnotationDict {
 		const installedPluginIds = new Set(Object.keys(this.app.plugins.manifests));
-		const uninstalledPlugins: PluginAnnotationDict_1_4_0 = {};
+		const uninstalledPlugins: PluginAnnotationDict = {};
 
 		for (const pluginId in this.settings.annotations) {
 			if (!installedPluginIds.has(pluginId)) {

@@ -3,6 +3,7 @@
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { AbstractInputSuggest, App, Platform, PluginSettingTab, prepareFuzzySearch, SearchResult, Setting, TFile } from "obsidian";
+import { PluginAnnotationDict } from "types";
 import { PluginAnnotationDict_1_4_0 } from "types_legacy";
 import { parseFilePath } from "utils";
 
@@ -56,7 +57,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	}
 
 	createUninstalledPluginSettings(containerEl: HTMLElement) {
-		const uninstalledPlugins:PluginAnnotationDict_1_4_0 = this.plugin.getUninstalledPlugins();
+		const uninstalledPlugins:PluginAnnotationDict = this.plugin.getUninstalledPlugins();
 		
 		const heading = new Setting(containerEl).setName('Personal annotations of no longer installed community plugins').setHeading();
 		const headingEl = heading.settingEl;
@@ -86,7 +87,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		Object.keys({...uninstalledPlugins}).forEach(pluginId => {
 			const pluginSetting = new Setting(containerEl)
 				.setName(`Plugin ${uninstalledPlugins[pluginId].name}`)
-				.setDesc("Annotation: " + uninstalledPlugins[pluginId].anno)
+				.setDesc("Annotation: " + uninstalledPlugins[pluginId].desc)
 				.addButton(button => button
 					.setButtonText('Delete')
 					.setCta()
