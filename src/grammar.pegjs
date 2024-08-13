@@ -1,3 +1,5 @@
+// Test the grammar online with https://peggyjs.org/online.html
+
 {
   function addToDictionary(dict, block) {
     if (block.id) {
@@ -23,7 +25,7 @@ block
   = annotation_block / loose_line
 
 annotation_block
-  = name:plugin_name tags:tag+ begin_cmd anno:annotation_text end_cmd {
+  = name:plugin_name tags:tag+ begin_cmd desc:description end_cmd {
 
   	const tags_dict = tags.reduce((acc, block) => {
       	acc[block.tag] = block.arg;
@@ -42,7 +44,7 @@ annotation_block
       return {
         id: tags_dict['id'],
         name: name,
-        anno: anno,
+        desc: desc,
         type: tags_dict['type'] || 'markdown',
       };
     } else {
@@ -71,7 +73,7 @@ begin_cmd
 end_cmd
   = $(newline+ "<!--" _* "END" _* "ANNOTATION" _* "-->" newline+)
 
-annotation_text
+description
   = $(!end_cmd .)*
 
 loose_line

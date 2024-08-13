@@ -65,8 +65,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		});
 	}
 
-	display(): void {
-		const { containerEl } = this;
+	async display(): Promise<void> {
+		await this.plugin.loadSettings();
+
+		const containerEl = this.containerEl;
 
 		const createPluginsPaneFragment = (): DocumentFragment => {
 			return createFragment((frag) => {
@@ -137,6 +139,8 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				}))
 			.addText(text => {
 
+				let processingChange = false;
+
 				file_path_field_control = text;
 
 				text.setPlaceholder('E.g.: 00 Meta/Plugins annotations.md');
@@ -147,10 +151,23 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				const inputEl = text.inputEl;
 				new FileSuggestion(this.app, inputEl, vault_files);
 
-				text.onChange(async (value: string) => {
+				inputEl.addEventListener('keydown', (event) => {
+					if (event.key === 'Enter') {
+						event.preventDefault();
+						inputEl.dispatchEvent(new Event('change'));
+					}
 				});
 
-				inputEl.addEventListener('blur', async () => {
+				// Use change explicitly instead of onChange because onChange
+				// reacts to events of type `input` instead of `change`
+				inputEl.addEventListener('change', async (event: Event) => {
+
+					if(processingChange) {
+						return;	
+					} else {
+						processingChange = true;	
+					}
+
 					const filepath = inputEl.value;
 
 					if(filepath!==this.plugin.settings.markdown_file_path) { // if the path has changed
@@ -170,6 +187,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						}
 					}
 
+					processingChange = false;
 				});
 			});
 

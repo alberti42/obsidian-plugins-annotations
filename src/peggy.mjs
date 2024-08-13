@@ -214,7 +214,7 @@ function peg$parse(input, options) {
       }, {});
       return dictionary;
   };
-  var peg$f1 = function(name, tags, anno) {
+  var peg$f1 = function(name, tags, desc) {
 
   	const tags_dict = tags.reduce((acc, block) => {
       	acc[block.tag] = block.arg;
@@ -233,7 +233,7 @@ function peg$parse(input, options) {
       return {
         id: tags_dict['id'],
         name: name,
-        anno: anno,
+        desc: desc,
         type: tags_dict['type'] || 'markdown',
       };
     } else {
@@ -452,7 +452,7 @@ function peg$parse(input, options) {
       if (s2 !== peg$FAILED) {
         s3 = peg$parsebegin_cmd();
         if (s3 !== peg$FAILED) {
-          s4 = peg$parseannotation_text();
+          s4 = peg$parsedescription();
           s5 = peg$parseend_cmd();
           if (s5 !== peg$FAILED) {
             peg$savedPos = s0;
@@ -1080,7 +1080,7 @@ function peg$parse(input, options) {
     return s0;
   }
 
-  function peg$parseannotation_text() {
+  function peg$parsedescription() {
     var s0, s1, s2, s3, s4;
 
     s0 = peg$currPos;

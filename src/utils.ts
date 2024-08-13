@@ -110,8 +110,9 @@ export class FileSuggestion extends AbstractInputSuggest<TFile> {
 	selectSuggestion(selection: TFile, evt: MouseEvent | KeyboardEvent): void {
 		this.onSelectCallback(selection);
 		this.textInputEl.value = selection.path;
-		// replaced "change" with "blur" to allow listening to blur event instead of change
-		this.textInputEl.dispatchEvent(new Event("change"));
+		
+		// Create a custom event with additional data
+		this.textInputEl.dispatchEvent(new Event('change'));
 		this.textInputEl.setSelectionRange(0, 1)
 		this.textInputEl.setSelectionRange(this.textInputEl.value.length,this.textInputEl.value.length)
 		this.textInputEl.focus()

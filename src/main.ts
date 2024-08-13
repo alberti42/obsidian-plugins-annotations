@@ -385,7 +385,6 @@ export default class PluginsAnnotations extends Plugin {
 			const annotation = this.settings.annotations[pluginId];
 			annotation_text = annotation.desc;
 			annoType = annotation.type;
-			console.log(pluginId, annoType);
 		} else {
 			annotation_text = placeholder.trim();
 			annoType = AnnotationType.html;
