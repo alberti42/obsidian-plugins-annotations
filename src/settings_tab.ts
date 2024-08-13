@@ -95,23 +95,23 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			div.appendChild(p1);
 
 			const p2 = document.createElement('p2');
-			p2.innerHTML = "You can enter rich text notes using Markdown and HTML. Markdown annotations will be dispalyed as Obsidian normally renders Markdown text. \
-				To this purpose, your annotation needs to start with a preamble line containing one \
-				of three strings:\
+			p2.innerHTML = "You can enter rich text notes using Markdown (recommended) and HTML. Markdown annotations will be dispalyed as Obsidian renders Markdown text. \
+				The annotation type can be selected by starting the annotation text with a line containing one \
+				of the following options:\
 				 <ul>\
 					<li>markdown:</li>\
 					<li>html:</li>\
 					<li>text:</li>\
 				</ul>\
-				If you do not enter any preamble line, the default <em>text:</em> will be assumed.";
+				If the first line of annotation text contains none of the options above, the default <em>markdown:</em> is assumed.";
 			div.appendChild(p2);
 
 			const p3 = document.createElement('p');
-			p3.innerHTML = "You can directly link your Obsidian notes from inside your annotations by adding links such as [[My notes/Review of plugin XYZ|my plugin note]].";
+			p3.innerHTML = "In Markdown annotations, you can directly link notes inside your vault by adding links such as [[My notes/Review of plugin XYZ|my plugin note]].";
 			div.appendChild(p3);
 
 			const p4 = document.createElement('p');
-			p4.innerHTML = "When editing HTML and Markdown annotations, use the placeholder <em>${label}</em> to display the <em>annotation label</em> at the chosen location."
+			p4.innerHTML = "When editing HTML annotations, use the placeholder <em>${label}</em> to display the <em>annotation label</em> at the chosen location."
 			div.appendChild(p4);
 
 			frag.appendChild(div);

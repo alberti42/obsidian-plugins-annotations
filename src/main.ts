@@ -354,7 +354,7 @@ export default class PluginsAnnotations extends Plugin {
 			}
 			case AnnotationType.markdown: {
 				const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-				const desc_with_label = desc.replace(/\$\{label\}/g, label);
+				const desc_with_label = label + desc;
 				await MarkdownRenderer.renderMarkdown(desc_with_label, annotation_div, '', this);
 				this.handleAnnotationLinks(annotation_div);
 				break;
@@ -416,8 +416,11 @@ export default class PluginsAnnotations extends Plugin {
 					annotation_container.classList.remove('plugin-comment-placeholder');
 				}
 				
-				// const text = annotation_div.innerText; // text without html markup
-				// annotation_div.innerText = text; // this removes all html markup for editing
+				const text = annotation_div.innerText; // text without html markup
+				annotation_div.innerText = text; // this removes all html markup for editing
+
+				// Force a DOM reflow by reading the offsetHeight (or another property)
+				annotation_div.offsetHeight;
 
 				const range = document.createRange();
 				range.selectNodeContents(annotation_div);
@@ -455,8 +458,6 @@ export default class PluginsAnnotations extends Plugin {
 
 			const innerText = annotation_div.innerText.trim();
 
-			console.log(innerText);
-
 			if (isPlaceholder || innerText === '') { // placeholder
 				annotation_div.innerHTML = placeholder;
 				delete this.settings.annotations[pluginId];
@@ -490,32 +491,6 @@ export default class PluginsAnnotations extends Plugin {
 			if(!this.settings.editable) { return; }
 			event.stopPropagation();
 		});
-
-		// Save the comment on input change and update inputTriggered status
-		// annotation_div.addEventListener('change', (event: Event) => {
-		// 	console.log("CHANGE");
-		// 	if(!this.settings.editable) { return; }
-		// 	annotation_text = annotation_div.innerText.trim();
-		// 	if (annotation_text === '') {
-		// 		annotation_text = '';
-		// 		isPlaceholder = true;
-		// 		delete this.settings.annotations[pluginId];
-		// 		annotation_div.classList.add('plugin-comment-placeholder');
-		// 	} else {
-		// 		isPlaceholder = false;
-
-		// 		const {type,content} = parse_annotation_1_4_0(annotation_text);
-				
-		// 		this.settings.annotations[pluginId] = {
-		// 			desc: content,
-		// 			name: pluginName,
-		// 			type: type,
-		// 		};
-		// 		annotation_div.classList.remove('plugin-comment-placeholder');
-		// 		isPlaceholder = false;
-		// 	}
-		// 	this.debouncedSaveAnnotations();
-		// });
 	}
 
 	async addIcon(tab: SettingTab) {

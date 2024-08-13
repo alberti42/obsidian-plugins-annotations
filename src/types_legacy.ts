@@ -37,7 +37,7 @@ export function parseAnnotation_1_4_0(text: string): {type:AnnotationType,conten
 	if (preamble.startsWith('html:')) {
 		return {type: AnnotationType.html, content: sliced};
 	} else if (preamble.startsWith('markdown:')) {
-		return {type: AnnotationType.markdown, content: sliced};
+		return {type: AnnotationType.markdown, content: sliced.replace(/\$\{label\}/g, '')};
 	} else if (preamble.startsWith('text:')) {
 		return {type: AnnotationType.text, content: sliced};
 	} else {

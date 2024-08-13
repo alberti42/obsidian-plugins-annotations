@@ -4,12 +4,12 @@
         "dataview-recent-files":
         {
             "name": "Dataview Recent Files",
-            "anno": "markdown:\nMy own plugin to show the recently modified files.\n[[2024-06-13 Survey group culture]]\n\n![[00 Meta/Misc/Test.jpg]]\n\n[[2024-08-05 Review Cs-based Rydberg quantum computers]]"
+            "anno": "markdown:\n${label}My own plugin to show the recently modified files.\n[[2024-06-13 Survey group culture]]\n\n![[00 Meta/Misc/Test.jpg]]\n\n[[2024-08-05 Review Cs-based Rydberg quantum computers]]"
         },
         "dataview":
         {
             "name": "Dataview",
-            "anno": "Super-useful plugin that allows querying the notes to provide database functionality. 🔥🔥🔥"
+            "anno": "html:\n${label}Super-useful plugin that allows querying the notes to provide database functionality. 🔥🔥🔥"
         },
         "highlightr-plugin":
         {
