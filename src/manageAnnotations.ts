@@ -104,7 +104,8 @@ export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
 		content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].desc}\n<!-- END ANNOTATION -->\n`);
 	}
 
-	console.log(content.join('\n'));
+	console.log("NOW WRITING!");
+	// console.log(content.join('\n'));
 
 	try {
 		let file = plugin.app.vault.getFileByPath(filePath);

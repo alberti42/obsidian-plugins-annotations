@@ -1,6 +1,7 @@
 // utils.ts
 
-import { App, Modal, normalizePath, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
+import { App, Modal, normalizePath, TAbstractFile, TFile, TFolder, Vault,
+	AbstractInputSuggest, prepareFuzzySearch, SearchResult } from "obsidian";
 import * as path from "path";
 import { ParsedPath } from "types";
 
@@ -77,5 +78,43 @@ export async function createFolderIfNotExists(vault: Vault, folderPath: string) 
 		await vault.createFolder(folderPath);
 	} catch (error) {
 		throw new Error(`Failed to create folder at ${folderPath}: ${error}`);
+	}
+}
+
+/* File suggestions */
+export class FileSuggestion extends AbstractInputSuggest<TFile> {
+	constructor(app: App, inputEl: HTMLInputElement, private files:TFile[], private onSelectCallback: (file: TFile) => void = (v: TFile) => {}) {
+		super(app, inputEl);
+	}
+
+	doFuzzySearch(target: string, maxResults = 20, minScore = -2): TFile[] {
+		if (!target || target.length < 2) return [];
+		const fuzzy = prepareFuzzySearch(target);
+		const matches: [TFile, SearchResult | null][] = this.files.map((c) => [c, fuzzy(c.path)]);
+		// Filter out the null matches
+		const validMatches = matches.filter(([, result]) => result !== null && result.score > minScore);
+		// Sort the valid matches by score
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		validMatches.sort(([, a], [, b]) => b!.score - a!.score);
+		return validMatches.map((c) => c[0]).slice(0, maxResults);
+	}
+
+	getSuggestions(inputStr: string): TFile[] {
+		return this.doFuzzySearch(inputStr);
+	}
+
+	renderSuggestion(file: TFile, el: HTMLElement): void {
+		el.setText(file.path);
+	}
+
+	selectSuggestion(selection: TFile, evt: MouseEvent | KeyboardEvent): void {
+		this.onSelectCallback(selection);
+		this.textInputEl.value = selection.path;
+		// replaced "change" with "blur" to allow listening to blur event instead of change
+		this.textInputEl.dispatchEvent(new Event("change"));
+		this.textInputEl.setSelectionRange(0, 1)
+		this.textInputEl.setSelectionRange(this.textInputEl.value.length,this.textInputEl.value.length)
+		this.textInputEl.focus()
+		this.close();
 	}
 }

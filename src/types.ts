@@ -36,7 +36,20 @@ export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotations
 		&& (s as PluginsAnnotationsSettings).plugins_annotations_uuid === DEFAULT_SETTINGS.plugins_annotations_uuid;
 }
 
-// type: AnnotationType; // type of annotation
+export function isPluginAnnotation(anno:unknown): anno is PluginAnnotation {
+	if (typeof anno !== 'object' || anno === null) {
+		return false;
+	}
+	const obj = anno as Record<string, unknown>;
+
+	const hasName = typeof obj.name === 'string';
+	const hasDesc = typeof obj.desc === 'string';
+	const hasType = typeof obj.type === 'string' && Object.values(AnnotationType).includes(obj.type as AnnotationType);
+
+	return hasName && hasDesc && hasType;
+}
+
+
 
 export enum AnnotationType {
 	text = 'text',

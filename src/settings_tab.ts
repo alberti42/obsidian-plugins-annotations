@@ -2,51 +2,9 @@
 
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
-import { AbstractInputSuggest, App, Platform, PluginSettingTab, prepareFuzzySearch, SearchResult, Setting, TFile } from "obsidian";
+import { App, Platform, PluginSettingTab, Setting, TextComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
-import { PluginAnnotationDict_1_4_0 } from "types_legacy";
-import { parseFilePath } from "utils";
-
-class FileSuggestion extends AbstractInputSuggest<TFile> {
-	files: TFile[];
-
-	constructor(app: App, inputEl: HTMLInputElement, private onSelectCallback: (file: TFile) => void = (v: TFile) => {}) {
-		super(app, inputEl);
-
-		// Load the list of files
-		this.files = this.app.vault.getFiles().filter((f) => f.extension === "md");
-	}
-
-	doFuzzySearch(target: string, maxResults = 20, minScore = -2): TFile[] {
-		if (!target || target.length < 2) return [];
-		const fuzzy = prepareFuzzySearch(target);
-		const matches: [TFile, SearchResult | null][] = this.files.map((c) => [c, fuzzy(c.path)]);
-		// Filter out the null matches
-		const validMatches = matches.filter(([, result]) => result !== null && result.score > minScore);
-		// Sort the valid matches by score
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		validMatches.sort(([, a], [, b]) => b!.score - a!.score);
-		return validMatches.map((c) => c[0]).slice(0, maxResults);
-	}
-
-	getSuggestions(inputStr: string): TFile[] {
-		return this.doFuzzySearch(inputStr);
-	}
-
-	renderSuggestion(file: TFile, el: HTMLElement): void {
-		el.setText(file.path);
-	}
-
-	selectSuggestion(selection: TFile, evt: MouseEvent | KeyboardEvent): void {
-		this.onSelectCallback(selection);
-		this.textInputEl.value = selection.path;
-		this.textInputEl.dispatchEvent(new Event("change"))
-		this.textInputEl.setSelectionRange(0, 1)
-		this.textInputEl.setSelectionRange(this.textInputEl.value.length,this.textInputEl.value.length)
-		this.textInputEl.focus()
-		this.close();
-	}
-}
+import { parseFilePath, FileSuggestion } from "utils";
 
 export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	plugin: PluginsAnnotations;
@@ -167,6 +125,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			.setName('Store annotations in a Markdown file:')
 			.setDesc('With this option enabled, you can select a Markdown file in your vault to contain your personal annotations for the installed plugins. This feature is intended for power users who prefer to edit annotations directly from a Markdown file. A second advantage of this mode is that if you use links to some of your notes in the vault, those links will be automatically updated if your notes are later renamed.');
 
+		let file_path_field_control: TextComponent;
 		let md_filepath_error_div: HTMLDivElement;
 		// Add new setting for markdown file path
 		const file_path_field = new Setting(containerEl)
@@ -177,11 +136,19 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					md_filepath_error_div.style.display = 'none';
 				}))
 			.addText(text => {
+
+				file_path_field_control = text;
+
 				text.setPlaceholder('E.g.: 00 Meta/Plugins annotations.md');
 				text.setValue(this.plugin.settings.markdown_file_path);
 
+				const vault_files = this.app.vault.getFiles().filter((f) => f.extension === "md");
+
 				const inputEl = text.inputEl;
-				new FileSuggestion(this.app, inputEl);
+				new FileSuggestion(this.app, inputEl, vault_files);
+
+				text.onChange(async (value: string) => {
+				});
 
 				inputEl.addEventListener('blur', async () => {
 					const filepath = inputEl.value;
@@ -213,14 +180,19 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			.onChange(async (value: boolean) => {
 				if (value) {
 					file_path_field.settingEl.style.display = '';
+					this.plugin.settings.markdown_file_path = file_path_field_control.getValue();
 				} else {
 					file_path_field.settingEl.style.display = 'none';
+					this.plugin.settings.markdown_file_path = '';
 				}
+				this.plugin.debouncedSaveAnnotations();
 			}));
 
 		// Append the settings
 		containerEl.appendChild(toggle_md_file.settingEl);
 		containerEl.appendChild(file_path_field.settingEl);
+
+		/* ==== Display heading ==== */
 
 		new Setting(containerEl).setName('Display').setHeading();
 
