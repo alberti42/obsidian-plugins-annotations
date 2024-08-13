@@ -32,7 +32,7 @@ export function parse_annotation_1_4_0(text: string): {type:AnnotationType,conte
 	const lines = text.split('\n');
 	const preamble = lines[0].toLowerCase();
 	const sliced = lines.slice(1).join('\n');
-
+	
 	// annotation_div.innerHTML = '';
 	if (preamble.startsWith('html:')) {
 		return {type: AnnotationType.html, content: sliced};

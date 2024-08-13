@@ -14,7 +14,7 @@ import {
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { AnnotationType, isPluginAnnotation, isPluginsAnnotationsSettings, PluginAnnotationDict, PluginsAnnotationsSettings } from './types';
+import { AnnotationType, isPluginAnnotation, isPluginsAnnotationsSettings, parse_annotation, PluginAnnotationDict, PluginsAnnotationsSettings } from './types';
 import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parse_annotation_1_4_0, } from 'types_legacy'
 import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'defaults';
@@ -368,15 +368,15 @@ export default class PluginsAnnotations extends Plugin {
 		const placeholder = (this.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
 
 		let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
-		let annotation_text:string;
+		let annotationDesc:string;
 		let annoType:AnnotationType;
 		
 		if(!isPlaceholder && isPluginAnnotation(this.settings.annotations[pluginId])) {
 			const annotation = this.settings.annotations[pluginId];
-			annotation_text = annotation.desc;
+			annotationDesc = annotation.desc;
 			annoType = annotation.type;
 		} else {
-			annotation_text = placeholder.trim();
+			annotationDesc = placeholder.trim();
 			annoType = AnnotationType.html;
 		
 			annotation_div.classList.add('plugin-comment-placeholder');
@@ -386,7 +386,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 
 		// Initial render
-		this.renderAnnotation(annotation_div,annoType,annotation_text);
+		this.renderAnnotation(annotation_div,annoType,annotationDesc);
 
 		let clickedLink = false;
 		const handleMouseDown = (event:MouseEvent) => {
@@ -401,7 +401,8 @@ export default class PluginsAnnotations extends Plugin {
 		// Handle mousedown event to check if a link was clicked
 		annotation_div.addEventListener('mousedown', handleMouseDown);
 
-		const handleFocus = (event:FocusEvent) => {
+		// Remove placeholder class when user starts typing
+		annotation_div.addEventListener('focus', (event:FocusEvent) => {
 			if(!this.settings.editable) { return; }
 			if (isPlaceholder) {
 				if (this.settings.delete_placeholder_string_on_insertion) {
@@ -427,17 +428,34 @@ export default class PluginsAnnotations extends Plugin {
 			} else {
 				// Only update innerText if not clicking on a link
 				if (!clickedLink) {
-					annotation_div.innerText = annotation_text;
+					let preamble;
+					switch(annoType) {
+					case AnnotationType.html:
+						preamble = 'html:';
+						break;
+					case AnnotationType.markdown:
+						preamble = 'markdown:';
+						break;
+					case AnnotationType.text:
+						preamble = 'text:';
+						break;
+					default:
+						preamble = 'markdown:';
+					}
+
+					console.log("ANNOTATION TEXT:",annotationDesc);
+					annotation_div.innerText = preamble + '\n' + annotationDesc;
 				}
 			}
-		}
+		});
 
-		// Remove placeholder class when user starts typing
-		annotation_div.addEventListener('focus', handleFocus);
-
-		const handleBlur = (event:FocusEvent) => {
+		// Add placeholder class back if no changes are made
+		annotation_div.addEventListener('blur', (event:FocusEvent) => {
 			if(!this.settings.editable) { return; }
-			if (isPlaceholder || annotation_div.innerText.trim() === '') {
+
+			annotationDesc = annotation_div.innerText.trim();
+
+			if (isPlaceholder || annotationDesc === '') { // placeholder
 				annotation_div.innerHTML = placeholder;
 				annotation_div.classList.add('plugin-comment-placeholder');
 				if (this.settings.hide_placeholders) {
@@ -445,45 +463,53 @@ export default class PluginsAnnotations extends Plugin {
 				}
 				isPlaceholder = true;
 			} else {
-				const {type,content} = parse_annotation_1_4_0(annotation_text);
-				this.renderAnnotation(annotation_div,type,content);
-			}
-		}
-
-		// Add placeholder class back if no changes are made
-		annotation_div.addEventListener('blur', handleBlur);
-
-		const handleClick = (event:MouseEvent) => {
-			if(!this.settings.editable) { return; }
-			event.stopPropagation();
-		}
-
-		// Prevent click event propagation to parent
-		annotation_div.addEventListener('click', handleClick);
-
-		const handleInput = (event: Event) => {
-			if(!this.settings.editable) { return; }
-			annotation_text = annotation_div.innerText.trim();
-			if (annotation_text === '') {
-				annotation_text = '';
-				isPlaceholder = true;
-				delete this.settings.annotations[pluginId];
-				annotation_div.classList.add('plugin-comment-placeholder');
-			} else {
 				isPlaceholder = false;
+
+				const {type,content} = parse_annotation(annotationDesc);
+				
 				this.settings.annotations[pluginId] = {
-					desc: annotation_text,
+					desc: content,
 					name: pluginName,
-					type: AnnotationType.markdown, // FIXME
+					type: type,
 				};
 				annotation_div.classList.remove('plugin-comment-placeholder');
-				isPlaceholder = false;
+
+				this.renderAnnotation(annotation_div,type,content);
 			}
 			this.debouncedSaveAnnotations();
-		}
+		});
+
+		// Prevent click event propagation to parent
+		annotation_div.addEventListener('click', (event:MouseEvent) => {
+			if(!this.settings.editable) { return; }
+			event.stopPropagation();
+		});
 
 		// Save the comment on input change and update inputTriggered status
-		annotation_div.addEventListener('input', handleInput);
+		// annotation_div.addEventListener('change', (event: Event) => {
+		// 	console.log("CHANGE");
+		// 	if(!this.settings.editable) { return; }
+		// 	annotation_text = annotation_div.innerText.trim();
+		// 	if (annotation_text === '') {
+		// 		annotation_text = '';
+		// 		isPlaceholder = true;
+		// 		delete this.settings.annotations[pluginId];
+		// 		annotation_div.classList.add('plugin-comment-placeholder');
+		// 	} else {
+		// 		isPlaceholder = false;
+
+		// 		const {type,content} = parse_annotation_1_4_0(annotation_text);
+				
+		// 		this.settings.annotations[pluginId] = {
+		// 			desc: content,
+		// 			name: pluginName,
+		// 			type: type,
+		// 		};
+		// 		annotation_div.classList.remove('plugin-comment-placeholder');
+		// 		isPlaceholder = false;
+		// 	}
+		// 	this.debouncedSaveAnnotations();
+		// });
 	}
 
 	async addIcon(tab: SettingTab) {

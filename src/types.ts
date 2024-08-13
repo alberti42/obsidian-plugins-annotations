@@ -49,7 +49,23 @@ export function isPluginAnnotation(anno:unknown): anno is PluginAnnotation {
 	return hasName && hasDesc && hasType;
 }
 
-
+// Function to render the annotation based on preamble
+export function parse_annotation(text: string): {type:AnnotationType,content:string} {
+	const lines = text.split('\n');
+	const preamble = lines[0].toLowerCase();
+	const sliced = lines.slice(1).join('\n');
+	
+	// annotation_div.innerHTML = '';
+	if (preamble.startsWith('html:')) {
+		return {type: AnnotationType.html, content: sliced};
+	} else if (preamble.startsWith('markdown:')) {
+		return {type: AnnotationType.markdown, content: sliced};
+	} else if (preamble.startsWith('text:')) {
+		return {type: AnnotationType.text, content: sliced};
+	} else {
+		return {type: AnnotationType.markdown, content: text};
+	}
+}
 
 export enum AnnotationType {
 	text = 'text',
