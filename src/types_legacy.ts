@@ -28,7 +28,7 @@ export function isSettingsFormat_1_4_0(s:unknown): s is PluginsAnnotationsSettin
 }
 
 // Function to render the annotation based on preamble
-export function parse_annotation_1_4_0(text: string): {type:AnnotationType,content:string} {
+export function parseAnnotation_1_4_0(text: string): {type:AnnotationType,content:string} {
 	const lines = text.split('\n');
 	const preamble = lines[0].toLowerCase();
 	const sliced = lines.slice(1).join('\n');

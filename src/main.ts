@@ -14,8 +14,8 @@ import {
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { AnnotationType, isPluginAnnotation, isPluginsAnnotationsSettings, parse_annotation, PluginAnnotationDict, PluginsAnnotationsSettings } from './types';
-import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parse_annotation_1_4_0, } from 'types_legacy'
+import { AnnotationType, isPluginAnnotation, isPluginsAnnotationsSettings, parseAnnotation, PluginAnnotationDict, PluginsAnnotationsSettings } from './types';
+import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, } from 'types_legacy'
 import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
@@ -78,7 +78,7 @@ export default class PluginsAnnotations extends Plugin {
 				const upgradedAnnotations: PluginAnnotationDict = {};
 				for (const pluginId in data.annotations) {
 					const annotation = data.annotations[pluginId];
-					const {type,content} = parse_annotation_1_4_0(annotation.anno);
+					const {type,content} = parseAnnotation_1_4_0(annotation.anno);
 					upgradedAnnotations[pluginId] = {
 						name: annotation.name,
 						desc: content,
@@ -329,6 +329,7 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	async renderAnnotation(annotation_div: HTMLDivElement, annoType:AnnotationType, desc:string) {
+		annotation_div.innerText = '';
 		switch(annoType) {
 			case AnnotationType.text: {
 				const p = document.createElement('p');
@@ -443,7 +444,6 @@ export default class PluginsAnnotations extends Plugin {
 						preamble = 'markdown:';
 					}
 
-					console.log("ANNOTATION TEXT:",annotationDesc);
 					annotation_div.innerText = preamble + '\n' + annotationDesc;
 				}
 			}
@@ -453,10 +453,13 @@ export default class PluginsAnnotations extends Plugin {
 		annotation_div.addEventListener('blur', (event:FocusEvent) => {
 			if(!this.settings.editable) { return; }
 
-			annotationDesc = annotation_div.innerText.trim();
+			const innerText = annotation_div.innerText.trim();
 
-			if (isPlaceholder || annotationDesc === '') { // placeholder
+			console.log(innerText);
+
+			if (isPlaceholder || innerText === '') { // placeholder
 				annotation_div.innerHTML = placeholder;
+				delete this.settings.annotations[pluginId];
 				annotation_div.classList.add('plugin-comment-placeholder');
 				if (this.settings.hide_placeholders) {
 					annotation_container.classList.add('plugin-comment-placeholder');
@@ -465,10 +468,13 @@ export default class PluginsAnnotations extends Plugin {
 			} else {
 				isPlaceholder = false;
 
-				const {type,content} = parse_annotation(annotationDesc);
+				const {annoType: type,annoDesc: content} = parseAnnotation(innerText);
+
+				annotationDesc = content;
+				annoType = type;
 				
 				this.settings.annotations[pluginId] = {
-					desc: content,
+					desc: annotationDesc,
 					name: pluginName,
 					type: type,
 				};
