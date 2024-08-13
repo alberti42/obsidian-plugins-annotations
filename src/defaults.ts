@@ -1,9 +1,15 @@
 // defaults.ts
 
-import { PluginsAnnotationsSettings } from './types';
+import { AnnotationType, PluginsAnnotationsSettings } from './types';
 
 export const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
-	annotations: {},
+	annotations: {
+		"plugins-annotations": {
+			"name": "Plugins Annotations",
+			"desc": "Allows writing annotations (just like this one) about the community plugins installed in the vault.",
+			"type": AnnotationType.markdown,
+		}
+	},
 	plugins_annotations_uuid: 'BC56AB7B-A46F-4ACF-9BA1-3A4461F74C79',
 	hide_placeholders: false,
 	delete_placeholder_string_on_insertion: false,

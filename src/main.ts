@@ -37,8 +37,8 @@ export default class PluginsAnnotations extends Plugin {
 		
 		// console.log('Loading Plugins Annotations');
 
-		// Load and add settings tab
-		// await this.loadSettings();
+		// Add settings tab. It avoids loading the setting at this stage
+		// because the cache about the files in the vault is not created yet.
 		this.addSettingTab(new PluginsAnnotationsSettingTab(this.app, this));
 		
 		this.app.workspace.onLayoutReady(() => {
@@ -69,8 +69,9 @@ export default class PluginsAnnotations extends Plugin {
 		
 		// Nested function to handle different versions of settings
 		const getSettingsFromData = (data: unknown): unknown => {
-
-			if (isPluginsAnnotationsSettings(data)) {
+			if(data === null) { // if the file is empty
+				return data;
+			} else if (isPluginsAnnotationsSettings(data)) {
 				const settings: PluginsAnnotationsSettings = data;
 				return settings;
 			} else if (isSettingsFormat_1_4_0(data)) { // previous versions where the name of the plugins was not stored
