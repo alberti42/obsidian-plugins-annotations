@@ -266,7 +266,7 @@ export default class PluginsAnnotations extends Plugin {
 						if (annotation) {
 							if(containerEl && containerEl.lastElementChild)
 							{
-								self.addComment(containerEl.lastElementChild)
+								self.addAnnotation(containerEl.lastElementChild)
 							}							
 						}
 				};
@@ -281,7 +281,7 @@ export default class PluginsAnnotations extends Plugin {
 
 			const observer = new MutationObserver(() => {
 				this.addIcon(tab);
-				this.addComments(tab);
+				this.addAnnotations(tab);
 			});
 
 			observer.observe(tab.containerEl, { childList: true, subtree: false });
@@ -290,7 +290,7 @@ export default class PluginsAnnotations extends Plugin {
 
 		// Initial call to add comments to already present plugins
 		this.addIcon(tab);
-		this.addComments(tab);
+		this.addAnnotations(tab);
 	}
 
 	disconnectObservers() {
@@ -302,7 +302,7 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	// Helper function to parse links and add click listeners
-	parse_links(element: HTMLElement) {
+	handleAnnotationLinks(element: HTMLElement) {
 		const links = element.querySelectorAll('a');
 		links.forEach(link => {
 			link.addEventListener('click', (event) => {
@@ -328,50 +328,40 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	async render_annotation(annotation_div: HTMLDivElement, t:AnnotationType, c:string) {
-		switch(t) {
+	async renderAnnotation(annotation_div: HTMLDivElement, annoType:AnnotationType, desc:string) {
+		switch(annoType) {
 			case AnnotationType.text: {
 				const p = document.createElement('p');
 				p.dir = 'auto';
 				const label = this.create_label();
 				if(label) {
 					p.appendChild(label);
-					p.appendText(c);
+					p.appendText(desc);
 				}
 				else {
-					p.innerText = c;
+					p.innerText = desc;
 				}					
 				annotation_div.appendChild(p);
 				break;
 			}
 			case AnnotationType.html: {
 				const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-				let c_with_label;
-				if(label.trim()==="") {
-					c_with_label = c;
-				} else {
-					c_with_label = c.replace(/\$\{label\}/g, label);
-				}
-				annotation_div.innerHTML = c_with_label;
-				this.parse_links(annotation_div);
+				const desc_with_label = desc.replace(/\$\{label\}/g, label);
+				annotation_div.innerHTML = desc_with_label;
+				this.handleAnnotationLinks(annotation_div);
 				break;
 			}
 			case AnnotationType.markdown: {
 				const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-				let c_with_label;
-				if(label.trim()==="") {
-					c_with_label = c;
-				} else {
-					c_with_label = c.replace(/\$\{label\}/g, label);
-				}
-				await MarkdownRenderer.renderMarkdown(c_with_label, annotation_div, '', this);
-				this.parse_links(annotation_div);
+				const desc_with_label = desc.replace(/\$\{label\}/g, label);
+				await MarkdownRenderer.renderMarkdown(desc_with_label, annotation_div, '', this);
+				this.handleAnnotationLinks(annotation_div);
 				break;
 			}
 		}
 	}
 
-	set_annotation(annotation_container:HTMLDivElement,annotation_div:HTMLDivElement,pluginId:string,pluginName:string) {
+	configureAnnotation(annotation_container:HTMLDivElement,annotation_div:HTMLDivElement,pluginId:string,pluginName:string) {
 		
 		annotation_div.contentEditable = this.settings.editable ? 'true' : 'false';
 
@@ -396,7 +386,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 
 		// Initial render
-		this.render_annotation(annotation_div,annoType,annotation_text);
+		this.renderAnnotation(annotation_div,annoType,annotation_text);
 
 		let clickedLink = false;
 		const handleMouseDown = (event:MouseEvent) => {
@@ -456,7 +446,7 @@ export default class PluginsAnnotations extends Plugin {
 				isPlaceholder = true;
 			} else {
 				const {type,content} = parse_annotation_1_4_0(annotation_text);
-				this.render_annotation(annotation_div,type,content);
+				this.renderAnnotation(annotation_div,type,content);
 			}
 		}
 
@@ -567,7 +557,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	addComment(plugin: Element) {
+	addAnnotation(plugin: Element) {
 		const settingItemInfo = plugin.querySelector('.setting-item-info');
 		if (settingItemInfo) {
 			const pluginNameDiv = plugin.querySelector('.setting-item-name');
@@ -594,7 +584,7 @@ export default class PluginsAnnotations extends Plugin {
 					const annotation_div = document.createElement('div');
 					annotation_div.className = 'plugin-comment-annotation';
 
-					this.set_annotation(annotation_container,annotation_div,pluginId,pluginName);
+					this.configureAnnotation(annotation_container,annotation_div,pluginId,pluginName);
 
 					annotation_container.appendChild(annotation_div);
 					descriptionDiv.appendChild(annotation_container);						
@@ -603,7 +593,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	async addComments(tab: SettingTab) {
+	async addAnnotations(tab: SettingTab) {
 		// force reload - this is convenient because since the loading of the plugin
 		// there could be changes in the settings due to synchronization among devices
 		// which only happens after the plugin is loaded
@@ -614,7 +604,7 @@ export default class PluginsAnnotations extends Plugin {
 
 		const plugins = pluginsContainer.querySelectorAll('.setting-item');
 		plugins.forEach(plugin => {
-			this.addComment(plugin);
+			this.addAnnotation(plugin);
 		});
 	}
 
