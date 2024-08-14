@@ -171,12 +171,19 @@ export default class PluginsAnnotations extends Plugin {
 		} else return "";
 	}
 	
-	async saveSettings(settings:PluginsAnnotationsSettings) {
+	async saveSettings() {
 		try {
-			await this.saveData(settings);
+			await this.saveData(this.settings);
 		} catch (error) {
 			console.error('Failed to save annotations:', error);
-		}	
+		}
+		if(this.settings.markdown_file_path!=='') {
+			try {
+				await writeAnnotationsToMdFile(this);
+			} catch (error) {
+				console.error('Failed to save annotations to md file:', error);
+			}
+		}		
 	}
 
 	constructPluginNameToIdMap(): Record < string, string > {
@@ -633,22 +640,15 @@ export default class PluginsAnnotations extends Plugin {
 			this.addAnnotation(plugin);
 		});
 	}
-
-	debouncedSaveAnnotations() {
-		// timeout after 250 ms
-		const timeout_ms = 250;
-
+	
+	async debouncedSaveAnnotations(timeout_ms = 250) {
+		
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
 		}
-
-		const settings = this.settings;
-
+		
 		this.saveTimeout = window.setTimeout(async () => {
-			this.saveSettings(settings);
-			if(this.settings.markdown_file_path!=='') {
-				writeAnnotationsToMdFile(this);	
-			}
+			this.saveSettings();
 			this.saveTimeout = null;
 		}, timeout_ms);
 	}

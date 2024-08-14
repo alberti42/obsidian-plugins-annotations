@@ -315,14 +315,14 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					const backupName = 'Backup name (click to edit)';
 					if (backupName) {
 						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const { backups: _, ...currentSettings } = this.plugin.settings;
+						const { backups:_, ...currentSettings } = this.plugin.settings;
 						this.plugin.settings.backups.push({
 							name: backupName,
 							date: new Date(),
 							settings: { ...currentSettings }
 						});
-						this.plugin.debouncedSaveAnnotations();
-						this.display(); // Refresh the display to show the new backup
+						await this.plugin.saveSettings();
+						this.display();
 					}
 				})
 			);
@@ -338,7 +338,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						.setCta()
 						.onClick(async () => {
 							this.plugin.settings = { backups: this.plugin.settings.backups, ...backup.settings };
-							this.plugin.debouncedSaveAnnotations();
+							await this.plugin.saveSettings();
 							alert(`Annotations restored from backup: ${backup.name}`);
 							this.display(); // Refresh the display to reflect the restored annotations
 						})
@@ -348,7 +348,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						.setCta()
 						.onClick(async () => {
 							this.plugin.settings.backups.splice(index, 1);
-							this.plugin.debouncedSaveAnnotations();
+							await this.plugin.saveSettings();
 							this.display(); // Refresh the display to remove the deleted backup
 						})
 					);
