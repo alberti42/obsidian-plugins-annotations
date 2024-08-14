@@ -50,21 +50,26 @@ export function isPluginAnnotation(anno:unknown): anno is PluginAnnotation {
 }
 
 // Function to render the annotation based on preamble
-export function parseAnnotation(text: string): {annoType:AnnotationType,annoDesc:string} {
-	const lines = text.split('\n');
-	const preamble = lines[0].toLowerCase();
-	const sliced = lines.slice(1).join('\n');
-	
-	// annotation_div.innerHTML = '';
-	if (preamble.startsWith('html:')) {
-		return {annoType: AnnotationType.html, annoDesc: sliced};
-	} else if (preamble.startsWith('markdown:')) {
-		return {annoType: AnnotationType.markdown, annoDesc: sliced};
-	} else if (preamble.startsWith('text:')) {
-		return {annoType: AnnotationType.text, annoDesc: sliced};
-	} else {
-		return {annoType: AnnotationType.markdown, annoDesc: text};
-	}
+export function parseAnnotation(text: string): {annoType: AnnotationType, annoDesc: string} {
+    const preambleRegex = /^(html|markdown|text):\s*/i;
+    const match = text.match(preambleRegex);
+
+    if (match) {
+        const annoTypeString = match[1].toLowerCase();
+        const sliced = text.slice(match[0].length).trim(); // Remove preamble and any leading/trailing whitespace
+        
+        switch (annoTypeString) {
+            case 'html':
+                return {annoType: AnnotationType.html, annoDesc: sliced};
+            case 'markdown':
+                return {annoType: AnnotationType.markdown, annoDesc: sliced};
+            case 'text':
+                return {annoType: AnnotationType.text, annoDesc: sliced};
+        }
+    }
+
+    // Default case: treat as markdown
+    return {annoType: AnnotationType.markdown, annoDesc: text.trim()};
 }
 
 export enum AnnotationType {

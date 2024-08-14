@@ -453,13 +453,19 @@ export default class PluginsAnnotations extends Plugin {
 			}
 		});
 
+		// Save the comment on input change and update inputTriggered status
+		annotation_div.addEventListener('input', (event: Event) => {
+			if(!this.settings.editable) return;
+			isPlaceholder = false;
+		});
+
 		// Add placeholder class back if no changes are made
 		annotation_div.addEventListener('blur', (event:FocusEvent) => {
 			if(!this.settings.editable) { return; }
 
-			const innerText = annotation_div.innerText.trim();
+			const {annoType: type, annoDesc: content} = parseAnnotation(annotation_div.innerText.trim());
 
-			if (isPlaceholder || innerText === '') { // placeholder
+			if (isPlaceholder || content === '') { // placeholder
 				annotation_div.innerHTML = placeholder;
 				delete this.settings.annotations[pluginId];
 				annotation_div.classList.add('plugin-comment-placeholder');
@@ -467,12 +473,12 @@ export default class PluginsAnnotations extends Plugin {
 					annotation_container.classList.add('plugin-comment-placeholder');
 				}
 				isPlaceholder = true;
+				annotationDesc = '';
+				annoType = AnnotationType.html;
 			} else {
 				isPlaceholder = false;
 
-				const {annoType: type,annoDesc: content} = parseAnnotation(innerText);
-
-				annotationDesc = content;
+				annotationDesc = content.trim();
 				annoType = type;
 				
 				this.settings.annotations[pluginId] = {
