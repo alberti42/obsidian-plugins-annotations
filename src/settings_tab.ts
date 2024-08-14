@@ -86,10 +86,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		const containerEl = this.containerEl;
 		containerEl.empty();
 
-		/* ====== Personal annotations ====== */
+		/* ====== Instructions ====== */
 
-		new Setting(containerEl).setName('Personal annotations').setHeading();
-		const instructions = createFragment((frag) => {
+		new Setting(containerEl).setName('Instructions').setHeading();
+		
+		const instructions_frag = createFragment((frag) => {
 			const div = document.createElement('div');
 			div.classList.add('plugin-comment-instructions');
 
@@ -122,10 +123,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			frag.appendChild(div);
 		});
 
-		// Append instructions right after the Annotations heading
-		const instructions_div = containerEl.createDiv();
-		instructions_div.classList.add('setting-item');
-		instructions_div.appendChild(instructions);
+		new Setting(containerEl).setName(instructions_frag);
+		
+		/* ==== Storage ==== */
+
+		new Setting(containerEl).setName('Storage').setHeading();
 
 		// Add new setting for storing annotations in a Markdown file
 		const toggle_md_file = new Setting(containerEl)
@@ -300,10 +302,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 	createBackupManager(containerEl: HTMLElement) {
 		new Setting(containerEl)
-			.setName('Backup Annotations')
+			.setName('Backups')
 			.setHeading();
 
-		new Setting(containerEl)
+		const backup_settings = new Setting(containerEl)
 			.setName('Create a new backup of your current annotations. You can customize the names of existing backups by clicking on the respective backup names.')
 			.addButton(button => button
 				.setButtonText('Create Backup')
@@ -312,7 +314,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					const backupName = 'Backup name (click to edit)';
 					if (backupName) {
 						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const { backups:_, ...currentSettings } = this.plugin.settings;
+						const { backups: _, ...currentSettings } = this.plugin.settings;
 						this.plugin.settings.backups.push({
 							name: backupName,
 							date: new Date(),
@@ -322,54 +324,38 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						this.display();
 					}
 				})
-			)
-			.addButton(button => button
+			);
+
+		if (Platform.isDesktopApp) {
+			backup_settings.addButton(button => button
 				.setButtonText('Download settings')
 				.setCta()
 				.onClick(async () => {
 					downloadJson(this.plugin.settings);
 				})
 			);
-		
+		}
+
 		// List Existing Backups
 		if (this.plugin.settings.backups.length > 0) {
 
 			// Sort the backups by date (most recent first)
-			this.plugin.settings.backups.sort((a, b) => {
-				return a.date.getTime() - b.date.getTime();
-			});
+			this.plugin.settings.backups.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+			// Create a wrapper div for the table
+			const tableDiv = containerEl.createDiv({ cls: 'plugin-comment-backup-table' });
+
+			// Create the header row
+			const headerRow = tableDiv.createDiv({ cls: 'backup-table-row header' });
+			headerRow.createDiv({ cls: 'backup-table-cell', text: 'Backup name (click to edit)' });
+			headerRow.createDiv({ cls: 'backup-table-cell', text: 'Created on' });
 
 			this.plugin.settings.backups.forEach((backup, index) => {
-				const setting = new Setting(containerEl)
-					.setName('')
-					.setDesc(`Created on: ${moment(backup.date).format('YYYY-MM-DD HH:mm:ss')}`)
-					.addButton(button => button
-						.setButtonText('Restore')
-						.setCta()
-						.onClick(async () => {
-							this.plugin.settings = { backups: this.plugin.settings.backups, ...backup.settings };
-							await this.plugin.saveSettings();
-							alert(`Annotations restored from backup: ${backup.name}`);
-							this.display(); // Refresh the display to reflect the restored annotations
-						})
-					)
-					.addButton(button => button
-						.setButtonText('Delete')
-						.setCta()
-						.onClick(async () => {
-							this.plugin.settings.backups.splice(index, 1);
-							await this.plugin.saveSettings();
-							this.display(); // Refresh the display to remove the deleted backup
-						})
-					);
+				const rowDiv = tableDiv.createDiv({ cls: 'backup-table-row' });
 
-				setting.settingEl.classList.add('plugin-comment-backup');
-
-				// Create an editable div for the backup name
-				const nameDiv = document.createElement('div');
-				nameDiv.textContent = backup.name;
-				nameDiv.contentEditable = 'true';
-				nameDiv.classList.add('editable-backup-name'); // You can style this class in your CSS
+				// Backup name cell
+				const nameCell = rowDiv.createDiv({ cls: 'backup-table-cell editable-backup-name' });
+				const nameDiv = nameCell.createDiv({ text: backup.name, attr: { contenteditable: 'true' } });
 
 				// Handle saving the updated name when editing is complete
 				nameDiv.addEventListener('blur', async () => {
@@ -386,7 +372,26 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					}
 				});
 
-				setting.nameEl.appendChild(nameDiv);
+				// Created on cell
+				const dateCell = rowDiv.createDiv({ cls: 'backup-table-cell' });
+				dateCell.setText(moment(backup.date).format('YYYY-MM-DD HH:mm:ss'));
+
+				// Add Restore and Delete buttons to the last cell
+				const actionCell = rowDiv.createDiv({ cls: 'backup-table-cell actions' });
+				actionCell.createEl('button', { text: 'Restore', cls: 'mod-cta' })
+					.addEventListener('click', async () => {
+						this.plugin.settings = { backups: this.plugin.settings.backups, ...backup.settings };
+						await this.plugin.saveSettings();
+						alert(`Annotations restored from backup: ${backup.name}`);
+						this.display(); // Refresh the display to reflect the restored annotations
+					});
+
+				actionCell.createEl('button', { text: 'Delete', cls: 'mod-cta' })
+					.addEventListener('click', async () => {
+						this.plugin.settings.backups.splice(index, 1);
+						await this.plugin.saveSettings();
+						this.display(); // Refresh the display to remove the deleted backup
+					});
 			});
 		}
 	}

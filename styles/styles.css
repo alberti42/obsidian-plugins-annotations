@@ -64,3 +64,34 @@ div.plugin-comment-instructions strong {
 .plugin-comment-uninstalled {
 	margin-left:40px !important;
 }
+
+.plugin-comment-backup-table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.backup-table-row {
+    display: table-row;
+}
+
+.backup-table-cell {
+    display: table-cell;
+    padding: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    vertical-align: middle;
+}
+
+.backup-table-row.header .backup-table-cell {
+    font-weight: bold;
+    background-color: var(--background-modifier-accent);
+}
+
+.editable-backup-name {
+    cursor: text;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+}
