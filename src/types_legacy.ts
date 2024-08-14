@@ -14,7 +14,7 @@ export type PluginAnnotationDict_1_4_0 = {
 }
 
 // Extend the original interface and override the annotations property
-export interface PluginsAnnotationsSettings_1_4_0 extends Omit<PluginsAnnotationsSettings, 'annotations' | 'markdown_file_path' | 'compatibility'> {
+export interface PluginsAnnotationsSettings_1_4_0 extends Omit<PluginsAnnotationsSettings, 'annotations' | 'markdown_file_path' | 'compatibility' | 'backups' > {
 	annotations: PluginAnnotationDict_1_4_0;
 }
 

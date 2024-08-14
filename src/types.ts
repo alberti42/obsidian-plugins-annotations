@@ -12,6 +12,12 @@ export interface PluginAnnotationDict {
 	[pluginId: string]: PluginAnnotation;
 }
 
+export interface PluginBackup {
+    name: string;
+    date: Date;
+    settings: PluginsAnnotationsSettingsWithoutBackups;
+}
+
 export interface PluginsAnnotationsSettings {
 	annotations: PluginAnnotationDict;
 	plugins_annotations_uuid: string;
@@ -24,7 +30,10 @@ export interface PluginsAnnotationsSettings {
 	automatic_remove: boolean;
 	markdown_file_path: string;
 	compatibility: string;
+	backups: PluginBackup[];
 }
+
+type PluginsAnnotationsSettingsWithoutBackups = Omit<PluginsAnnotationsSettings, 'backups'>;
 
 export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotationsSettings {
 	if (typeof s !== 'object' || s === null) {

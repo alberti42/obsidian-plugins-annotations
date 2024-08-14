@@ -1,6 +1,5 @@
 // utils.ts
 
-import PluginsAnnotations from "main";
 import { App, Modal, normalizePath, TAbstractFile, TFile, TFolder, Vault,
 	AbstractInputSuggest, prepareFuzzySearch, SearchResult } from "obsidian";
 import * as path from "path";

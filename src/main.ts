@@ -60,11 +60,9 @@ export default class PluginsAnnotations extends Plugin {
 		});
 	}
 
-	async loadSettings(): Promise<void> {
-		// Create a mapping of names to IDs for the installed plugins
-		this.pluginNameToIdMap = this.constructPluginNameToIdMap();
-		this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
-		
+	/* Load settings for different versions */
+	importSettings(data: unknown): {importedSettings: unknown, wasUpdated: boolean} {
+
 		// Set to true when the settings are updated to the new format
 		let wasUpdated = false;
 		
@@ -95,6 +93,7 @@ export default class PluginsAnnotations extends Plugin {
 					...oldSettings,
 					annotations: upgradedAnnotations,
 					plugins_annotations_uuid: DEFAULT_SETTINGS.plugins_annotations_uuid,
+					backups: DEFAULT_SETTINGS.backups,
 					compatibility: DEFAULT_SETTINGS.compatibility,
 					markdown_file_path: DEFAULT_SETTINGS.markdown_file_path
 				};
@@ -131,8 +130,20 @@ export default class PluginsAnnotations extends Plugin {
 			}
 		};
 
+		const importedSettings = getSettingsFromData(data);
+
+		return {importedSettings, wasUpdated};
+	}
+
+	async loadSettings(): Promise<void> {
+		// Create a mapping of names to IDs for the installed plugins
+		this.pluginNameToIdMap = this.constructPluginNameToIdMap();
+		this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
+		
+		const {importedSettings, wasUpdated} = this.importSettings(await this.loadData());
+
 		// Merge loaded settings with default settings
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, getSettingsFromData(await this.loadData()));
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, importedSettings);
 
 		if(wasUpdated) {
 			this.debouncedSaveAnnotations();

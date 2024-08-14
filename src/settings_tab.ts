@@ -290,13 +290,73 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 
 		/* ====== Backups ====== */
-
-		
-
+		this.createBackupManager(containerEl);
 
 		/* ====== Personal annotations of no longer installed community plugins ====== */
-
 		this.createUninstalledPluginSettings(containerEl);
 	}
+
+    createBackupManager(containerEl: HTMLElement) {
+        new Setting(containerEl)
+			.setName('Backup Annotations')
+			.setHeading();
+
+		// Create Backup Button
+		new Setting(containerEl)
+			.setName('Create Backup')
+			.setDesc('Create a new backup of your current annotations.')
+			.addButton(button => button
+				.setButtonText('Create Backup')
+				.setCta()
+				.onClick(async () => {
+					const backupName = prompt('Enter a name for this backup:');
+					if (backupName) {
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
+						const {backups:_,...currentSettings} = this.plugin.settings;
+						this.plugin.settings.backups.push({
+							name: backupName,
+							date: new Date(),
+							settings: { ...currentSettings }
+						});
+						this.plugin.debouncedSaveAnnotations();
+						this.display(); // Refresh the display to show the new backup
+					}
+				})
+			);
+
+		// List Existing Backups
+		if (this.plugin.settings.backups.length > 0) {
+			new Setting(containerEl)
+				.setName('Restore Backup')
+				.setDesc('Select a backup to restore your annotations.');
+
+			this.plugin.settings.backups.forEach((backup, index) => {
+				new Setting(containerEl)
+					.setName(backup.name)
+					.setDesc(`Created on: ${backup.date.toLocaleString()}`)
+					.addButton(button => button
+						.setButtonText('Restore')
+						.setCta()
+						.onClick(async () => {
+							this.plugin.settings = { backups: this.plugin.settings.backups, ...backup.settings };
+							this.plugin.debouncedSaveAnnotations();
+							alert(`Annotations restored from backup: ${backup.name}`);
+							this.display(); // Refresh the display to reflect the restored annotations
+						})
+					)
+					.addButton(button => button
+						.setButtonText('Delete')
+						.setCta()
+						.onClick(async () => {
+							this.plugin.settings.backups.splice(index, 1);
+							this.plugin.debouncedSaveAnnotations();
+							this.display(); // Refresh the display to remove the deleted backup
+						})
+					);
+			});
+		}
+
+
+    }
 }
 

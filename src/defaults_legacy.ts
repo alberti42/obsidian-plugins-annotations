@@ -1,18 +1,22 @@
 // defaults.ts
 
+import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettings_1_3_0, PluginsAnnotationsSettings_1_4_0 } from './types_legacy';
 
+/* ===== Version 1.4.0 ===== */
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const { annotations:_, markdown_file_path:__, compatibility:___, backups:____, ...theRestingSettings_1_4_0} = DEFAULT_SETTINGS;
+
+
 export const DEFAULT_SETTINGS_1_4_0: PluginsAnnotationsSettings_1_4_0 = {
+	...theRestingSettings_1_4_0,
 	annotations: {},
 	plugins_annotations_uuid: 'B265C5B2-A6AD-4194-9E4C-C1327DB1EA18',
-	hide_placeholders: false,
-	delete_placeholder_string_on_insertion: false,
-	label_mobile: '<b>Annotation:&nbsp;</b>',
-	label_desktop: '<b>Personal annotation:&nbsp;</b>',
-	label_placeholder : "<em>Add your personal comment about <strong>${plugin_name}</strong> here...</em>",
-	editable: true,
-	automatic_remove: false,
 }
+
+
+/* ===== Version 1.3.0 ===== */
 
 export const DEFAULT_SETTINGS_1_3_0: PluginsAnnotationsSettings_1_3_0 = {
   ...DEFAULT_SETTINGS_1_4_0,
