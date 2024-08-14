@@ -61,13 +61,13 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 	/* Load settings for different versions */
-	importSettings(data: unknown): {importedSettings: unknown, wasUpdated: boolean} {
+	async importSettings(data: unknown): Promise<{importedSettings: unknown, wasUpdated: boolean}> {
 
 		// Set to true when the settings are updated to the new format
 		let wasUpdated = false;
 		
 		// Nested function to handle different versions of settings
-		const getSettingsFromData = (data: unknown): unknown => {
+		const getSettingsFromData = async (data: unknown): Promise<unknown> => {
 			if(data === null) { // if the file is empty
 				return data;
 			} else if (isPluginsAnnotationsSettings(data)) {
@@ -98,8 +98,9 @@ export default class PluginsAnnotations extends Plugin {
 					markdown_file_path: DEFAULT_SETTINGS.markdown_file_path
 				};
 				wasUpdated = true;
-				return getSettingsFromData(newSettings);
-				
+				console.log("VERSION 1.4");
+				await this.backupSettings('Backup before upgrading from 1.4 to 1.5',newSettings);
+				return await getSettingsFromData(newSettings);
 			} else if (isSettingsFormat_1_3_0(data)) { // previous versions where the name of the plugins was not stored
 				// Upgrade annotations format
 				const upgradedAnnotations: PluginAnnotationDict_1_4_0 = {};
@@ -120,38 +121,74 @@ export default class PluginsAnnotations extends Plugin {
 					plugins_annotations_uuid: DEFAULT_SETTINGS_1_4_0.plugins_annotations_uuid,
 				};
 				wasUpdated = true;
-				return getSettingsFromData(newSettings);
+				console.log("VERSION 1.3");
+
+				await this.backupSettings('Backup before upgrading from 1.3 to 1.4',newSettings);
+				return await getSettingsFromData(newSettings);
 			} else {
 				// Very first version of the plugin 1.0 -- no options were stored, only the dictionary of annotations
 				const newSettings: PluginsAnnotationsSettings_1_3_0 = { ...DEFAULT_SETTINGS_1_3_0 };
 				newSettings.annotations = isPluginAnnotationDictFormat_1_3_0(data) ? data : DEFAULT_SETTINGS_1_3_0.annotations;
 				wasUpdated = true;
-				return getSettingsFromData(newSettings);
+				console.log("VERSION 1.0");
+				await this.backupSettings('Backup before upgrading from 1.0 to 1.3',newSettings);
+				return await getSettingsFromData(newSettings);
 			}
 		};
 
-		const importedSettings = getSettingsFromData(data);
+		const importedSettings = await getSettingsFromData(data);
 
 		return {importedSettings, wasUpdated};
 	}
 
-	async loadSettings(): Promise<void> {
+	async backupSettings(backupName: string, settings: unknown) {
+		// Ensure settings is an object
+		if (typeof settings !== 'object' || settings === null) return;
+
+		let settingsWithoutBackup;
+
+		// Remove the backups field from the settings to be backed up
+		if (settings.hasOwnProperty('backups')) {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { backups: _, ...rest } = settings as { backups: unknown };
+			settingsWithoutBackup = rest;
+		} else {
+			settingsWithoutBackup = settings;
+		}
+
+		// Use JSON.parse(JSON.stringify()) for a deep copy
+		const deepCopiedSettings = JSON.parse(JSON.stringify(settingsWithoutBackup));
+
+		// Add the backup with the deep-copied settings
+		this.settings.backups.push({
+			name: backupName,
+			date: new Date(),
+			settings: deepCopiedSettings
+		});
+
+		await this.saveSettings();
+	}
+
+
+	async loadSettings(data?: unknown): Promise<void> {
 		// Create a mapping of names to IDs for the installed plugins
 		this.pluginNameToIdMap = this.constructPluginNameToIdMap();
 		this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
 		
-		const data = await this.loadData();
-
-		if(data.backups) {
-			data.backups.forEach((backup: PluginBackup) => {
-				backup.date = new Date(backup.date); // Convert the date string to a Date object
-			});
+		if(data === undefined) {
+			data = await this.loadData();
 		}
 
-		const {importedSettings, wasUpdated} = this.importSettings(data);
+		const {importedSettings, wasUpdated} = await this.importSettings(data);
 
 		// Merge loaded settings with default settings
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, importedSettings);
+
+		if (this.settings.backups) {
+			this.settings.backups.forEach((backup: PluginBackup) => {
+				backup.date = new Date(backup.date); // Convert the date string to a Date object
+			});
+		}
 
 		if(wasUpdated) {
 			this.debouncedSaveAnnotations();
@@ -392,7 +429,13 @@ export default class PluginsAnnotations extends Plugin {
 
 	configureAnnotation(annotation_container:HTMLDivElement,annotation_div:HTMLDivElement,pluginId:string,pluginName:string) {
 		
-		annotation_div.contentEditable = this.settings.editable ? 'true' : 'false';
+		if(this.settings.editable) {
+			annotation_div.contentEditable = 'true';
+			annotation_div.classList.add('plugin-comment-annotation-editable');
+		} else {
+			annotation_div.contentEditable = 'false';
+			annotation_div.classList.remove('plugin-comment-annotation-editable');
+		}
 
 		const placeholder = (this.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
 
@@ -409,8 +452,12 @@ export default class PluginsAnnotations extends Plugin {
 			annoType = AnnotationType.html;
 		
 			annotation_div.classList.add('plugin-comment-placeholder');
-			if (this.settings.hide_placeholders) {
-				annotation_container.classList.add(this.settings.editable ? 'plugin-comment-placeholder' : 'plugin-comment-hidden');
+			if (this.settings.hide_placeholders) { // if it is a placeholder
+				if(this.settings.editable) { // if fields can be edited, set the placeholder tag
+					annotation_container.classList.add('plugin-comment-placeholder');
+				} else { // if fields cannot be edited, just simply hide placeholders
+					annotation_container.classList.add('plugin-comment-hidden');
+				}
 			}
 		}
 
@@ -568,8 +615,10 @@ export default class PluginsAnnotations extends Plugin {
 					if (div instanceof HTMLDivElement) {
 						if(this.settings.editable) {
 							div.contentEditable = 'true';
+							div.classList.add('plugin-comment-annotation-editable');
 						} else {
 							div.contentEditable = 'false';
+							div.classList.remove('plugin-comment-annotation-editable');
 						}
 					}
 				});

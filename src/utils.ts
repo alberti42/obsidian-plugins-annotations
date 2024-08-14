@@ -83,7 +83,9 @@ export async function createFolderIfNotExists(vault: Vault, folderPath: string) 
 
 /* File suggestions */
 export class FileSuggestion extends AbstractInputSuggest<TFile> {
-	constructor(app: App, inputEl: HTMLInputElement, private files:TFile[], private onSelectCallback: (file: TFile) => void = (v: TFile) => {}) {
+	private files:TFile[] = [];
+
+	constructor(app: App, inputEl: HTMLInputElement, private onSelectCallback: (file: TFile) => void = (v: TFile) => {}) {
 		super(app, inputEl);
 	}
 
@@ -117,6 +119,10 @@ export class FileSuggestion extends AbstractInputSuggest<TFile> {
 		this.textInputEl.setSelectionRange(this.textInputEl.value.length,this.textInputEl.value.length)
 		this.textInputEl.focus()
 		this.close();
+	}
+
+	setSuggestions(files:TFile[]) {
+		this.files = files;
 	}
 }
 

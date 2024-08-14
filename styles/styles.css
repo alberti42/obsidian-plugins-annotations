@@ -33,6 +33,10 @@
 	width: 100%;
 }
 
+.plugin-comment-annotation-editable {
+	cursor: text;
+}
+
 /* Show comment container when hovering over the plugin container */
 .setting-item:hover .plugin-comment.plugin-comment-placeholder {
 	display: block;
@@ -60,7 +64,7 @@ div.plugin-comment-instructions strong {
   margin-bottom: 0;
 }
 
-.plugin-comment-backup,
+.plugin-comment-backup-table,
 .plugin-comment-uninstalled {
 	margin-left:40px !important;
 }
@@ -71,27 +75,26 @@ div.plugin-comment-instructions strong {
     border-collapse: collapse;
 }
 
-.backup-table-row {
+.plugin-comment-backup-table-row {
     display: table-row;
 }
 
-.backup-table-cell {
+.plugin-comment-backup-table-cell {
     display: table-cell;
-    padding: 8px;
+    padding: 8px 0 8px 0;
     border-bottom: 1px solid var(--background-modifier-border);
     vertical-align: middle;
 }
 
-.backup-table-row.header .backup-table-cell {
-    font-weight: bold;
-    background-color: var(--background-modifier-accent);
+.plugin-comment-backup-table-row.header .plugin-comment-backup-table-cell {
+	font-weight: var(--font-semibold);
 }
 
-.editable-backup-name {
+.plugin-comment-backup-name {
     cursor: text;
 }
 
-.actions {
+.plugin-comment-backup-buttons {
     display: flex;
     gap: 10px;
 }

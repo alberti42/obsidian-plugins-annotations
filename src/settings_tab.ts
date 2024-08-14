@@ -2,9 +2,9 @@
 
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
-import { App, Platform, PluginSettingTab, Setting, TextComponent } from "obsidian";
+import { App, Notice, Platform, PluginSettingTab, Setting, TextComponent, TFile } from "obsidian";
 import { PluginAnnotationDict } from "types";
-import { parseFilePath, FileSuggestion, downloadJson } from "utils";
+import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog } from "utils";
 
 declare const moment: typeof import('moment');
 
@@ -153,15 +153,21 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				text.setPlaceholder('E.g.: 00 Meta/Plugins annotations.md');
 				text.setValue(this.plugin.settings.markdown_file_path);
 
-				const vault_files = this.app.vault.getFiles().filter((f) => f.extension === "md");
-
 				const inputEl = text.inputEl;
-				new FileSuggestion(this.app, inputEl, vault_files);
+				const fileSuggestion = new FileSuggestion(this.app, inputEl);
+
+				const updateVaultFiles = () => {
+					if(fileSuggestion) {
+						fileSuggestion.setSuggestions(this.app.vault.getFiles().filter((f) => f.extension === "md"));
+					}
+				}
+
+				updateVaultFiles();
 
 				inputEl.addEventListener('keydown', (event) => {
 					if (event.key === 'Enter') {
 						event.preventDefault();
-						inputEl.dispatchEvent(new Event('change'));
+						inputEl.blur();
 					}
 				});
 
@@ -188,7 +194,8 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						md_filepath_error_div.style.display = 'none';
 						if(await handleMarkdownFilePathChange(this.plugin, filepath)) {
 							this.plugin.settings.markdown_file_path = filepath;
-							this.plugin.debouncedSaveAnnotations();
+							await this.plugin.saveSettings();
+							updateVaultFiles();
 						} else {
 							text.setValue(this.plugin.settings.markdown_file_path);
 						}
@@ -311,18 +318,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				.setButtonText('Create Backup')
 				.setCta()
 				.onClick(async () => {
-					const backupName = 'Backup name (click to edit)';
-					if (backupName) {
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const { backups: _, ...currentSettings } = this.plugin.settings;
-						this.plugin.settings.backups.push({
-							name: backupName,
-							date: new Date(),
-							settings: { ...currentSettings }
-						});
-						await this.plugin.saveSettings();
-						this.display();
-					}
+					const backupName = 'Untitled backup';
+					await this.plugin.backupSettings(backupName,this.plugin.settings);
+					this.display();
 				})
 			);
 
@@ -331,7 +329,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				.setButtonText('Download settings')
 				.setCta()
 				.onClick(async () => {
-					downloadJson(this.plugin.settings);
+					downloadJson({...this.plugin.settings, backups: []});
 				})
 			);
 		}
@@ -343,18 +341,21 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			this.plugin.settings.backups.sort((a, b) => b.date.getTime() - a.date.getTime());
 
 			// Create a wrapper div for the table
-			const tableDiv = containerEl.createDiv({ cls: 'plugin-comment-backup-table' });
+			const backupTableContainer = containerEl.createDiv({ cls: 'setting-item' });
+
+			const tableDiv = backupTableContainer.createDiv({ cls: 'plugin-comment-backup-table' });
 
 			// Create the header row
-			const headerRow = tableDiv.createDiv({ cls: 'backup-table-row header' });
-			headerRow.createDiv({ cls: 'backup-table-cell', text: 'Backup name (click to edit)' });
-			headerRow.createDiv({ cls: 'backup-table-cell', text: 'Created on' });
+			const headerRow = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row header' });
+			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Backup name (click to edit)' });
+			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Created on' });
+			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Actions' });
 
 			this.plugin.settings.backups.forEach((backup, index) => {
-				const rowDiv = tableDiv.createDiv({ cls: 'backup-table-row' });
+				const rowDiv = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row' });
 
 				// Backup name cell
-				const nameCell = rowDiv.createDiv({ cls: 'backup-table-cell editable-backup-name' });
+				const nameCell = rowDiv.createDiv({ cls: 'plugin-comment-backup-table-cell plugin-comment-backup-name' });
 				const nameDiv = nameCell.createDiv({ text: backup.name, attr: { contenteditable: 'true' } });
 
 				// Handle saving the updated name when editing is complete
@@ -373,24 +374,48 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				});
 
 				// Created on cell
-				const dateCell = rowDiv.createDiv({ cls: 'backup-table-cell' });
+				const dateCell = rowDiv.createDiv({ cls: 'plugin-comment-backup-table-cell' });
 				dateCell.setText(moment(backup.date).format('YYYY-MM-DD HH:mm:ss'));
 
 				// Add Restore and Delete buttons to the last cell
-				const actionCell = rowDiv.createDiv({ cls: 'backup-table-cell actions' });
+				const actionCell = rowDiv.createDiv({ cls: 'plugin-comment-backup-table-cell plugin-comment-backup-buttons' });
 				actionCell.createEl('button', { text: 'Restore', cls: 'mod-cta' })
 					.addEventListener('click', async () => {
-						this.plugin.settings = { backups: this.plugin.settings.backups, ...backup.settings };
-						await this.plugin.saveSettings();
-						alert(`Annotations restored from backup: ${backup.name}`);
-						this.display(); // Refresh the display to reflect the restored annotations
+						const answer = await showConfirmationDialog(this.plugin.app, 'Delete backup',
+							createFragment((frag) => {
+								frag.appendText('You are about to restore the settings from the backup named ');
+								frag.createEl('strong',{text: this.plugin.settings.backups[index].name});
+								frag.appendText(' created on ');
+								frag.createEl('strong',{text: moment(this.plugin.settings.backups[index].date).format('YYYY-MM-DD HH:mm:ss')});
+								frag.appendText('. If you proceed, the current settings will be overwritten with those from the backup. \
+									If you want to keep a copy of the current settings, make a backup before proceeding.\
+									Do you want to proceed restoring the seettings from the backup?');
+							}));
+						if(answer) {
+							const backups = [...this.plugin.settings.backups]; // store a copy of the backups before restoring the old settings
+							this.plugin.loadSettings(this.plugin.settings.backups[index].settings);
+							this.plugin.settings.backups = backups; // restore the copy of the backups
+							await this.plugin.saveSettings(); // save the restored settings with the backups
+							new Notice(`Annotations restored from backup "${backup.name}"`);
+							this.display(); // Refresh the display to reflect the restored annotations
+						}
 					});
 
 				actionCell.createEl('button', { text: 'Delete', cls: 'mod-cta' })
 					.addEventListener('click', async () => {
-						this.plugin.settings.backups.splice(index, 1);
-						await this.plugin.saveSettings();
-						this.display(); // Refresh the display to remove the deleted backup
+						const answer = await showConfirmationDialog(this.plugin.app, 'Delete backup',
+							createFragment((frag) => {
+								frag.appendText('You are about to delete the backup named ');
+								frag.createEl('strong',{text: this.plugin.settings.backups[index].name});
+								frag.appendText(' created on ');
+								frag.createEl('strong',{text: moment(this.plugin.settings.backups[index].date).format('YYYY-MM-DD HH:mm:ss')});
+								frag.appendText('. Do you want to continue?');
+							}));
+						if(answer) {
+							this.plugin.settings.backups.splice(index, 1);
+							await this.plugin.saveSettings();
+							this.display(); // Refresh the display to remove the deleted backup
+						}
 					});
 			});
 		}
