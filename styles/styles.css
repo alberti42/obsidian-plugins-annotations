@@ -60,7 +60,7 @@ div.plugin-comment-instructions strong {
   margin-bottom: 0;
 }
 
+.plugin-comment-backup,
 .plugin-comment-uninstalled {
-	color: red !important;
 	margin-left:40px !important;
 }

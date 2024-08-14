@@ -6,6 +6,8 @@ import { App, Platform, PluginSettingTab, Setting, TextComponent } from "obsidia
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion } from "utils";
 
+declare const moment: typeof import('moment');
+
 export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 	plugin: PluginsAnnotations;
 
@@ -296,23 +298,24 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		this.createUninstalledPluginSettings(containerEl);
 	}
 
-    createBackupManager(containerEl: HTMLElement) {
-        new Setting(containerEl)
+	
+	createBackupManager(containerEl: HTMLElement) {
+		new Setting(containerEl)
 			.setName('Backup Annotations')
 			.setHeading();
 
 		// Create Backup Button
 		new Setting(containerEl)
 			.setName('Create Backup')
-			.setDesc('Create a new backup of your current annotations.')
+			.setDesc('Create a new backup of your current annotations. You can customize the names of existing backups by clicking on the respective backup names.')
 			.addButton(button => button
 				.setButtonText('Create Backup')
 				.setCta()
 				.onClick(async () => {
-					const backupName = prompt('Enter a name for this backup:');
+					const backupName = 'Backup name (click to edit)';
 					if (backupName) {
 						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						const {backups:_,...currentSettings} = this.plugin.settings;
+						const { backups: _, ...currentSettings } = this.plugin.settings;
 						this.plugin.settings.backups.push({
 							name: backupName,
 							date: new Date(),
@@ -323,17 +326,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					}
 				})
 			);
-
+		
 		// List Existing Backups
 		if (this.plugin.settings.backups.length > 0) {
-			new Setting(containerEl)
-				.setName('Restore Backup')
-				.setDesc('Select a backup to restore your annotations.');
-
 			this.plugin.settings.backups.forEach((backup, index) => {
-				new Setting(containerEl)
-					.setName(backup.name)
-					.setDesc(`Created on: ${backup.date.toLocaleString()}`)
+				const setting = new Setting(containerEl)
+					.setName('')
+					.setDesc(`Created on: ${moment(backup.date).format('YYYY-MM-DD HH:mm:ss')}`)
 					.addButton(button => button
 						.setButtonText('Restore')
 						.setCta()
@@ -353,10 +352,33 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 							this.display(); // Refresh the display to remove the deleted backup
 						})
 					);
+
+				setting.settingEl.classList.add('plugin-comment-backup');
+
+				// Create an editable div for the backup name
+				const nameDiv = document.createElement('div');
+				nameDiv.textContent = backup.name;
+				nameDiv.contentEditable = 'true';
+				nameDiv.classList.add('editable-backup-name'); // You can style this class in your CSS
+
+				// Handle saving the updated name when editing is complete
+				nameDiv.addEventListener('blur', async () => {
+					const newName = nameDiv.textContent?.trim() || 'Unnamed Backup';
+					this.plugin.settings.backups[index].name = newName;
+					this.plugin.debouncedSaveAnnotations();
+				});
+
+				// Optionally, you can handle the Enter key to finish editing
+				nameDiv.addEventListener('keydown', (event) => {
+					if (event.key === 'Enter') {
+						event.preventDefault();
+						nameDiv.blur(); // Trigger the blur event to save the name
+					}
+				});
+
+				setting.nameEl.appendChild(nameDiv);
 			});
 		}
-
-
-    }
+	}
 }
 
