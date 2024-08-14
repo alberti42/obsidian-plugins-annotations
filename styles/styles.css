@@ -97,4 +97,5 @@ div.plugin-comment-instructions strong {
 .plugin-comment-backup-buttons {
     display: flex;
     gap: 10px;
+    justify-content: flex-end;
 }

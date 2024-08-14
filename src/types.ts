@@ -15,7 +15,7 @@ export interface PluginAnnotationDict {
 export interface PluginBackup {
     name: string;
     date: Date;
-    settings: PluginsAnnotationsSettingsWithoutBackups;
+    settings: unknown;
 }
 
 export interface PluginsAnnotationsSettings {

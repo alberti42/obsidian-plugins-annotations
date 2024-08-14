@@ -24,7 +24,7 @@ import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnot
 import { sortPluginAnnotationsByName } from 'utils';
 
 export default class PluginsAnnotations extends Plugin {
-	settings: PluginsAnnotationsSettings = {...DEFAULT_SETTINGS};
+	settings: PluginsAnnotationsSettings = structuredClone(DEFAULT_SETTINGS);
 	pluginNameToIdMap: Record<string,string> = {};
 	pluginIdToNameMap: Record<string,string> = {};
 
@@ -68,6 +68,7 @@ export default class PluginsAnnotations extends Plugin {
 		
 		// Nested function to handle different versions of settings
 		const getSettingsFromData = async (data: unknown): Promise<unknown> => {
+			
 			if(data === null) { // if the file is empty
 				return data;
 			} else if (isPluginsAnnotationsSettings(data)) {
@@ -75,7 +76,9 @@ export default class PluginsAnnotations extends Plugin {
 				return settings;
 			} else if (isSettingsFormat_1_4_0(data)) { // previous versions where the name of the plugins was not stored
 				// Make a backup
-				await this.backupSettings('Backup before upgrading from 1.4 to 1.5',data);
+				await this.backupSettings('Settings before upgrade from 1.4 to 1.5',data);
+
+				const default_settings = DEFAULT_SETTINGS;
 
 				// Upgrade annotations format
 				const upgradedAnnotations: PluginAnnotationDict = {};
@@ -95,16 +98,19 @@ export default class PluginsAnnotations extends Plugin {
 				const newSettings: PluginsAnnotationsSettings = {
 					...oldSettings,
 					annotations: upgradedAnnotations,
-					plugins_annotations_uuid: DEFAULT_SETTINGS.plugins_annotations_uuid,
-					backups: DEFAULT_SETTINGS.backups,
-					compatibility: DEFAULT_SETTINGS.compatibility,
-					markdown_file_path: DEFAULT_SETTINGS.markdown_file_path
+					plugins_annotations_uuid: default_settings.plugins_annotations_uuid,
+					backups: this.settings.backups,
+					compatibility: default_settings.compatibility,
+					markdown_file_path: default_settings.markdown_file_path
 				};
 				wasUpdated = true;
+				
 				return await getSettingsFromData(newSettings);
 			} else if (isSettingsFormat_1_3_0(data)) { // previous versions where the name of the plugins was not stored
 				// Make a backup
-				await this.backupSettings('Backup before upgrading from 1.3 to 1.4',data);
+				await this.backupSettings('Settings before upgrade from 1.3 to 1.4',data);
+
+				const default_settings_1_4_0 = DEFAULT_SETTINGS_1_4_0
 
 				// Upgrade annotations format
 				const upgradedAnnotations: PluginAnnotationDict_1_4_0 = {};
@@ -122,17 +128,20 @@ export default class PluginsAnnotations extends Plugin {
 				const newSettings: PluginsAnnotationsSettings_1_4_0 = {
 					...oldSettings,
 					annotations: upgradedAnnotations,
-					plugins_annotations_uuid: DEFAULT_SETTINGS_1_4_0.plugins_annotations_uuid,
+					plugins_annotations_uuid: default_settings_1_4_0.plugins_annotations_uuid,
 				};
 				wasUpdated = true;
 				return await getSettingsFromData(newSettings);
 			} else {
 				// Make a backup
-				await this.backupSettings('Backup before upgrading from 1.0 to 1.3',data);
+				await this.backupSettings('Settings before upgrade from 1.0 to 1.3',data);
+
+				const default_settings_1_3_0 = structuredClone(DEFAULT_SETTINGS_1_3_0);
 
 				// Very first version of the plugin 1.0 -- no options were stored, only the dictionary of annotations
-				const newSettings: PluginsAnnotationsSettings_1_3_0 = { ...DEFAULT_SETTINGS_1_3_0 };
-				newSettings.annotations = isPluginAnnotationDictFormat_1_3_0(data) ? data : DEFAULT_SETTINGS_1_3_0.annotations;
+				const newSettings: PluginsAnnotationsSettings_1_3_0 = default_settings_1_3_0;
+				console.log("IS 1_3_0:",isPluginAnnotationDictFormat_1_3_0(data));
+				newSettings.annotations = isPluginAnnotationDictFormat_1_3_0(data) ? data : default_settings_1_3_0.annotations;
 				wasUpdated = true;
 				return await getSettingsFromData(newSettings);
 			}
@@ -158,8 +167,8 @@ export default class PluginsAnnotations extends Plugin {
 			settingsWithoutBackup = settings;
 		}
 
-		// Use JSON.parse(JSON.stringify()) for a deep copy
-		const deepCopiedSettings = JSON.parse(JSON.stringify(settingsWithoutBackup));
+		// Deep copy
+		const deepCopiedSettings = structuredClone(settingsWithoutBackup);
 
 		// Add the backup with the deep-copied settings
 		this.settings.backups.push({
@@ -184,7 +193,7 @@ export default class PluginsAnnotations extends Plugin {
 		const {importedSettings, wasUpdated} = await this.importSettings(data);
 
 		// Merge loaded settings with default settings
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, importedSettings);
+		this.settings = Object.assign({}, structuredClone(DEFAULT_SETTINGS), importedSettings);
 
 		if (this.settings.backups) {
 			this.settings.backups.forEach((backup: PluginBackup) => {

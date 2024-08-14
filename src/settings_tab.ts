@@ -349,7 +349,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			const headerRow = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row header' });
 			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Backup name (click to edit)' });
 			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Created on' });
-			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Actions' });
+			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: '' });
 
 			this.plugin.settings.backups.forEach((backup, index) => {
 				const rowDiv = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row' });
@@ -365,7 +365,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					this.plugin.debouncedSaveAnnotations();
 				});
 
-				// Optionally, you can handle the Enter key to finish editing
+				// Handle the Enter key to finish editing
 				nameDiv.addEventListener('keydown', (event) => {
 					if (event.key === 'Enter') {
 						event.preventDefault();
@@ -393,7 +393,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 							}));
 						if(answer) {
 							const backups = [...this.plugin.settings.backups]; // store a copy of the backups before restoring the old settings
-							this.plugin.loadSettings(this.plugin.settings.backups[index].settings);
+							await this.plugin.loadSettings(structuredClone(this.plugin.settings.backups[index].settings));
 							this.plugin.settings.backups = backups; // restore the copy of the backups
 							await this.plugin.saveSettings(); // save the restored settings with the backups
 							new Notice(`Annotations restored from backup "${backup.name}"`);
