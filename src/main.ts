@@ -20,7 +20,8 @@ import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from './defaults_legac
 import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
-import { readAnnotationsFromFile, writeAnnotationsToFile } from 'manageAnnotations';
+import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
+import { sortPluginAnnotationsByName } from 'utils';
 
 export default class PluginsAnnotations extends Plugin {
 	settings: PluginsAnnotationsSettings = {...DEFAULT_SETTINGS};
@@ -53,7 +54,7 @@ export default class PluginsAnnotations extends Plugin {
 		this.app.vault.on('modify', (modifiedFile: TAbstractFile) => {
 			if(this.settings.markdown_file_path !== '') {
 				if (modifiedFile.path === this.settings.markdown_file_path) {
-					readAnnotationsFromFile(this);
+					readAnnotationsFromMdFile(this);
 				}
 			}
 		});
@@ -138,7 +139,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 
 		if(this.settings.markdown_file_path!=='') {
-			readAnnotationsFromFile(this);
+			await readAnnotationsFromMdFile(this);
 		}
 	}
 
@@ -329,7 +330,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	async renderAnnotation(annotation_div: HTMLDivElement, annoType:AnnotationType, desc:string) {
+	async renderAnnotation(annotation_div: HTMLElement, annoType:AnnotationType, desc:string) {
 		annotation_div.innerText = '';
 		switch(annoType) {
 			case AnnotationType.text: {
@@ -431,7 +432,7 @@ export default class PluginsAnnotations extends Plugin {
 					selection.addRange(range);
 				}
 			} else {
-				// Only update innerText if not clicking on a link
+				// Only update annotation_div.innerText if not clicking on a link
 				if (!clickedLink) {
 					let preamble;
 					switch(annoType) {
@@ -635,7 +636,7 @@ export default class PluginsAnnotations extends Plugin {
 		this.saveTimeout = window.setTimeout(async () => {
 			this.saveSettings(settings);
 			if(this.settings.markdown_file_path!=='') {
-				writeAnnotationsToFile(this);	
+				writeAnnotationsToMdFile(this);	
 			}
 			this.saveTimeout = null;
 		}, timeout_ms);
@@ -664,7 +665,7 @@ export default class PluginsAnnotations extends Plugin {
 		const installedPluginIds = new Set(Object.keys(this.app.plugins.manifests));
 		const uninstalledPlugins: PluginAnnotationDict = {};
 
-		for (const pluginId in this.settings.annotations) {
+		for (const pluginId of sortPluginAnnotationsByName(this.settings.annotations)) {
 			if (!installedPluginIds.has(pluginId)) {
 				uninstalledPlugins[pluginId] = this.settings.annotations[pluginId];
 			}

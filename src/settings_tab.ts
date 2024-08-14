@@ -33,9 +33,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 				}));
 
 		// Check if uninstalledPlugins is empty
-		if (Object.keys(uninstalledPlugins).length === 0) {
-			return;
-		}
+		if (Object.keys(uninstalledPlugins).length === 0) return;
 
 		const list_uninstalled_label = new Setting(containerEl)
 			.setName('List of no longer installed plugins:')
@@ -45,7 +43,6 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		Object.keys({...uninstalledPlugins}).forEach(pluginId => {
 			const pluginSetting = new Setting(containerEl)
 				.setName(`Plugin ${uninstalledPlugins[pluginId].name}`)
-				.setDesc("Annotation: " + uninstalledPlugins[pluginId].desc)
 				.addButton(button => button
 					.setButtonText('Delete')
 					.setCta()
@@ -61,15 +58,14 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 							list_uninstalled_label.settingEl.remove();
 						}
 					}));
+			// Render the annotation inside the temporary div
+			this.plugin.renderAnnotation(pluginSetting.descEl, uninstalledPlugins[pluginId].type, uninstalledPlugins[pluginId].desc);
+			pluginSetting.descEl.classList.add('plugin-comment-annotation');
 			pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
 		});
 	}
 
 	async display(): Promise<void> {
-		await this.plugin.loadSettings();
-
-		const containerEl = this.containerEl;
-
 		const createPluginsPaneFragment = (): DocumentFragment => {
 			return createFragment((frag) => {
 				const em = frag.createEl('em');
@@ -81,7 +77,14 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			});
 		};
 
+		// Load annotations first
+		await this.plugin.loadSettings();
+
+		// Clean container in the preference pane 
+		const containerEl = this.containerEl;
 		containerEl.empty();
+
+		/* ====== Personal annotations ====== */
 
 		new Setting(containerEl).setName('Personal annotations').setHeading();
 		const instructions = createFragment((frag) => {
@@ -284,6 +287,14 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.delete_placeholder_string_on_insertion = value;
 					this.plugin.debouncedSaveAnnotations();
 			}));
+
+
+		/* ====== Backups ====== */
+
+		
+
+
+		/* ====== Personal annotations of no longer installed community plugins ====== */
 
 		this.createUninstalledPluginSettings(containerEl);
 	}

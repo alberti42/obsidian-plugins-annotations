@@ -15,7 +15,7 @@
 main
   = blocks:block* { 
       const dictionary = blocks.reduce((acc, block) => {
-      	if(block){ addToDictionary(acc, block); }
+        if(block){ addToDictionary(acc, block); }
         return acc;
       }, {});
       return dictionary;
@@ -27,20 +27,21 @@ block
 annotation_block
   = name:plugin_name tags:tag+ begin_cmd desc:description end_cmd {
 
-  	const tags_dict = tags.reduce((acc, block) => {
-      	acc[block.tag] = block.arg;
+    const tags_dict = tags.reduce((acc, block) => {
+        acc[block.tag] = block.arg;
         return acc;
       }, {});
 
+    // check all mandatory tags are there
     let integral = true;
-	for (let tag of mandatory_tags) {
-	  if(!(tag in tags_dict)) {
+    for (let tag of mandatory_tags) {
+      if(!(tag in tags_dict)) {
         integral = false;
-		break;
+        break;
       }
-	}
+    }
 
-    if(integral) {
+    if(integral && desc.trim() !== '') {
       return {
         id: tags_dict['id'],
         name: name,
@@ -60,18 +61,18 @@ id_field
 
 type_field
   = "<!--" _* "type:" _* type:valid_types _* "-->" newline+ { return { 'tag': 'type', 'arg': type }; }
-    
+
 tag
   = id_field / type_field
-  
+
 valid_types
   = $("markdown"i / "html"i / "text"i) { return text().toLowerCase(); }
 
 begin_cmd
-  = $("<!--" _* "BEGIN" _* "ANNOTATION" _* "-->" newline+)
+  = $("<!--" _* "BEGIN" _* "ANNOTATION" _* "-->" newline*)
 
 end_cmd
-  = $(newline+ "<!--" _* "END" _* "ANNOTATION" _* "-->" newline+)
+  = $(newline* "<!--" _* "END" _* "ANNOTATION" _* "-->" newline+)
 
 description
   = $(!end_cmd .)*

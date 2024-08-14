@@ -1,9 +1,10 @@
 // utils.ts
 
+import PluginsAnnotations from "main";
 import { App, Modal, normalizePath, TAbstractFile, TFile, TFolder, Vault,
 	AbstractInputSuggest, prepareFuzzySearch, SearchResult } from "obsidian";
 import * as path from "path";
-import { ParsedPath } from "types";
+import { ParsedPath, PluginAnnotationDict } from "types";
 
 export function parseFilePath(filePath: string): ParsedPath {
 	filePath = normalizePath(filePath);
@@ -15,7 +16,7 @@ export function parseFilePath(filePath: string): ParsedPath {
 	const filename = extIndex !== -1 ? base.substring(0, extIndex) : base;
 	const ext = extIndex !== -1 ? base.substring(extIndex) : '';
 
-	return { dir, base, filename, ext, path: filePath };
+	return { dir: normalizePath(dir), base, filename, ext, path: filePath };
 }
 
 // Helper function to show a confirmation dialog
@@ -118,4 +119,20 @@ export class FileSuggestion extends AbstractInputSuggest<TFile> {
 		this.textInputEl.focus()
 		this.close();
 	}
+}
+
+
+/* Sorting plugins annotations by name */
+
+// Function to sort PluginAnnotationDict based on the name field
+export function sortPluginAnnotationsByName(annotations: PluginAnnotationDict): string[] {
+	// Create an array of pairs [pluginId, name]
+	const pluginArray = Object.entries(annotations).map(([pluginId, annotation]) => {
+		return { pluginId, name: annotation.name };
+	});
+
+	// Sort the array based on the 'name' field
+	pluginArray.sort((a, b) => a.name.localeCompare(b.name));
+
+	return pluginArray.map(item => item.pluginId);
 }

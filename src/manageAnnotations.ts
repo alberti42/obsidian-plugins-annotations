@@ -61,7 +61,7 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
 	return true;
 }
 
-export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promise<void> {
+export async function readAnnotationsFromMdFile(plugin: PluginsAnnotations): Promise<void> {
 	if(isWriting) return;
 
 	const filePath = plugin.settings.markdown_file_path;
@@ -70,7 +70,7 @@ export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promi
 
 	if(!file) {
 		// If the file does not exist but we have annotation in memory, write them down
-		writeAnnotationsToFile(plugin);
+		writeAnnotationsToMdFile(plugin);
 		return;
 	}
 
@@ -86,14 +86,14 @@ export async function readAnnotationsFromFile(plugin: PluginsAnnotations): Promi
 			} else {
 				console.error("Unexpected error:", error);
 			}
-		}		
+		}	
 	} catch (error) {
 		console.error('Failed to read annotations from file:', error);
 		return;
 	}
 }
 
-export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
+export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations) {
 	if(!plugin.pluginNameToIdMap) return;
 	const filePath = plugin.settings.markdown_file_path;
 	if(filePath === "") return;
@@ -104,7 +104,7 @@ export async function writeAnnotationsToFile(plugin: PluginsAnnotations) {
 
 	const content: string[] = [header];
 	for (const pluginId in annotations) {
-		content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].desc}\n<!-- END ANNOTATION -->\n`);
+		content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- type: ${annotations[pluginId].type} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].desc}\n<!-- END ANNOTATION -->\n`);
 	}
 	const content_concatenated = content.join('\n');
 
