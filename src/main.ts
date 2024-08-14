@@ -74,6 +74,9 @@ export default class PluginsAnnotations extends Plugin {
 				const settings: PluginsAnnotationsSettings = data;
 				return settings;
 			} else if (isSettingsFormat_1_4_0(data)) { // previous versions where the name of the plugins was not stored
+				// Make a backup
+				await this.backupSettings('Backup before upgrading from 1.4 to 1.5',data);
+
 				// Upgrade annotations format
 				const upgradedAnnotations: PluginAnnotationDict = {};
 				for (const pluginId in data.annotations) {
@@ -98,10 +101,11 @@ export default class PluginsAnnotations extends Plugin {
 					markdown_file_path: DEFAULT_SETTINGS.markdown_file_path
 				};
 				wasUpdated = true;
-				console.log("VERSION 1.4");
-				await this.backupSettings('Backup before upgrading from 1.4 to 1.5',newSettings);
 				return await getSettingsFromData(newSettings);
 			} else if (isSettingsFormat_1_3_0(data)) { // previous versions where the name of the plugins was not stored
+				// Make a backup
+				await this.backupSettings('Backup before upgrading from 1.3 to 1.4',data);
+
 				// Upgrade annotations format
 				const upgradedAnnotations: PluginAnnotationDict_1_4_0 = {};
 				
@@ -121,17 +125,15 @@ export default class PluginsAnnotations extends Plugin {
 					plugins_annotations_uuid: DEFAULT_SETTINGS_1_4_0.plugins_annotations_uuid,
 				};
 				wasUpdated = true;
-				console.log("VERSION 1.3");
-
-				await this.backupSettings('Backup before upgrading from 1.3 to 1.4',newSettings);
 				return await getSettingsFromData(newSettings);
 			} else {
+				// Make a backup
+				await this.backupSettings('Backup before upgrading from 1.0 to 1.3',data);
+
 				// Very first version of the plugin 1.0 -- no options were stored, only the dictionary of annotations
 				const newSettings: PluginsAnnotationsSettings_1_3_0 = { ...DEFAULT_SETTINGS_1_3_0 };
 				newSettings.annotations = isPluginAnnotationDictFormat_1_3_0(data) ? data : DEFAULT_SETTINGS_1_3_0.annotations;
 				wasUpdated = true;
-				console.log("VERSION 1.0");
-				await this.backupSettings('Backup before upgrading from 1.0 to 1.3',newSettings);
 				return await getSettingsFromData(newSettings);
 			}
 		};
