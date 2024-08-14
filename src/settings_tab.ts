@@ -4,7 +4,7 @@ import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { App, Platform, PluginSettingTab, Setting, TextComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
-import { parseFilePath, FileSuggestion } from "utils";
+import { parseFilePath, FileSuggestion, downloadJson } from "utils";
 
 declare const moment: typeof import('moment');
 
@@ -298,16 +298,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		this.createUninstalledPluginSettings(containerEl);
 	}
 
-	
 	createBackupManager(containerEl: HTMLElement) {
 		new Setting(containerEl)
 			.setName('Backup Annotations')
 			.setHeading();
 
-		// Create Backup Button
 		new Setting(containerEl)
-			.setName('Create Backup')
-			.setDesc('Create a new backup of your current annotations. You can customize the names of existing backups by clicking on the respective backup names.')
+			.setName('Create a new backup of your current annotations. You can customize the names of existing backups by clicking on the respective backup names.')
 			.addButton(button => button
 				.setButtonText('Create Backup')
 				.setCta()
@@ -325,10 +322,23 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 						this.display();
 					}
 				})
+			)
+			.addButton(button => button
+				.setButtonText('Download settings')
+				.setCta()
+				.onClick(async () => {
+					downloadJson(this.plugin.settings);
+				})
 			);
 		
 		// List Existing Backups
 		if (this.plugin.settings.backups.length > 0) {
+
+			// Sort the backups by date (most recent first)
+			this.plugin.settings.backups.sort((a, b) => {
+				return a.date.getTime() - b.date.getTime();
+			});
+
 			this.plugin.settings.backups.forEach((backup, index) => {
 				const setting = new Setting(containerEl)
 					.setName('')

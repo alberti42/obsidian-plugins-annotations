@@ -14,7 +14,7 @@ import {
 	// App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { AnnotationType, isPluginAnnotation, isPluginsAnnotationsSettings, parseAnnotation, PluginAnnotationDict, PluginsAnnotationsSettings } from './types';
+import { AnnotationType, isPluginAnnotation, isPluginsAnnotationsSettings, parseAnnotation, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
 import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, } from 'types_legacy'
 import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'defaults';
@@ -140,7 +140,15 @@ export default class PluginsAnnotations extends Plugin {
 		this.pluginNameToIdMap = this.constructPluginNameToIdMap();
 		this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
 		
-		const {importedSettings, wasUpdated} = this.importSettings(await this.loadData());
+		const data = await this.loadData();
+
+		if(data.backups) {
+			data.backups.forEach((backup: PluginBackup) => {
+				backup.date = new Date(backup.date); // Convert the date string to a Date object
+			});
+		}
+
+		const {importedSettings, wasUpdated} = this.importSettings(data);
 
 		// Merge loaded settings with default settings
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, importedSettings);
@@ -640,7 +648,7 @@ export default class PluginsAnnotations extends Plugin {
 			this.addAnnotation(plugin);
 		});
 	}
-	
+
 	async debouncedSaveAnnotations(timeout_ms = 250) {
 		
 		if (this.saveTimeout) {

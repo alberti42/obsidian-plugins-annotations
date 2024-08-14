@@ -135,3 +135,34 @@ export function sortPluginAnnotationsByName(annotations: PluginAnnotationDict): 
 
 	return pluginArray.map(item => item.pluginId);
 }
+
+
+/* Download json settings */
+
+export function downloadJson(data: unknown, filename = 'data.json') {
+	if (typeof data !== 'object' || data === null) {
+		return false;
+	}
+
+    // Step  Convert data to JSON string
+    const jsonStr = JSON.stringify(data, null, 2); // Pretty print with 2-space indentation
+
+    // Step 2: Create a Blob from the JSON string
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+
+    // Step 3: Create a download link and trigger the download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+
+    // Append the anchor to the body (required for Firefox)
+    document.body.appendChild(a);
+    a.click();
+
+    // Clean up
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 0);
+}
