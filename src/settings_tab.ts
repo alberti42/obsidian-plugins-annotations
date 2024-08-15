@@ -326,10 +326,52 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 		if (Platform.isDesktopApp) {
 			backup_settings.addButton(button => button
-				.setButtonText('Download settings')
+				.setButtonText('Export')
 				.setCta()
 				.onClick(async () => {
 					downloadJson({...this.plugin.settings, backups: []});
+				})
+			);
+
+			backup_settings.addButton(button => button
+				.setButtonText('Import')
+				.setCta()
+				.onClick(async () => {
+					// Create an input element to upload a file
+					const input = document.createElement('input');
+					input.type = 'file';
+					input.accept = '.json'; // Only allow JSON files
+
+					input.onchange = async () => {
+						const file = input.files?.[0];
+						if (file) {
+							// Read the file as text
+							const reader = new FileReader();
+							reader.onload = async (event) => {
+								try {
+									// Parse the JSON file
+									const importedData = JSON.parse(event.target?.result as string);
+
+									// Validate and merge the imported settings
+									if (importedData && typeof importedData === 'object') {
+										const forceSave = true;
+										await this.plugin.loadSettings(importedData,forceSave);
+										new Notice('Settings successfully imported.');
+										this.display(); // Refresh the display to reflect the imported annotations
+									} else {
+										alert('Invalid settings file.');
+									}
+								} catch (error) {
+									console.error('Error importing settings:', error);
+									alert('Failed to import settings. Please ensure the file is valid.');
+								}
+							};
+							reader.readAsText(file);
+						}
+					};
+
+					// Trigger the file input click
+					input.click();
 				})
 			);
 		}

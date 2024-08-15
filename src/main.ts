@@ -104,7 +104,7 @@ export default class PluginsAnnotations extends Plugin {
 					markdown_file_path: default_settings.markdown_file_path
 				};
 				wasUpdated = true;
-				
+
 				return await getSettingsFromData(newSettings);
 			} else if (isSettingsFormat_1_3_0(data)) { // previous versions where the name of the plugins was not stored
 				// Make a backup
@@ -140,7 +140,6 @@ export default class PluginsAnnotations extends Plugin {
 
 				// Very first version of the plugin 1.0 -- no options were stored, only the dictionary of annotations
 				const newSettings: PluginsAnnotationsSettings_1_3_0 = default_settings_1_3_0;
-				console.log("IS 1_3_0:",isPluginAnnotationDictFormat_1_3_0(data));
 				newSettings.annotations = isPluginAnnotationDictFormat_1_3_0(data) ? data : default_settings_1_3_0.annotations;
 				wasUpdated = true;
 				return await getSettingsFromData(newSettings);
@@ -181,7 +180,8 @@ export default class PluginsAnnotations extends Plugin {
 	}
 
 
-	async loadSettings(data?: unknown): Promise<void> {
+	async loadSettings(data?: unknown, forceSave?: boolean): Promise<void> {
+		
 		// Create a mapping of names to IDs for the installed plugins
 		this.pluginNameToIdMap = this.constructPluginNameToIdMap();
 		this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
@@ -190,23 +190,32 @@ export default class PluginsAnnotations extends Plugin {
 			data = await this.loadData();
 		}
 
+		if(forceSave === undefined) {
+			forceSave = false;
+		}
+
+		if (!data || typeof data !== 'object') {
+			console.error('Invalid settings.');
+			return;
+		}
+
 		const {importedSettings, wasUpdated} = await this.importSettings(data);
 
 		// Merge loaded settings with default settings
 		this.settings = Object.assign({}, structuredClone(DEFAULT_SETTINGS), importedSettings);
-
+		
 		if (this.settings.backups) {
 			this.settings.backups.forEach((backup: PluginBackup) => {
 				backup.date = new Date(backup.date); // Convert the date string to a Date object
 			});
 		}
 
-		if(wasUpdated) {
-			this.debouncedSaveAnnotations();
-		}
-
-		if(this.settings.markdown_file_path!=='') {
-			await readAnnotationsFromMdFile(this);
+		if(forceSave || wasUpdated) { // if it requires to store the new settings, the .md file will be overwritten
+			await this.saveSettings();
+		} else { // otherwise read from the md file
+			if(this.settings.markdown_file_path!=='') {
+				await readAnnotationsFromMdFile(this);
+			}
 		}
 	}
 
