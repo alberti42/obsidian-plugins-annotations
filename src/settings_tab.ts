@@ -2,7 +2,7 @@
 
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
-import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent, TFile } from "obsidian";
+import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog } from "utils";
 
@@ -24,8 +24,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Automatically remove personal annotations of uninstalled plugins:')
-			.setDesc('If this option is enabled, whenever a plugin is uninstalled, the attached personal annotation is automatically removed. \
-				If this option is disabled, you can still  manually remove the personal annotations of any plugin that is no longer installed. \
+			.setDesc('If this option is enabled, whenever a plugin is uninstalled, the \
+				attached personal annotation is automatically removed. \
+				If this option is disabled, you can still  manually remove the personal \
+				annotations of any plugin that is no longer installed. \
 				The list of the no longer installed plugins is shown below, when the list is not empty.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.automatic_remove)
@@ -39,7 +41,8 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 		const list_uninstalled_label = new Setting(containerEl)
 			.setName('List of no longer installed plugins:')
-			.setDesc('If you plan to reinstall the plugin in the future, it is recommended not to remove your annotations, as you can reuse them later.');
+			.setDesc('If you plan to reinstall the plugin in the future, \
+				it is recommended not to remove your annotations, as you can reuse them later.');
 		
 		// Iterate over uninstalled plugins and add settings to the new subcontainer
 		Object.keys({...uninstalledPlugins}).forEach(pluginId => {
@@ -101,7 +104,8 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			div.appendChild(p1);
 
 			const p2 = document.createElement('p2');
-			p2.innerHTML = "You can enter rich text notes using Markdown (recommended) and HTML. Markdown annotations will be dispalyed as Obsidian renders Markdown text. \
+			p2.innerHTML = "You can enter rich text notes using Markdown (recommended) and HTML. \
+				Markdown annotations will be dispalyed as Obsidian renders Markdown text. \
 				The annotation type can be selected by starting the annotation text with a line containing one \
 				of the following options:\
 				 <ul>\
@@ -109,15 +113,18 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					<li>html:</li>\
 					<li>text:</li>\
 				</ul>\
-				If the first line of annotation text contains none of the options above, the default <em>markdown:</em> is assumed.";
+				If the first line of annotation text contains none of the options above, \
+				the default <em>markdown:</em> is assumed.";
 			div.appendChild(p2);
 
 			const p3 = document.createElement('p');
-			p3.innerHTML = "In Markdown annotations, you can directly link notes inside your vault by adding links such as [[My notes/Review of plugin XYZ|my plugin note]].";
+			p3.innerHTML = "In Markdown annotations, you can directly link notes inside your \
+				vault by adding links such as [[My notes/Review of plugin XYZ|my plugin note]].";
 			div.appendChild(p3);
 
 			const p4 = document.createElement('p');
-			p4.innerHTML = "When editing HTML annotations, use the placeholder <em>${label}</em> to display the <em>annotation label</em> at the chosen location."
+			p4.innerHTML = "When editing HTML annotations, use the placeholder <em>${label}</em> to \
+				display the <em>annotation label</em> at the chosen location."
 			div.appendChild(p4);
 
 			frag.appendChild(div);
@@ -132,7 +139,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		// Add new setting for storing annotations in a Markdown file
 		const toggle_md_file = new Setting(containerEl)
 			.setName('Store annotations in a Markdown file:')
-			.setDesc('With this option enabled, you can select a Markdown file in your vault to contain your personal annotations for the installed plugins. This feature is intended for power users who prefer to edit annotations directly from a Markdown file. A second advantage of this mode is that if you use links to some of your notes in the vault, those links will be automatically updated if your notes are later renamed.');
+			.setDesc('With this option enabled, you can select a Markdown file in your vault to \
+				contain your personal annotations for the installed plugins. This feature is intended \
+				for power users who prefer to edit annotations directly from a Markdown file. \
+				A second advantage of this mode is that if you use links to some of your notes in \
+				the vault, those links will be automatically updated if your notes are later renamed.');
 
 		let file_path_field_control: TextComponent;
 		let md_filepath_error_div: HTMLDivElement;
@@ -245,7 +256,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		if (Platform.isMobile) {
 			new Setting(containerEl)
 					.setName('Annotation label:')
-					.setDesc('Choose the annotation label for the mobile version of Obsidian. Use HTML code if you want to format it. Enter an empty string if you want to hide the label.')
+					.setDesc('Choose the annotation label for the mobile version of Obsidian. \
+						Use HTML code if you want to format it. Enter an empty string if \
+						you want to hide the label.')
 					.addText(text => {
 						text.setPlaceholder('Annotation label');
 						text.setValue(this.plugin.settings.label_mobile);
@@ -256,7 +269,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		} else {
 			new Setting(containerEl)
 					.setName('Annotation label:')
-					.setDesc('Choose the annotation label for the desktop version of Obsidian. Use HTML code if you want to format it. Enter an empty string if you want to hide the label.')
+					.setDesc('Choose the annotation label for the desktop version of Obsidian. \
+						Use HTML code if you want to format it. Enter an empty string if you want \
+						to hide the label.')
 					.addText(text => {
 						text.setPlaceholder('Annotation label');
 						text.setValue(this.plugin.settings.label_desktop);
@@ -283,7 +298,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Hide empty annotations:')
 			.setDesc(createFragment((frag) => {
-				frag.appendText('If this option is enabled, only annotations set by the user will be shown. If you want to insert an annotation to a plugin for the first time, hover with the mouse over the chosen plugin in the ');
+				frag.appendText('If this option is enabled, only annotations set by the user \
+					will be shown. If you want to insert an annotation to a plugin for the first \
+					time, hover with the mouse over the chosen plugin in the ');
 				frag.appendChild(createPluginsPaneFragment());
 				frag.appendText(' pane. The annotation field will appear automatically.');
 
@@ -305,7 +322,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Delete placeholder text when inserting a new annotation:')
-			.setDesc('If this option is enabled, the placeholder text will be deleted automatically when you start typing a new annotation. If disabled, the placeholder text will be selected for easier replacement. This is a minor customization.')
+			.setDesc('If this option is enabled, the placeholder text will be deleted \
+					automatically when you start typing a new annotation. If disabled, \
+					the placeholder text will be selected for easier replacement. \
+					This is a minor customization.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.delete_placeholder_string_on_insertion)
 				.onChange(async (value: boolean) => {
@@ -326,8 +346,15 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			.setName('Backups')
 			.setHeading();
 
+		const export_label = (Platform.isDesktopApp) ? ' Use the export and import buttons \
+			to copy the current settings and annnotations to an external file and, vicevera, \
+			to restore them from an external file.' : '';
+
 		const backup_settings = new Setting(containerEl)
-			.setName('Create a new backup of your current annotations. You can customize the names of existing backups by clicking on the respective backup names.')
+			.setName('DDDFFF Create a backup copy of your current settings and annotations:')
+			.setDesc('Use the backup button to create an internal backup copy. \
+				You can customize the names of existing backups by clicking on their names once you have created them.'
+				+ export_label)
 			.addButton(button => button
 				.setButtonText('Create Backup')
 				.setCta()
@@ -337,6 +364,8 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					this.display();
 				})
 			);
+
+		backup_settings.controlEl.classList.add('plugin-comment-export-buttons');
 
 		if (Platform.isDesktopApp) {
 			backup_settings.addButton(button => button
@@ -403,7 +432,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 			// Create the header row
 			const headerRow = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row header' });
-			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Backup name (click to edit)' });
+			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Backup name' + (Platform.isMobileApp ? '' : ' (click to edit)') });
 			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Created on' });
 			headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: '' });
 

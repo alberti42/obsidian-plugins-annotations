@@ -15,7 +15,7 @@ export interface PluginAnnotationDict {
 export interface PluginBackup {
     name: string;
     date: Date;
-    settings: unknown;
+    settings: unknown;   // on purpose unkown to be able to store the different versions of settings
 }
 
 export interface PluginsAnnotationsSettings {
@@ -32,8 +32,6 @@ export interface PluginsAnnotationsSettings {
 	compatibility: string;
 	backups: PluginBackup[];
 }
-
-type PluginsAnnotationsSettingsWithoutBackups = Omit<PluginsAnnotationsSettings, 'backups'>;
 
 export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotationsSettings {
 	if (typeof s !== 'object' || s === null) {

@@ -66,8 +66,15 @@ div.plugin-comment-instructions strong {
 
 .plugin-comment-backup-table,
 .plugin-comment-uninstalled {
-	margin-left:40px !important;
+	margin-left:40px;
 }
+
+
+.is-mobile .plugin-comment-backup-table,
+.is-mobile .plugin-comment-uninstalled {
+	margin-left:0 !important;
+}
+
 
 .plugin-comment-backup-table {
     display: table;
@@ -94,8 +101,19 @@ div.plugin-comment-instructions strong {
     cursor: text;
 }
 
+.plugin-comment-export-buttons {
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: normal;
+}
+
 .plugin-comment-backup-buttons {
     display: flex;
     gap: 10px;
     justify-content: flex-end;
+}
+
+
+.is-mobile .plugin-comment-backup-buttons {
+	flex-direction: column !important;
 }

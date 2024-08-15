@@ -34,6 +34,7 @@ export default class PluginsAnnotations extends Plugin {
 	private vaultPath: string | null = null;
 
 	async onload() {
+
 		// console.clear();
 		
 		// console.log('Loading Plugins Annotations');
