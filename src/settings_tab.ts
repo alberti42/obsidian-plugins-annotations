@@ -203,7 +203,6 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 					}
 
 					processingChange = false;
-					console.log("FINI",processingChange);
 				};
 
 				inputEl.addEventListener('keydown', (event) => {
