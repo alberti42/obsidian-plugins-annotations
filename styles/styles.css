@@ -72,7 +72,7 @@ div.plugin-comment-instructions strong {
 
 .is-mobile .plugin-comment-backup-table,
 .is-mobile .plugin-comment-uninstalled {
-	margin-left:0 !important;
+	margin-left:0;
 }
 
 
@@ -115,5 +115,5 @@ div.plugin-comment-instructions strong {
 
 
 .is-mobile .plugin-comment-backup-buttons {
-	flex-direction: column !important;
+	flex-direction: column;
 }

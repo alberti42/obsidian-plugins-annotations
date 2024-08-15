@@ -351,7 +351,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 			to restore them from an external file.' : '';
 
 		const backup_settings = new Setting(containerEl)
-			.setName('DDDFFF Create a backup copy of your current settings and annotations:')
+			.setName('Create a backup copy of your current settings and annotations:')
 			.setDesc('Use the backup button to create an internal backup copy. \
 				You can customize the names of existing backups by clicking on their names once you have created them.'
 				+ export_label)
