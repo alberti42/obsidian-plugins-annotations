@@ -2,7 +2,7 @@
 
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
-import { App, Notice, Platform, PluginSettingTab, Setting, TextComponent, TFile } from "obsidian";
+import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent, TFile } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog } from "utils";
 
@@ -164,45 +164,60 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 				updateVaultFiles();
 
-				inputEl.addEventListener('keydown', (event) => {
-					if (event.key === 'Enter') {
-						event.preventDefault();
-						inputEl.blur();
-					}
-				});
-
-				// Use change explicitly instead of onChange because onChange
-				// reacts to events of type `input` instead of `change`
-				inputEl.addEventListener('change', async (event: Event) => {
-
+				const onChangeHandler = async (event: Event) => {
 					if(processingChange) {
 						return;	
 					} else {
 						processingChange = true;	
 					}
 
-					const filepath = inputEl.value;
+					let filepath = inputEl.value;
 
 					if(filepath!==this.plugin.settings.markdown_file_path) { // if the path has changed
 
+						if(filepath.trim()==='') {
+							this.plugin.settings.markdown_file_path = '';
+							text.setValue(this.plugin.settings.markdown_file_path);
+							processingChange = false;
+							this.plugin.debouncedSaveAnnotations();
+							return;
+						}
+
+						filepath = normalizePath(filepath);
+
 						if (parseFilePath(filepath).ext !== '.md') {
 							md_filepath_error_div.style.display = '';
-							this.plugin.settings.markdown_file_path = '';
+							text.setValue(this.plugin.settings.markdown_file_path);
+							processingChange = false;
 							return;
 						}
 
 						md_filepath_error_div.style.display = 'none';
-						if(await handleMarkdownFilePathChange(this.plugin, filepath)) {
+						const answer = await handleMarkdownFilePathChange(this.plugin, filepath);
+						if(answer) {
 							this.plugin.settings.markdown_file_path = filepath;
 							await this.plugin.saveSettings();
 							updateVaultFiles();
-						} else {
-							text.setValue(this.plugin.settings.markdown_file_path);
 						}
+						text.setValue(this.plugin.settings.markdown_file_path);
 					}
 
 					processingChange = false;
+					console.log("FINI",processingChange);
+				};
+
+				inputEl.addEventListener('keydown', (event) => {
+					if (event.key === 'Enter') {
+						event.preventDefault();
+						onChangeHandler(event);
+					}
 				});
+
+				inputEl.addEventListener('blur', onChangeHandler);
+
+				// Use change explicitly instead of onChange because onChange
+				// reacts to events of type `input` instead of `change`
+				inputEl.addEventListener('change', onChangeHandler);
 			});
 
 		file_path_field.settingEl.style.display = this.plugin.settings.markdown_file_path === '' ? 'none' : '';

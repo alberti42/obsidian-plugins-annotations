@@ -2,7 +2,7 @@
 
 import PluginsAnnotations from "main";
 import { Platform, TFile } from "obsidian";
-import { createFolderIfNotExists, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
+import { createFolderIfNotExists, getFileCaseInsensitive, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
 import { parse, SyntaxError } from "./peggy.mjs";
 import { PluginAnnotationDict } from "types";
 
@@ -109,7 +109,15 @@ export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations) {
 	const content_concatenated = content.join('\n');
 
 	try {
-		let file = plugin.app.vault.getFileByPath(filePath);
+		let file = await getFileCaseInsensitive(plugin.app.vault,filePath);
+		
+		if (file!==null && file.path !== filePath) {
+			// remove the existing file, whose name is written with different case 
+			// the md file will be recreated with the correct name
+			await plugin.app.vault.adapter.remove(file.path);
+			file = null;
+		}
+
 		if (!file) {
 			try {
 				const {dir} = parseFilePath(filePath);

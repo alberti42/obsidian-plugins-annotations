@@ -71,6 +71,26 @@ export function doesFileExist(vault: Vault, relativePath: string): boolean {
 	return !!file && isInstanceOfFile(file);
 }
 
+export async function getFileCaseInsensitive(vault: Vault, filePath: string): Promise<TFile | null> {
+	// Check if the file exists (case-insensitive check)
+	const fileExists = await vault.adapter.exists(filePath);
+	
+	if (!fileExists) {
+		return null; // File does not exist
+	}
+
+	// Iterate over all files and find the one with a case-insensitive match
+	const normalizedFilePath = filePath.toLowerCase();
+
+	for (const file of vault.getFiles()) {
+		if (file.path.toLowerCase() === normalizedFilePath) {
+			return file; // Return the matched TFile object with the correct case
+		}
+	}
+
+	return null; // No matching file found, this shouldn't happen if exists() returned true
+}
+
 export async function createFolderIfNotExists(vault: Vault, folderPath: string) {
 	if(doesFolderExist(vault,folderPath)) return;
 
