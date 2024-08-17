@@ -10,9 +10,9 @@ const { annotations:_, markdown_file_path:__, compatibility:___, backups:____, .
 
 
 export const DEFAULT_SETTINGS_1_4_0: PluginsAnnotationsSettings_1_4_0 = {
-	...theRestingSettings_1_4_0,
-	annotations: {},
-	plugins_annotations_uuid: 'B265C5B2-A6AD-4194-9E4C-C1327DB1EA18',
+    ...theRestingSettings_1_4_0,
+    annotations: {},
+    plugins_annotations_uuid: 'B265C5B2-A6AD-4194-9E4C-C1327DB1EA18',
 }
 
 
