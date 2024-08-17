@@ -5,7 +5,6 @@ import {
     Setting,
     SettingTab,
     Platform,
-    MarkdownRenderer,
     Plugins,
     PluginManifest,
     FileSystemAdapter,
@@ -14,7 +13,7 @@ import {
     // App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { AnnotationType, isPluginAnnotation, isPluginsAnnotationsSettings, parseAnnotation, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
+import { isPluginsAnnotationsSettings, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
 import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, } from 'types_legacy'
 import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'defaults';
@@ -22,6 +21,7 @@ import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
 import { sortPluginAnnotationsByName } from 'utils';
+import { annotationControl } from 'annotation_control';
 
 export default class PluginsAnnotations extends Plugin {
     settings: PluginsAnnotationsSettings = structuredClone(DEFAULT_SETTINGS);
@@ -397,217 +397,6 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-    // Helper function to parse links and add click listeners
-    handleAnnotationLinks(element: HTMLElement) {
-        const links = element.querySelectorAll('a');
-        links.forEach(link => {
-            console.log(element);
-            link.addEventListener('click', (event) => {
-                event.preventDefault();
-                const href = link.getAttribute('href');
-                if (href) {
-                    this.app.workspace.openLinkText(href, '', false);
-                    this.app.setting.close(); // Close the settings pane when a link is clicked
-                }
-            });
-        });
-    }
-
-    create_label(): HTMLSpanElement | null {
-        const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-        if(label.trim() === "") {
-            return null;
-        } else {
-            const span = document.createElement('span');
-            span.innerHTML = label;
-            span.classList.add('plugin-comment-label');
-            return span;
-        }
-    }
-
-    async renderAnnotation(annotation_div: HTMLElement, annoType:AnnotationType, desc:string) {
-        annotation_div.innerText = '';
-        switch(annoType) {
-            case AnnotationType.text: {
-                const p = document.createElement('p');
-                p.dir = 'auto';
-                const label = this.create_label();
-                if(label) {
-                    p.appendChild(label);
-                    p.appendText(desc);
-                }
-                else {
-                    p.innerText = desc;
-                }                   
-                annotation_div.appendChild(p);
-                break;
-            }
-            case AnnotationType.html: {
-                const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-                const desc_with_label = desc.replace(/\$\{label\}/g, label);
-                annotation_div.innerHTML = desc_with_label;
-                this.handleAnnotationLinks(annotation_div);
-                break;
-            }
-            case AnnotationType.markdown: {
-                const label = Platform.isMobile ? this.settings.label_mobile : this.settings.label_desktop;
-                const desc_with_label = label + desc;
-                await MarkdownRenderer.renderMarkdown(desc_with_label, annotation_div, '', this);
-                this.handleAnnotationLinks(annotation_div);
-                break;
-            }
-        }
-    }
-
-    configureAnnotation(annotation_container:HTMLDivElement,annotation_div:HTMLDivElement,pluginId:string,pluginName:string) {
-        
-        if(this.settings.editable) {
-            annotation_div.contentEditable = 'true';
-            annotation_div.classList.add('plugin-comment-annotation-editable');
-        } else {
-            annotation_div.contentEditable = 'false';
-            annotation_div.classList.remove('plugin-comment-annotation-editable');
-        }
-
-        const placeholder = (this.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
-
-        let isPlaceholder = this.settings.annotations[pluginId] ? false : true;
-        let annotationDesc:string;
-        let annoType:AnnotationType;
-        
-        if(!isPlaceholder && isPluginAnnotation(this.settings.annotations[pluginId])) {
-            const annotation = this.settings.annotations[pluginId];
-            annotationDesc = annotation.desc;
-            annoType = annotation.type;
-        } else {
-            annotationDesc = placeholder.trim();
-            annoType = AnnotationType.html;
-        
-            annotation_div.classList.add('plugin-comment-placeholder');
-            if (this.settings.hide_placeholders) { // if it is a placeholder
-                if(this.settings.editable) { // if fields can be edited, set the placeholder tag
-                    annotation_container.classList.add('plugin-comment-placeholder');
-                } else { // if fields cannot be edited, just simply hide placeholders
-                    annotation_container.classList.add('plugin-comment-hidden');
-                }
-            }
-        }
-
-        // Initial render
-        this.renderAnnotation(annotation_div,annoType,annotationDesc);
-
-        // Handle mousedown event to check if a link was clicked
-        let clickedLink = false;
-        annotation_div.addEventListener('mousedown', (event:MouseEvent) => {
-            console.log("MOUSE DOWN");
-            if(!this.settings.editable) { return; }
-            if (event.target && (event.target as HTMLElement).tagName === 'A') {
-                clickedLink = true;
-            } else {
-                clickedLink = false;
-            }
-            console.log("CLICKED LINK:",clickedLink);
-        });
-
-        // Prevent click event propagation to parent
-        annotation_div.addEventListener('click', (event:MouseEvent) => {
-            console.log("CLICK EVENT");
-            // if(!this.settings.editable) { return; }
-            event.stopPropagation();
-        });
-
-        // Remove placeholder class when user starts typing
-        annotation_div.addEventListener('focus', (event:FocusEvent) => {
-            console.log("FOCUS");
-            if(!this.settings.editable) { return; }
-            if (isPlaceholder) {
-                if (this.settings.delete_placeholder_string_on_insertion) {
-                    annotation_div.innerText = '';
-                }
-                annotation_div.classList.remove('plugin-comment-placeholder');
-                if (this.settings.hide_placeholders) {
-                    // we remove 'plugin-comment-placeholder' only when 'this.settings.hide_placeholders' is true
-                    // when 'this.settings.hide_placeholders' is false, the class is not set and does not need to be removed.
-                    annotation_container.classList.remove('plugin-comment-placeholder');
-                }
-                
-                const text = annotation_div.innerText; // text without html markup
-                annotation_div.innerText = text; // this removes all html markup for editing
-
-                // Force a DOM reflow by reading the offsetHeight (or another property)
-                annotation_div.offsetHeight;
-
-                const range = document.createRange();
-                range.selectNodeContents(annotation_div);
-                const selection = window.getSelection();
-                if (selection) {
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                }
-            } else {
-                // Only update annotation_div.innerText if not clicking on a link
-                if (!clickedLink) {
-                    let preamble;
-                    switch(annoType) {
-                    case AnnotationType.html:
-                        preamble = 'html:';
-                        break;
-                    case AnnotationType.markdown:
-                        preamble = 'markdown:';
-                        break;
-                    case AnnotationType.text:
-                        preamble = 'text:';
-                        break;
-                    default:
-                        preamble = 'markdown:';
-                    }
-
-                    annotation_div.innerText = preamble + '\n' + annotationDesc;
-                }
-            }
-        });
-
-        // Save the comment on input change and update inputTriggered status
-        annotation_div.addEventListener('input', (event: Event) => {
-            if(!this.settings.editable) return;
-            isPlaceholder = false;
-        });
-
-        // Add placeholder class back if no changes are made
-        annotation_div.addEventListener('blur', (event:FocusEvent) => {
-            if(!this.settings.editable) { return; }
-
-            const {annoType: type, annoDesc: content} = parseAnnotation(annotation_div.innerText.trim());
-
-            if (isPlaceholder || content === '') { // placeholder
-                annotation_div.innerHTML = placeholder;
-                delete this.settings.annotations[pluginId];
-                annotation_div.classList.add('plugin-comment-placeholder');
-                if (this.settings.hide_placeholders) {
-                    annotation_container.classList.add('plugin-comment-placeholder');
-                }
-                isPlaceholder = true;
-                annotationDesc = '';
-                annoType = AnnotationType.html;
-            } else {
-                isPlaceholder = false;
-
-                annotationDesc = content.trim();
-                annoType = type;
-                
-                this.settings.annotations[pluginId] = {
-                    desc: annotationDesc,
-                    name: pluginName,
-                    type: type,
-                };
-                annotation_div.classList.remove('plugin-comment-placeholder');
-
-                this.renderAnnotation(annotation_div,type,content);
-            }
-            this.debouncedSaveAnnotations();
-        });
-    }
-
     async addIcon(tab: SettingTab) {
         // Add new icon to the existing icons container
         const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
@@ -636,6 +425,8 @@ export default class PluginsAnnotations extends Plugin {
 
             newIcon.addEventListener('click', (event:MouseEvent) => {
                 this.settings.editable = !this.settings.editable;
+                console.log("NEW EDITABLE:");
+                console.log(this.settings)
                 this.debouncedSaveAnnotations();
                 if(this.settings.editable) {
                     newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
@@ -709,7 +500,7 @@ export default class PluginsAnnotations extends Plugin {
                     const annotation_div = document.createElement('div');
                     annotation_div.className = 'plugin-comment-annotation';
 
-                    this.configureAnnotation(annotation_container,annotation_div,pluginId,pluginName);
+                    new annotationControl(this,annotation_container,annotation_div,pluginId,pluginName);
 
                     annotation_container.appendChild(annotation_div);
                     descriptionDiv.appendChild(annotation_container);                       

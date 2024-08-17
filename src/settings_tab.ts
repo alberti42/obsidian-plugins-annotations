@@ -63,8 +63,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                             list_uninstalled_label.settingEl.remove();
                         }
                     }));
-            // Render the annotation inside the temporary div
-            this.plugin.renderAnnotation(pluginSetting.descEl, uninstalledPlugins[pluginId].type, uninstalledPlugins[pluginId].desc);
+            // Render the annotation
+            // FIXME
+            // this.plugin.renderAnnotation(pluginSetting.descEl, uninstalledPlugins[pluginId].type, uninstalledPlugins[pluginId].desc);
             pluginSetting.descEl.classList.add('plugin-comment-annotation');
             pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
         });
