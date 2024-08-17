@@ -14,13 +14,13 @@ import {
 } from 'obsidian';
 import { around } from 'monkey-around';
 import { isPluginsAnnotationsSettings, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
-import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, } from 'types_legacy'
-import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from './defaults_legacy';
+import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, PluginsAnnotationsSettings_1_5_0, PluginAnnotationDict_1_5_0, isPluginsAnnotationsSettings_1_5_0, } from 'types_legacy'
+import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
-import { sortPluginAnnotationsByName } from 'utils';
+import { backupSettings, delay, sortPluginAnnotationsByName } from 'utils';
 import { annotationControl } from 'annotation_control';
 
 export default class PluginsAnnotations extends Plugin {
@@ -64,25 +64,51 @@ export default class PluginsAnnotations extends Plugin {
     /* Load settings for different versions */
     async importSettings(data: unknown): Promise<{importedSettings: unknown, wasUpdated: boolean}> {
 
+        const importBackups: PluginBackup[] = [];
+
         // Set to true when the settings are updated to the new format
         let wasUpdated = false;
         
         // Nested function to handle different versions of settings
         const getSettingsFromData = async (data: unknown): Promise<unknown> => {
-            
             if(data === null) { // if the file is empty
                 return data;
             } else if (isPluginsAnnotationsSettings(data)) {
                 const settings: PluginsAnnotationsSettings = data;
                 return settings;
-            } else if (isSettingsFormat_1_4_0(data)) { // previous versions where the name of the plugins was not stored
+            } else if (isPluginsAnnotationsSettings_1_5_0(data)) {
                 // Make a backup
-                await this.backupSettings('Settings before upgrade from 1.4 to 1.5',data);
-
-                const default_settings = DEFAULT_SETTINGS;
+                await backupSettings('Settings before upgrade from 1.5 to 1.6',data,importBackups);
+                await delay(10); // add a delay to shift the timestamp of the backup
 
                 // Upgrade annotations format
                 const upgradedAnnotations: PluginAnnotationDict = {};
+                for (const pluginId in data.annotations) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { type, ...rest } = data.annotations[pluginId];
+                    upgradedAnnotations[pluginId] = rest;
+                }
+
+                const oldSettings: PluginsAnnotationsSettings_1_5_0 = data;
+
+                // Update the data with the new format
+                const default_new_settings = DEFAULT_SETTINGS;
+                const newSettings: PluginsAnnotationsSettings = {
+                    ...oldSettings,
+                    annotations: upgradedAnnotations,
+                    plugins_annotations_uuid: default_new_settings.plugins_annotations_uuid,
+                    compatibility: default_new_settings.compatibility,
+                };
+                wasUpdated = true;
+
+                return await getSettingsFromData(newSettings);
+            } else if (isSettingsFormat_1_4_0(data)) { // previous versions where the name of the plugins was not stored
+                // Make a backup
+                await backupSettings('Settings before upgrade from 1.4 to 1.5',data,importBackups);
+                await delay(10); // add a delay to shift the timestamp of the backup
+
+                // Upgrade annotations format
+                const upgradedAnnotations: PluginAnnotationDict_1_5_0 = {};
                 for (const pluginId in data.annotations) {
                     const annotation = data.annotations[pluginId];
                     const {type,content} = parseAnnotation_1_4_0(annotation.anno);
@@ -96,22 +122,22 @@ export default class PluginsAnnotations extends Plugin {
                 const oldSettings: PluginsAnnotationsSettings_1_4_0 = data;
 
                 // Update the data with the new format
-                const newSettings: PluginsAnnotationsSettings = {
+                const default_new_settings = DEFAULT_SETTINGS_1_5_0;
+                const newSettings: PluginsAnnotationsSettings_1_5_0 = {
                     ...oldSettings,
                     annotations: upgradedAnnotations,
-                    plugins_annotations_uuid: default_settings.plugins_annotations_uuid,
-                    backups: this.settings.backups,
-                    compatibility: default_settings.compatibility,
-                    markdown_file_path: default_settings.markdown_file_path
+                    plugins_annotations_uuid: default_new_settings.plugins_annotations_uuid,
+                    backups: default_new_settings.backups,
+                    compatibility: default_new_settings.compatibility,
+                    markdown_file_path: default_new_settings.markdown_file_path
                 };
                 wasUpdated = true;
 
                 return await getSettingsFromData(newSettings);
             } else if (isSettingsFormat_1_3_0(data)) { // previous versions where the name of the plugins was not stored
                 // Make a backup
-                await this.backupSettings('Settings before upgrade from 1.3 to 1.4',data);
-
-                const default_settings_1_4_0 = DEFAULT_SETTINGS_1_4_0
+                await backupSettings('Settings before upgrade from 1.3 to 1.4',data,importBackups);
+                await delay(10); // add a delay to shift the timestamp of the backup
 
                 // Upgrade annotations format
                 const upgradedAnnotations: PluginAnnotationDict_1_4_0 = {};
@@ -126,60 +152,39 @@ export default class PluginsAnnotations extends Plugin {
                 const oldSettings: PluginsAnnotationsSettings_1_3_0 = data;
 
                 // Update the data with the new format
+                const default_new_settings_1_4_0 = DEFAULT_SETTINGS_1_4_0
                 const newSettings: PluginsAnnotationsSettings_1_4_0 = {
                     ...oldSettings,
                     annotations: upgradedAnnotations,
-                    plugins_annotations_uuid: default_settings_1_4_0.plugins_annotations_uuid,
+                    plugins_annotations_uuid: default_new_settings_1_4_0.plugins_annotations_uuid,
                 };
                 wasUpdated = true;
                 return await getSettingsFromData(newSettings);
             } else {
                 // Make a backup
-                await this.backupSettings('Settings before upgrade from 1.0 to 1.3',data);
-
-                const default_settings_1_3_0 = structuredClone(DEFAULT_SETTINGS_1_3_0);
+                await backupSettings('Settings before upgrade from 1.0 to 1.3',data,importBackups);
+                await delay(10); // add a delay to shift the timestamp of the backup
 
                 // Very first version of the plugin 1.0 -- no options were stored, only the dictionary of annotations
-                const newSettings: PluginsAnnotationsSettings_1_3_0 = default_settings_1_3_0;
-                newSettings.annotations = isPluginAnnotationDictFormat_1_3_0(data) ? data : default_settings_1_3_0.annotations;
+                const default_new_settings_1_3_0 = structuredClone(DEFAULT_SETTINGS_1_3_0);
+                const newSettings: PluginsAnnotationsSettings_1_3_0 = default_new_settings_1_3_0;
+                newSettings.annotations = isPluginAnnotationDictFormat_1_3_0(data) ? data : default_new_settings_1_3_0.annotations;
                 wasUpdated = true;
                 return await getSettingsFromData(newSettings);
             }
         };
 
-        const importedSettings = await getSettingsFromData(data);
+        const importedSettings = await getSettingsFromData(data) as PluginsAnnotationsSettings | null;
+
+        if (importedSettings) {
+            importedSettings.backups.forEach((backup: PluginBackup) => {
+                backup.date = new Date(backup.date); // Convert the date string to a Date object
+            });
+            importedSettings.backups = [...importedSettings.backups, ...importBackups];
+        }
 
         return {importedSettings, wasUpdated};
     }
-
-    async backupSettings(backupName: string, settings: unknown) {
-        // Ensure settings is an object
-        if (typeof settings !== 'object' || settings === null) return;
-
-        let settingsWithoutBackup;
-
-        // Remove the backups field from the settings to be backed up
-        if (settings.hasOwnProperty('backups')) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { backups: _, ...rest } = settings as { backups: unknown };
-            settingsWithoutBackup = rest;
-        } else {
-            settingsWithoutBackup = settings;
-        }
-
-        // Deep copy
-        const deepCopiedSettings = structuredClone(settingsWithoutBackup);
-
-        // Add the backup with the deep-copied settings
-        this.settings.backups.push({
-            name: backupName,
-            date: new Date(),
-            settings: deepCopiedSettings
-        });
-
-        await this.saveSettings();
-    }
-
 
     async loadSettings(data?: unknown, forceSave?: boolean): Promise<void> {
         
@@ -205,12 +210,6 @@ export default class PluginsAnnotations extends Plugin {
         // Merge loaded settings with default settings
         this.settings = Object.assign({}, structuredClone(DEFAULT_SETTINGS), importedSettings);
         
-        if (this.settings.backups) {
-            this.settings.backups.forEach((backup: PluginBackup) => {
-                backup.date = new Date(backup.date); // Convert the date string to a Date object
-            });
-        }
-
         if(forceSave || wasUpdated) { // if it requires to store the new settings, the .md file will be overwritten
             await this.saveSettings();
         } else { // otherwise read from the md file

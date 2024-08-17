@@ -104,7 +104,7 @@ export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations) {
 
     const content: string[] = [header];
     for (const pluginId in annotations) {
-        content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- type: ${annotations[pluginId].type} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].desc}\n<!-- END ANNOTATION -->\n`);
+        content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].desc}\n<!-- END ANNOTATION -->\n`);
     }
     const content_concatenated = content.join('\n');
 

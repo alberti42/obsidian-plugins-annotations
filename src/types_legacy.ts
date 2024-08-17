@@ -1,11 +1,78 @@
 // types_legacy.ts
 
-import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0 } from "defaults_legacy";
-import { AnnotationType, PluginAnnotation, PluginsAnnotationsSettings } from "types";
+import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0 } from "defaults_legacy";
+import { PluginAnnotation, PluginsAnnotationsSettings } from "types";
+
+/* VERSION 1.5 */
+
+export interface PluginAnnotation_1_5_0 extends PluginAnnotation {
+    type: AnnotationType_1_5_0;  // annotation type
+}
+
+export interface PluginAnnotationDict_1_5_0 {
+    [pluginId: string]: PluginAnnotation_1_5_0;
+}
+
+export interface PluginsAnnotationsSettings_1_5_0 extends Omit<PluginsAnnotationsSettings, 'annotations' >{
+    annotations: PluginAnnotationDict_1_5_0;
+}
+
+export function isPluginsAnnotationsSettings_1_5_0(s:unknown): s is PluginsAnnotationsSettings_1_5_0 {
+    if (typeof s !== 'object' || s === null) {
+        return false;
+    }
+    return 'annotations' in s
+        && 'compatibility' in s && (s as PluginsAnnotationsSettings_1_5_0).compatibility === '1.5.0'
+        && 'plugins_annotations_uuid' in s
+        && (s as PluginsAnnotationsSettings_1_5_0).plugins_annotations_uuid === DEFAULT_SETTINGS_1_5_0.plugins_annotations_uuid;
+}
+
+export function isPluginAnnotation_1_5_0(anno:unknown): anno is PluginAnnotation_1_5_0 {
+    if (typeof anno !== 'object' || anno === null) {
+        return false;
+    }
+    const obj = anno as Record<string, unknown>;
+
+    const hasName = typeof obj.name === 'string';
+    const hasDesc = typeof obj.desc === 'string';
+    const hasType = typeof obj.type === 'string' && Object.values(AnnotationType_1_5_0).includes(obj.type as AnnotationType_1_5_0);
+
+    return hasName && hasDesc && hasType;
+}
+
+
+// Function to render the annotation based on preamble
+export function parseAnnotation_1_5_0(text: string): {annoType: AnnotationType_1_5_0, annoDesc: string} {
+    const preambleRegex = /^(html|markdown|text):\s*/i;
+    const match = text.match(preambleRegex);
+
+    if (match) {
+        const annoTypeString = match[1].toLowerCase();
+        const sliced = text.slice(match[0].length).trim(); // Remove preamble and any leading/trailing whitespace
+        
+        switch (annoTypeString) {
+            case 'html':
+                return {annoType: AnnotationType_1_5_0.html, annoDesc: sliced};
+            case 'markdown':
+                return {annoType: AnnotationType_1_5_0.markdown, annoDesc: sliced};
+            case 'text':
+                return {annoType: AnnotationType_1_5_0.text, annoDesc: sliced};
+        }
+    }
+
+    // Default case: treat as markdown
+    return {annoType: AnnotationType_1_5_0.markdown, annoDesc: text.trim()};
+}
+
+export enum AnnotationType_1_5_0 {
+    text = 'text',
+    html = 'html',
+    markdown = 'markdown',
+}
 
 /* VERSION 1.4 */
 
-export interface PluginAnnotation_1_4_0 extends Omit<PluginAnnotation, 'type' | 'desc'> {
+export interface PluginAnnotation_1_4_0 extends Omit<PluginAnnotation_1_5_0, 'type' | 'desc'> {
     anno: string;  // personal annontation
 }
 
@@ -14,7 +81,7 @@ export type PluginAnnotationDict_1_4_0 = {
 }
 
 // Extend the original interface and override the annotations property
-export interface PluginsAnnotationsSettings_1_4_0 extends Omit<PluginsAnnotationsSettings, 'annotations' | 'markdown_file_path' | 'compatibility' | 'backups' > {
+export interface PluginsAnnotationsSettings_1_4_0 extends Omit<PluginsAnnotationsSettings_1_5_0, 'annotations' | 'markdown_file_path' | 'compatibility' | 'backups' > {
     annotations: PluginAnnotationDict_1_4_0;
 }
 
@@ -28,20 +95,20 @@ export function isSettingsFormat_1_4_0(s:unknown): s is PluginsAnnotationsSettin
 }
 
 // Function to render the annotation based on preamble
-export function parseAnnotation_1_4_0(text: string): {type:AnnotationType,content:string} {
+export function parseAnnotation_1_4_0(text: string): {type:AnnotationType_1_5_0,content:string} {
     const lines = text.split('\n');
     const preamble = lines[0].toLowerCase();
     const sliced = lines.slice(1).join('\n');
     
     // annotation_div.innerHTML = '';
     if (preamble.startsWith('html:')) {
-        return {type: AnnotationType.html, content: sliced};
+        return {type: AnnotationType_1_5_0.html, content: sliced};
     } else if (preamble.startsWith('markdown:')) {
-        return {type: AnnotationType.markdown, content: sliced.replace(/\$\{label\}/g, '')};
+        return {type: AnnotationType_1_5_0.markdown, content: sliced.replace(/\$\{label\}/g, '')};
     } else if (preamble.startsWith('text:')) {
-        return {type: AnnotationType.text, content: sliced};
+        return {type: AnnotationType_1_5_0.text, content: sliced};
     } else {
-        return {type: AnnotationType.text, content: text};
+        return {type: AnnotationType_1_5_0.text, content: text};
     }
 }
 

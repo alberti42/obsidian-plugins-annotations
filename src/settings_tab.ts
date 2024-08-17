@@ -4,7 +4,7 @@ import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
-import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog } from "utils";
+import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings } from "utils";
 
 declare const moment: typeof import('moment');
 
@@ -361,7 +361,8 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setCta()
                 .onClick(async () => {
                     const backupName = 'Untitled backup';
-                    await this.plugin.backupSettings(backupName,this.plugin.settings);
+                    await backupSettings(backupName,this.plugin.settings,this.plugin.settings.backups);
+                    await this.plugin.saveSettings();
                     this.display();
                 })
             );
@@ -478,10 +479,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                                     Do you want to proceed restoring the seettings from the backup?');
                             }));
                         if(answer) {
-                            const backups = [...this.plugin.settings.backups]; // store a copy of the backups before restoring the old settings
-                            await this.plugin.loadSettings(structuredClone(this.plugin.settings.backups[index].settings));
-                            this.plugin.settings.backups = backups; // restore the copy of the backups
-                            await this.plugin.saveSettings(); // save the restored settings with the backups
+                            const settingsToBeRestored = structuredClone(this.plugin.settings.backups[index].settings);
+                            if(typeof settingsToBeRestored !== 'object') throw new Error("Something went wrong with the data in the backup.");
+                            const forceSave = true;
+                            await this.plugin.loadSettings({...settingsToBeRestored,backups:this.plugin.settings.backups},forceSave);
                             new Notice(`Annotations restored from backup "${backup.name}"`);
                             this.display(); // Refresh the display to reflect the restored annotations
                         }

@@ -5,7 +5,6 @@ import { DEFAULT_SETTINGS } from "defaults";
 export interface PluginAnnotation {
     name: string;  // extended name of the plugin
     desc: string;  // personal annontation
-    type: AnnotationType;  // annotation type
 }
 
 export interface PluginAnnotationDict {
@@ -38,7 +37,7 @@ export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotations
         return false;
     }
     return 'annotations' in s
-        && 'compatibility' in s && (s as PluginsAnnotationsSettings).compatibility === '1.5.0'
+        && 'compatibility' in s && (s as PluginsAnnotationsSettings).compatibility === '1.6.0'
         && 'plugins_annotations_uuid' in s
         && (s as PluginsAnnotationsSettings).plugins_annotations_uuid === DEFAULT_SETTINGS.plugins_annotations_uuid;
 }
@@ -51,38 +50,8 @@ export function isPluginAnnotation(anno:unknown): anno is PluginAnnotation {
 
     const hasName = typeof obj.name === 'string';
     const hasDesc = typeof obj.desc === 'string';
-    const hasType = typeof obj.type === 'string' && Object.values(AnnotationType).includes(obj.type as AnnotationType);
 
-    return hasName && hasDesc && hasType;
-}
-
-// Function to render the annotation based on preamble
-export function parseAnnotation(text: string): {annoType: AnnotationType, annoDesc: string} {
-    const preambleRegex = /^(html|markdown|text):\s*/i;
-    const match = text.match(preambleRegex);
-
-    if (match) {
-        const annoTypeString = match[1].toLowerCase();
-        const sliced = text.slice(match[0].length).trim(); // Remove preamble and any leading/trailing whitespace
-        
-        switch (annoTypeString) {
-            case 'html':
-                return {annoType: AnnotationType.html, annoDesc: sliced};
-            case 'markdown':
-                return {annoType: AnnotationType.markdown, annoDesc: sliced};
-            case 'text':
-                return {annoType: AnnotationType.text, annoDesc: sliced};
-        }
-    }
-
-    // Default case: treat as markdown
-    return {annoType: AnnotationType.markdown, annoDesc: text.trim()};
-}
-
-export enum AnnotationType {
-    text = 'text',
-    html = 'html',
-    markdown = 'markdown',
+    return hasName && hasDesc;
 }
 
 export interface ParsedPath {

@@ -3,7 +3,7 @@
 import { App, Modal, normalizePath, TAbstractFile, TFile, TFolder, Vault,
     AbstractInputSuggest, prepareFuzzySearch, SearchResult } from "obsidian";
 import * as path from "path";
-import { ParsedPath, PluginAnnotationDict } from "types";
+import { ParsedPath, PluginAnnotationDict, PluginBackup } from "types";
 
 export function parseFilePath(filePath: string): ParsedPath {
     filePath = normalizePath(filePath);
@@ -191,4 +191,38 @@ export function downloadJson(data: unknown, filename = 'data.json') {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 0);
+}
+
+/* Backups */
+
+export async function backupSettings(backupName: string, toBeBackedUp: unknown, destBackups: PluginBackup[]) {
+    // Ensure settings is an object
+    if (typeof toBeBackedUp !== 'object' || toBeBackedUp === null) return;
+
+    let settingsWithoutBackup;
+
+    // Remove the backups field from the settings to be backed up
+    if (toBeBackedUp.hasOwnProperty('backups')) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { backups: _, ...rest } = toBeBackedUp as { backups: unknown };
+        settingsWithoutBackup = rest;
+    } else {
+        settingsWithoutBackup = toBeBackedUp;
+    }
+
+    // Deep copy
+    const deepCopiedSettings = structuredClone(settingsWithoutBackup);
+
+    // Add the backup with the deep-copied settings
+    destBackups.push({
+        name: backupName,
+        date: new Date(),
+        settings: deepCopiedSettings
+    });
+}
+
+/* Misc functions */
+
+export function delay(ms: number) {
+    return new Promise( resolve => setTimeout(resolve, ms) );
 }

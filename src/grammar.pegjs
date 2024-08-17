@@ -46,7 +46,6 @@ annotation_block
         id: tags_dict['id'],
         name: name,
         desc: desc,
-        type: tags_dict['type'] || 'markdown',
       };
     } else {
       return null;
@@ -59,14 +58,14 @@ plugin_name
 id_field
   = "<!--" _* "id:" _ id:$(!"-->" !_ .)+ _* "-->" newline+ { return { 'tag': 'id', 'arg': id }; }
 
-type_field
-  = "<!--" _* "type:" _* type:valid_types _* "-->" newline+ { return { 'tag': 'type', 'arg': type }; }
+//type_field
+//  = "<!--" _* "type:" _* type:valid_types _* "-->" newline+ { return { 'tag': 'type', 'arg': type }; }
+
+//valid_types
+//  = $("markdown"i / "html"i / "text"i) { return text().toLowerCase(); }
 
 tag
-  = id_field / type_field
-
-valid_types
-  = $("markdown"i / "html"i / "text"i) { return text().toLowerCase(); }
+  = id_field // / type_field
 
 begin_cmd
   = $("<!--" _* "BEGIN" _* "ANNOTATION" _* "-->" newline*)
