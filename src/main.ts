@@ -324,7 +324,7 @@ export default class PluginsAnnotations extends Plugin {
 		this.register(removeMonkeyPatchForPlugins);
 	}
 
-	observeTab(tab: SettingTab) {
+	async observeTab(tab: SettingTab) {
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
 
@@ -365,7 +365,12 @@ export default class PluginsAnnotations extends Plugin {
 		if(!this.mutationObserver) {
 			this.observedTab = tab;
 
-			const observer = new MutationObserver(() => {
+			const observer = new MutationObserver(async () => {
+                // force reload - this is convenient because since the loading of the plugin
+                // there could be changes in the settings due to synchronization among devices
+                // which only happens after the plugin is loaded
+                await this.loadSettings();
+        
 				this.addIcon(tab);
 				this.addAnnotations(tab);
 			});
@@ -374,6 +379,11 @@ export default class PluginsAnnotations extends Plugin {
 			this.mutationObserver = observer;
 		}
 
+        // force reload - this is convenient because since the loading of the plugin
+        // there could be changes in the settings due to synchronization among devices
+        // which only happens after the plugin is loaded
+        await this.loadSettings();
+        
 		// Initial call to add comments to already present plugins
 		this.addIcon(tab);
 		this.addAnnotations(tab);
@@ -391,10 +401,11 @@ export default class PluginsAnnotations extends Plugin {
 	handleAnnotationLinks(element: HTMLElement) {
 		const links = element.querySelectorAll('a');
 		links.forEach(link => {
+            console.log(element);
 			link.addEventListener('click', (event) => {
 				event.preventDefault();
 				const href = link.getAttribute('href');
-				if (href) {
+                if (href) {
 					this.app.workspace.openLinkText(href, '', false);
 					this.app.setting.close(); // Close the settings pane when a link is clicked
 				}
@@ -485,21 +496,29 @@ export default class PluginsAnnotations extends Plugin {
 		// Initial render
 		this.renderAnnotation(annotation_div,annoType,annotationDesc);
 
-		let clickedLink = false;
-		const handleMouseDown = (event:MouseEvent) => {
-			if(!this.settings.editable) { return; }
-			if (event.target && (event.target as HTMLElement).tagName === 'A') {
-				clickedLink = true;
-			} else {
-				clickedLink = false;
-			}
-		}
-
 		// Handle mousedown event to check if a link was clicked
-		annotation_div.addEventListener('mousedown', handleMouseDown);
+        let clickedLink = false;
+		annotation_div.addEventListener('mousedown', (event:MouseEvent) => {
+            console.log("MOUSE DOWN");
+            if(!this.settings.editable) { return; }
+            if (event.target && (event.target as HTMLElement).tagName === 'A') {
+                clickedLink = true;
+            } else {
+                clickedLink = false;
+            }
+            console.log("CLICKED LINK:",clickedLink);
+        });
+
+        // Prevent click event propagation to parent
+        annotation_div.addEventListener('click', (event:MouseEvent) => {
+            console.log("CLICK EVENT");
+            // if(!this.settings.editable) { return; }
+            event.stopPropagation();
+        });
 
 		// Remove placeholder class when user starts typing
 		annotation_div.addEventListener('focus', (event:FocusEvent) => {
+            console.log("FOCUS");
 			if(!this.settings.editable) { return; }
 			if (isPlaceholder) {
 				if (this.settings.delete_placeholder_string_on_insertion) {
@@ -587,12 +606,6 @@ export default class PluginsAnnotations extends Plugin {
 			}
 			this.debouncedSaveAnnotations();
 		});
-
-		// Prevent click event propagation to parent
-		annotation_div.addEventListener('click', (event:MouseEvent) => {
-			if(!this.settings.editable) { return; }
-			event.stopPropagation();
-		});
 	}
 
 	async addIcon(tab: SettingTab) {
@@ -612,6 +625,7 @@ export default class PluginsAnnotations extends Plugin {
 
 			const newIcon = document.createElement('div');
 			newIcon.classList.add('clickable-icon', 'extra-setting-button');
+            console.log('EDITABLE',this.settings.editable);
 			if(this.settings.editable) {
 				newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
 				newIcon.innerHTML = svg_unlocked;
@@ -621,8 +635,8 @@ export default class PluginsAnnotations extends Plugin {
 			}
 
 			newIcon.addEventListener('click', (event:MouseEvent) => {
-				this.settings.editable = !this.settings.editable;
-				this.debouncedSaveAnnotations();
+                this.settings.editable = !this.settings.editable;
+                this.debouncedSaveAnnotations();
 				if(this.settings.editable) {
 					newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
 					newIcon.innerHTML = svg_unlocked;
@@ -647,7 +661,7 @@ export default class PluginsAnnotations extends Plugin {
 				// Select all div elements that have both 'plugin-comment' and 'plugin-comment-placeholder' classes
 				const placeholders = document.querySelectorAll<HTMLDivElement>(!this.settings.editable ? 'div.plugin-comment.plugin-comment-placeholder' : 'div.plugin-comment.plugin-comment-hidden');
 
-				// Loop through each element
+				// Loop through each plugin for which the placeholder is shown
 				placeholders.forEach((el) => {
 					if(this.settings.editable) {
 						// Add the 'plugin-comment-placeholder' class
@@ -704,12 +718,7 @@ export default class PluginsAnnotations extends Plugin {
 		}
 	}
 
-	async addAnnotations(tab: SettingTab) {
-		// force reload - this is convenient because since the loading of the plugin
-		// there could be changes in the settings due to synchronization among devices
-		// which only happens after the plugin is loaded
-		await this.loadSettings();
-		
+	addAnnotations(tab: SettingTab) {
 		const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
 		if (!pluginsContainer) return;
 
@@ -719,13 +728,12 @@ export default class PluginsAnnotations extends Plugin {
 		});
 	}
 
-	async debouncedSaveAnnotations(timeout_ms = 250) {
-		
+	debouncedSaveAnnotations(timeout_ms = 250) {
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
 		}
 		
-		this.saveTimeout = window.setTimeout(async () => {
+		this.saveTimeout = window.setTimeout(() => {
 			this.saveSettings();
 			this.saveTimeout = null;
 		}, timeout_ms);
