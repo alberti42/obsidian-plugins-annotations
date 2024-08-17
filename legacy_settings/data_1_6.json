@@ -1,0 +1,430 @@
+{
+  "annotations": {
+    "dataview-recent-files": {
+      "name": "Dataview Recent Files",
+      "desc": "My own plugin to show the recently modified files.\n[[2024-06-13 Survey group culture]]\n\n![[00 Meta/Misc/Test.jpg]]\n\n[[2024-08-05 Review Cs-based Rydberg quantum computers]]"
+    },
+    "dataview": {
+      "name": "Dataview",
+      "desc": "Super-useful plugin that allows querying the notes to provide database functionality. 🔥🔥🔥"
+    },
+    "highlightr-plugin": {
+      "name": "Highlightr",
+      "desc": "Allows highlighting the markdown text."
+    },
+    "obsidian-completr": {
+      "name": "obsidian-completr",
+      "desc": "Allows auto-completion of commands. Very useful."
+    },
+    "find-unlinked-files": {
+      "name": "Find orphaned files and broken links",
+      "desc": "Very useful to find orphaned files and broken links."
+    },
+    "homepage": {
+      "name": "homepage",
+      "desc": "Useful to show a customized homepage."
+    },
+    "obsidian-icon-folder": {
+      "name": "Iconize",
+      "desc": "Useful to customize icons."
+    },
+    "import-attachments-plus": {
+      "name": "Import Attachments+",
+      "desc": "My own plugin to import attachments by moving them into the vault."
+    },
+    "obsidian-languagetool-plugin": {
+      "name": "obsidian-languagetool-plugin",
+      "desc": "Very useful as spell checker."
+    },
+    "languagetool": {
+      "name": "languagetool",
+      "desc": "It is claimed to be better but it does not work. It is still in beta function."
+    },
+    "number-headings-obsidian": {
+      "name": "number-headings-obsidian",
+      "desc": "Very useful to add numbers to the headings."
+    },
+    "pdf-plus": {
+      "name": "pdf-plus",
+      "desc": "Very useful to comment PDF documents in Obsidian."
+    },
+    "templater-obsidian": {
+      "name": "Templater",
+      "desc": "Very useful to define templates."
+    },
+    "obsidian-tasks-plugin": {
+      "name": "obsidian-tasks-plugin",
+      "desc": "Not really useful. Never used so far."
+    },
+    "obsidian-style-settings": {
+      "name": "Style Settings",
+      "desc": "Super useful to customize the style with CCS and be able to modify the settings from Obsidian."
+    },
+    "obsidian-smart-typography": {
+      "name": "obsidian-smart-typography",
+      "desc": "Semi useful to improve typography of symbols."
+    },
+    "wikilinks-to-mdlinks-obsidian": {
+      "name": "wikilinks-to-mdlinks-obsidian",
+      "desc": "Not really needed. It converts Wikilinks to MD links."
+    },
+    "webpage-html-export": {
+      "name": "webpage-html-export",
+      "desc": "Super useful to export in HTML. It is a bit clunky to load. It is per default disabled, unless I need it."
+    },
+    "frontmatter-modified-date": {
+      "name": "frontmatter-modified-date",
+      "desc": "Very useful to update the property `modified date`."
+    },
+    "supercharged-links-obsidian": {
+      "name": "supercharged-links-obsidian",
+      "desc": "The idea is very nice but then the MD notes are not really readable outside of Obsidian. Disabled for now."
+    },
+    "tag-wrangler": {
+      "name": "tag-wrangler",
+      "desc": "Very useful to rename tags across all notes."
+    },
+    "sheets": {
+      "name": "sheets",
+      "desc": "Useful to extend tables and merge cells."
+    },
+    "obsidian-html-plugin": {
+      "name": "obsidian-html-plugin",
+      "desc": "It allows opening HTML files in Obsidian."
+    },
+    "obsidian-advanced-uri": {
+      "name": "obsidian-advanced-uri",
+      "desc": "Very useful to copy URI."
+    },
+    "callout-manager": {
+      "name": "Callout Manager",
+      "desc": "Offers a GUI to customize callouts."
+    },
+    "obsidian-file-path-to-uri": {
+      "name": "obsidian-file-path-to-uri",
+      "desc": "Not really needed. It converts a file path to a URI."
+    },
+    "obsidian-text-expander-js": {
+      "name": "obsidian-text-expander-js",
+      "desc": "Quite powerful to run inline scripts, and replace predefined macros. However, not really used."
+    },
+    "omnisearch": {
+      "name": "omnisearch",
+      "desc": "Powerful tool to search through the vault."
+    },
+    "obsidian-outliner": {
+      "name": "obsidian-outliner",
+      "desc": "Very handy to operate on outlines."
+    },
+    "url-into-selection": {
+      "name": "url-into-selection",
+      "desc": "Not really needed. It causes more confusion when pasting on existing selected text."
+    },
+    "periodic-notes": {
+      "name": "periodic-notes",
+      "desc": "Manages daily notes. Just used for daily notes."
+    },
+    "settings-search": {
+      "name": "settings-search",
+      "desc": "Adds a search field with a fuzzy search functionality to search through Obsidian settings."
+    },
+    "text-extractor": {
+      "name": "text-extractor",
+      "desc": "I did not really test it how good it works."
+    },
+    "file-explorer-note-count": {
+      "name": "File Explorer Note Count",
+      "desc": "Very useful to display the number of notes in the various folders."
+    },
+    "plugins-annotations": {
+      "name": "Plugins Annotations",
+      "desc": "My own plugin to take notes about installed plugins."
+    },
+    "editing-toolbar": {
+      "name": "editing-toolbar",
+      "desc": "Nice toolbar shown above the notes. Quite handy."
+    },
+    "obsidian-spaced-repetition": {
+      "name": "obsidian-spaced-repetition",
+      "desc": "Super effective plugin to learn flashcards."
+    },
+    "table-editor-obsidian": {
+      "name": "table-editor-obsidian",
+      "desc": "A must to operate on tables in Obsidian. 🚀🚀🚀"
+    },
+    "settings-management": {
+      "name": "settings-management",
+      "desc": "Enhanced settings with multiple configurations."
+    },
+    "obsidian-admonition": {
+      "name": "obsidian-admonition",
+      "desc": "Improve callouts 🖋️. They can be entered as `codeblocks`."
+    },
+    "obsidian-divide-and-conquer": {
+      "name": "obsidian-divide-and-conquer",
+      "desc": "Plugin useful to debug problems with plugins. Generally, it can be left disabled."
+    },
+    "js-engine": {
+      "name": "js-engine",
+      "desc": "Allows executing Javascript dynamically in the note."
+    },
+    "plugin-reloader": {
+      "name": "plugin-reloader",
+      "desc": "Allows reloading a specific plugin without restarting Obsidian. Hotkeys configurable."
+    },
+    "obsidian-kanban": {
+      "name": "obsidian-kanban",
+      "desc": "Plugin for the Kanban 🗓️ organization."
+    }
+  },
+  "plugins_annotations_uuid": "BC56AB7B-A46F-4ACF-9BA1-3A4461F74C79",
+  "hide_placeholders": false,
+  "delete_placeholder_string_on_insertion": false,
+  "label_mobile": "<b>Annotation:&nbsp;</b>",
+  "label_desktop": "<b>Personal annotation:&nbsp;</b>",
+  "label_placeholder": "<em>Add your personal comment about <strong>${plugin_name}</strong> here...</em>",
+  "editable": true,
+  "automatic_remove": false,
+  "markdown_file_path": "",
+  "backups": [
+    {
+      "name": "Test old backup",
+      "date": "2024-08-17T23:39:14.914Z",
+      "settings": {
+        "plugins_annotations_uuid": "BC56AB7B-A46F-4ACF-9BA1-3A4461F74C79",
+        "hide_placeholders": false,
+        "delete_placeholder_string_on_insertion": false,
+        "label_mobile": "<b>Annotation:&nbsp;</b>",
+        "label_desktop": "<b>Personal annotation:&nbsp;</b>",
+        "label_placeholder": "<em>Add your personal comment about <strong>${plugin_name}</strong> here...</em>",
+        "editable": true,
+        "automatic_remove": false,
+        "annotations": {
+          "dataview-recent-files": {
+            "name": "Dataview Recent Files",
+            "desc": "My own plugin to show the recently modified files.\n[[2024-06-13 Survey group culture]]\n\n![[00 Meta/Misc/Test.jpg]]\n\n[[2024-08-05 Review Cs-based Rydberg quantum computers]]",
+            "type": "markdown"
+          },
+          "dataview": {
+            "name": "Dataview",
+            "desc": "Super-useful plugin that allows querying the notes to provide database functionality. 🔥🔥🔥",
+            "type": "text"
+          },
+          "highlightr-plugin": {
+            "name": "Highlightr",
+            "desc": "Allows highlighting the markdown text.",
+            "type": "text"
+          },
+          "obsidian-completr": {
+            "name": "obsidian-completr",
+            "desc": "Allows auto-completion of commands. Very useful.",
+            "type": "text"
+          },
+          "find-unlinked-files": {
+            "name": "Find orphaned files and broken links",
+            "desc": "Very useful to find orphaned files and broken links.",
+            "type": "text"
+          },
+          "homepage": {
+            "name": "homepage",
+            "desc": "Useful to show a customized homepage.",
+            "type": "text"
+          },
+          "obsidian-icon-folder": {
+            "name": "Iconize",
+            "desc": "Useful to customize icons.",
+            "type": "text"
+          },
+          "import-attachments-plus": {
+            "name": "Import Attachments+",
+            "desc": "My own plugin to import attachments by moving them into the vault.",
+            "type": "text"
+          },
+          "obsidian-languagetool-plugin": {
+            "name": "obsidian-languagetool-plugin",
+            "desc": "Very useful as spell checker.",
+            "type": "text"
+          },
+          "languagetool": {
+            "name": "languagetool",
+            "desc": "It is claimed to be better but it does not work. It is still in beta function.",
+            "type": "text"
+          },
+          "number-headings-obsidian": {
+            "name": "number-headings-obsidian",
+            "desc": "Very useful to add numbers to the headings.",
+            "type": "text"
+          },
+          "pdf-plus": {
+            "name": "pdf-plus",
+            "desc": "Very useful to comment PDF documents in Obsidian.",
+            "type": "text"
+          },
+          "templater-obsidian": {
+            "name": "Templater",
+            "desc": "Very useful to define templates.",
+            "type": "text"
+          },
+          "obsidian-tasks-plugin": {
+            "name": "obsidian-tasks-plugin",
+            "desc": "Not really useful. Never used so far.",
+            "type": "text"
+          },
+          "obsidian-style-settings": {
+            "name": "Style Settings",
+            "desc": "Super useful to customize the style with CCS and be able to modify the settings from Obsidian.",
+            "type": "text"
+          },
+          "obsidian-smart-typography": {
+            "name": "obsidian-smart-typography",
+            "desc": "Semi useful to improve typography of symbols.",
+            "type": "text"
+          },
+          "wikilinks-to-mdlinks-obsidian": {
+            "name": "wikilinks-to-mdlinks-obsidian",
+            "desc": "Not really needed. It converts Wikilinks to MD links.",
+            "type": "text"
+          },
+          "webpage-html-export": {
+            "name": "webpage-html-export",
+            "desc": "Super useful to export in HTML. It is a bit clunky to load. It is per default disabled, unless I need it.",
+            "type": "text"
+          },
+          "frontmatter-modified-date": {
+            "name": "frontmatter-modified-date",
+            "desc": "Very useful to update the property `modified date`.",
+            "type": "text"
+          },
+          "supercharged-links-obsidian": {
+            "name": "supercharged-links-obsidian",
+            "desc": "The idea is very nice but then the MD notes are not really readable outside of Obsidian. Disabled for now.",
+            "type": "text"
+          },
+          "tag-wrangler": {
+            "name": "tag-wrangler",
+            "desc": "Very useful to rename tags across all notes.",
+            "type": "text"
+          },
+          "sheets": {
+            "name": "sheets",
+            "desc": "Useful to extend tables and merge cells.",
+            "type": "text"
+          },
+          "obsidian-html-plugin": {
+            "name": "obsidian-html-plugin",
+            "desc": "It allows opening HTML files in Obsidian.",
+            "type": "text"
+          },
+          "obsidian-advanced-uri": {
+            "name": "obsidian-advanced-uri",
+            "desc": "Very useful to copy URI.",
+            "type": "text"
+          },
+          "callout-manager": {
+            "name": "Callout Manager",
+            "desc": "Offers a GUI to customize callouts.",
+            "type": "text"
+          },
+          "obsidian-file-path-to-uri": {
+            "name": "obsidian-file-path-to-uri",
+            "desc": "Not really needed. It converts a file path to a URI.",
+            "type": "text"
+          },
+          "obsidian-text-expander-js": {
+            "name": "obsidian-text-expander-js",
+            "desc": "Quite powerful to run inline scripts, and replace predefined macros. However, not really used.",
+            "type": "text"
+          },
+          "omnisearch": {
+            "name": "omnisearch",
+            "desc": "Powerful tool to search through the vault.",
+            "type": "text"
+          },
+          "obsidian-outliner": {
+            "name": "obsidian-outliner",
+            "desc": "Very handy to operate on outlines.",
+            "type": "text"
+          },
+          "url-into-selection": {
+            "name": "url-into-selection",
+            "desc": "Not really needed. It causes more confusion when pasting on existing selected text.",
+            "type": "text"
+          },
+          "periodic-notes": {
+            "name": "periodic-notes",
+            "desc": "Manages daily notes. Just used for daily notes.",
+            "type": "text"
+          },
+          "settings-search": {
+            "name": "settings-search",
+            "desc": "Adds a search field with a fuzzy search functionality to search through Obsidian settings.",
+            "type": "text"
+          },
+          "text-extractor": {
+            "name": "text-extractor",
+            "desc": "I did not really test it how good it works.",
+            "type": "text"
+          },
+          "file-explorer-note-count": {
+            "name": "File Explorer Note Count",
+            "desc": "Very useful to display the number of notes in the various folders.",
+            "type": "text"
+          },
+          "plugins-annotations": {
+            "name": "Plugins Annotations",
+            "desc": "My own plugin to take notes about installed plugins.",
+            "type": "text"
+          },
+          "editing-toolbar": {
+            "name": "editing-toolbar",
+            "desc": "Nice toolbar shown above the notes. Quite handy.",
+            "type": "text"
+          },
+          "obsidian-spaced-repetition": {
+            "name": "obsidian-spaced-repetition",
+            "desc": "Super effective plugin to learn flashcards.",
+            "type": "text"
+          },
+          "table-editor-obsidian": {
+            "name": "table-editor-obsidian",
+            "desc": "A must to operate on tables in Obsidian. 🚀🚀🚀",
+            "type": "text"
+          },
+          "settings-management": {
+            "name": "settings-management",
+            "desc": "Enhanced settings with multiple configurations.",
+            "type": "text"
+          },
+          "obsidian-admonition": {
+            "name": "obsidian-admonition",
+            "desc": "Improve callouts 🖋️. They can be entered as `codeblocks`.",
+            "type": "text"
+          },
+          "obsidian-divide-and-conquer": {
+            "name": "obsidian-divide-and-conquer",
+            "desc": "Plugin useful to debug problems with plugins. Generally, it can be left disabled.",
+            "type": "text"
+          },
+          "js-engine": {
+            "name": "js-engine",
+            "desc": "Allows executing Javascript dynamically in the note.",
+            "type": "text"
+          },
+          "plugin-reloader": {
+            "name": "plugin-reloader",
+            "desc": "Allows reloading a specific plugin without restarting Obsidian. Hotkeys configurable.",
+            "type": "text"
+          },
+          "obsidian-kanban": {
+            "name": "obsidian-kanban",
+            "desc": "Plugin for the Kanban 🗓️ organization.",
+            "type": "text"
+          }
+        },
+        "compatibility": "1.5.0",
+        "markdown_file_path": ""
+      }
+    }
+  ],
+  "compatibility": "1.6.0"
+}
