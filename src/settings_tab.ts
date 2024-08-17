@@ -105,7 +105,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 			const p2 = document.createElement('p2');
 			p2.innerHTML = "You can enter rich text notes using Markdown (recommended) and HTML. \
-				Markdown annotations will be dispalyed as Obsidian renders Markdown text. \
+				Markdown annotations will be displayed as Obsidian renders Markdown text. \
 				The annotation type can be selected by starting the annotation text with a line containing one \
 				of the following options:\
 				 <ul>\
@@ -151,7 +151,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 		const file_path_field = new Setting(containerEl)
 			.setName('Markdown File Path')
 			.setDesc(createFragment((frag) => {
-					frag.appendText('Path to the markdown file where the plugins\' annotations will be stored.');
+					frag.appendText('Markdown file where the plugins\' annotations are stored (e.g, 00 Meta/Misc/Plugins annotations.md).');
 					md_filepath_error_div = frag.createDiv({text: 'Error: the filename must end with .md extension.', cls: "mod-warning" });
 					md_filepath_error_div.style.display = 'none';
 				}))
