@@ -495,12 +495,8 @@ export default class PluginsAnnotations extends Plugin {
                     const annotation_container = document.createElement('div');
                     annotation_container.className = 'plugin-comment';
 
-                    const annotation_div = document.createElement('div');
-                    annotation_div.className = 'plugin-comment-annotation';
-
-                    new annotationControl(this,annotation_container,annotation_div,pluginId,pluginName);
-
-                    annotation_container.appendChild(annotation_div);
+                    new annotationControl(this,annotation_container,pluginId,pluginName);
+                    
                     descriptionDiv.appendChild(annotation_container);                       
                 }
             }

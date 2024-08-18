@@ -105,28 +105,14 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             div.appendChild(p1);
 
             const p2 = document.createElement('p2');
-            p2.innerHTML = "You can enter rich text notes using Markdown (recommended) and HTML. \
-                Markdown annotations will be displayed as Obsidian renders Markdown text. \
-                The annotation type can be selected by starting the annotation text with a line containing one \
-                of the following options:\
-                 <ul>\
-                    <li>markdown:</li>\
-                    <li>html:</li>\
-                    <li>text:</li>\
-                </ul>\
-                If the first line of annotation text contains none of the options above, \
-                the default <em>markdown:</em> is assumed.";
+            p2.innerHTML = "You can enter rich text annotations using Markdown. \
+                Once you are finished editing, the Markdown annotation will be rendered correctly.";
             div.appendChild(p2);
 
             const p3 = document.createElement('p');
             p3.innerHTML = "In Markdown annotations, you can directly link notes inside your \
                 vault by adding links such as [[My notes/Review of plugin XYZ|my plugin note]].";
             div.appendChild(p3);
-
-            const p4 = document.createElement('p');
-            p4.innerHTML = "When editing HTML annotations, use the placeholder <em>${label}</em> to \
-                display the <em>annotation label</em> at the chosen location."
-            div.appendChild(p4);
 
             frag.appendChild(div);
         });
@@ -254,33 +240,41 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
         new Setting(containerEl).setName('Display').setHeading();
 
+        let label;
+        let label_version;
+        let label_cb;
+
         if (Platform.isMobile) {
-            new Setting(containerEl)
-                    .setName('Annotation label:')
-                    .setDesc('Choose the annotation label for the mobile version of Obsidian. \
-                        Use HTML code if you want to format it. Enter an empty string if \
-                        you want to hide the label.')
-                    .addText(text => {
-                        text.setPlaceholder('Annotation label');
-                        text.setValue(this.plugin.settings.label_mobile);
-                        text.onChange(async (value: string) => {
+            label = this.plugin.settings.label_mobile;
+            label_version = 'mobile';
+            label_cb = (value: string) => {
                             this.plugin.settings.label_mobile = value;
                             this.plugin.debouncedSaveAnnotations();
-                    })});
+                    };
         } else {
-            new Setting(containerEl)
-                    .setName('Annotation label:')
-                    .setDesc('Choose the annotation label for the desktop version of Obsidian. \
-                        Use HTML code if you want to format it. Enter an empty string if you want \
-                        to hide the label.')
-                    .addText(text => {
-                        text.setPlaceholder('Annotation label');
-                        text.setValue(this.plugin.settings.label_desktop);
-                        text.onChange(async (value: string) => {
+            label = this.plugin.settings.label_desktop;
+            label_version = 'desktop';
+            label_cb = (value: string) => {
                             this.plugin.settings.label_desktop = value;
                             this.plugin.debouncedSaveAnnotations();
-                    })});
+                    };
         }
+
+        new Setting(containerEl)
+                .setName('Annotation label:')
+                .setDesc(createFragment((frag) => {
+                    frag.appendText(`Choose the annotation label for the ${label_version} version of Obsidian. \
+                    Use HTML code if you want to format it. Enter an empty string if you want \
+                    to hide the label. Use `);
+                    frag.createEl('em').appendText('${plugin_name}');
+                    frag.appendText(' to refer to the plugin name; for example, you can generate automatic links to your notes with label of the kind ');
+                    frag.createEl('em').appendText('[[00 Meta/Installed plugins/${plugin_name} | ${plugin_name}]]');
+                    frag.appendText('.');
+                }))
+                .addText(text => {
+                    text.setPlaceholder('Annotation label');
+                    text.setValue(label);
+                    text.onChange(label_cb)});
 
         new Setting(containerEl)
             .setName('Placeholder label:')
