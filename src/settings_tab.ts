@@ -26,19 +26,33 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         const heading = new Setting(containerEl).setName('Annotations of no longer installed community plugins').setHeading();
         const headingEl = heading.settingEl;
 
-        new Setting(containerEl)
+        const automatic_remove_setting = new Setting(containerEl)
             .setName('Automatically remove personal annotations of uninstalled plugins:')
             .setDesc('If this option is enabled, whenever a plugin is uninstalled, the \
                 attached personal annotation is automatically removed. \
                 If this option is disabled, you can still  manually remove the personal \
                 annotations of any plugin that is no longer installed. \
-                The list of the no longer installed plugins is shown below, when the list is not empty.')
-            .addToggle(toggle => toggle
+                The list of the no longer installed plugins is shown below, when the list is not empty.');
+
+        let automatic_remove_toggle: ToggleComponent;
+        automatic_remove_setting.addToggle(toggle => {
+            automatic_remove_toggle = toggle;
+            toggle
                 .setValue(this.plugin.settings.automatic_remove)
                 .onChange(async (value: boolean) => {
                     this.plugin.settings.automatic_remove = value;
                     this.plugin.debouncedSaveAnnotations();
-                }));
+            });
+        });
+
+        automatic_remove_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    automatic_remove_toggle.setValue(DEFAULT_SETTINGS.automatic_remove);
+                });
+        });
 
         // Check if uninstalledPlugins is empty
         if (Object.keys(this.uninstalledPlugins).length === 0) return;
@@ -149,25 +163,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName(instructions_frag);
 
         const editable_setting = new Setting(containerEl)
-            .setName('Editable:')
-            .setDesc(createFragment((frag) => {
-                    frag.appendText('If disabled, the annotations cannot be edited from the preference pane and are thus \
-                        protected against accidental changes.  In the ');
-                    frag.appendChild(createPluginsPaneFragment());
-                    frag.appendText(' pane, you can coveniently change this setting by clicking on the displayed icon');
-                    const div = frag.createDiv();
-                    div.classList.add('plugin-comment-icon-container')
-                    const unlock_icon = document.createElement('div');
-                    unlock_icon.innerHTML = this.plugin.svg_unlocked;
-                    const lock_icon = document.createElement('div');
-                    lock_icon.innerHTML = this.plugin.svg_locked;
-                    div.appendText('{');
-                    div.appendChild(lock_icon);
-                    div.appendText(',');
-                    div.appendChild(unlock_icon);
-                    div.appendText('}');
-                    frag.appendText('which either locks (make non-editable) or unlocks (make editable) your personal annotations.')            
-                }));
+            .setName('Editable:');
 
         let editable_toggle: ToggleComponent;
         editable_setting.addToggle(toggle => {
@@ -176,7 +172,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.editable)
             .onChange((value: boolean) => {
                 this.plugin.settings.editable = value;
-                this.plugin.debouncedSaveAnnotations(() => { this.display(); });
+                this.plugin.debouncedSaveAnnotations(() => { this.updateUninstalledPluginSettings(containerEl); });
             })
         });
 
@@ -185,11 +181,36 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setIcon("reset")
                 .setTooltip("Reset to default value")
                 .onClick(() => {
-                    this.plugin.settings.editable = DEFAULT_SETTINGS.editable;
-                    editable_toggle.setValue(this.plugin.settings.editable);
-                    this.plugin.debouncedSaveAnnotations(() => { this.display(); });
+                    editable_toggle.setValue(DEFAULT_SETTINGS.editable);
                 });
         });
+
+        editable_setting.setDesc(createFragment((frag) => {
+                    frag.appendText('If disabled, the annotations cannot be edited from the preference pane and are thus \
+                        protected against accidental changes.  In the ');
+                    frag.appendChild(createPluginsPaneFragment());
+                    frag.appendText(' pane, you can coveniently change this setting by clicking on the displayed icon');
+                    const div = frag.createDiv();
+                    div.classList.add('plugin-comment-icon-container')
+                    const unlock_icon = document.createElement('div');
+                    unlock_icon.classList.add('clickable-icon');
+                    unlock_icon.innerHTML = this.plugin.svg_unlocked;
+                    unlock_icon.addEventListener('click', (event:MouseEvent) => {
+                        editable_toggle.setValue(true);
+                    });         
+                    const lock_icon = document.createElement('div');
+                    lock_icon.classList.add('clickable-icon');
+                    lock_icon.innerHTML = this.plugin.svg_locked;
+                    lock_icon.addEventListener('click', (event:MouseEvent) => {
+                        editable_toggle.setValue(false);
+                    });
+                    div.appendText('{');
+                    div.appendChild(lock_icon);
+                    div.appendText(',');
+                    div.appendChild(unlock_icon);
+                    div.appendText('}');
+                    frag.appendText('which either locks (make non-editable) or unlocks (make editable) your personal annotations.')            
+                }));
         
         /* ==== Storage ==== */
 
@@ -301,9 +322,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setIcon("reset")
                 .setTooltip("Reset to default value")
                 .onClick(() => {
-                    this.plugin.settings.markdown_file_path = DEFAULT_SETTINGS.markdown_file_path;
-                    md_filepath_text.setValue(this.plugin.settings.markdown_file_path);
-                    this.plugin.debouncedSaveAnnotations();
+                    md_filepath_text.setValue(DEFAULT_SETTINGS.markdown_file_path);
                 });
         });
 
@@ -332,7 +351,6 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     .setTooltip("Reset to default value")
                     .onClick(() => {
                         md_file_toggle.setValue(DEFAULT_SETTINGS.markdown_file_path !== '');
-                        this.plugin.debouncedSaveAnnotations();
                     });
             });
 
@@ -392,16 +410,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setIcon("reset")
                 .setTooltip("Reset to default value")
                 .onClick(() => {
-                    if (Platform.isMobile) {
-                        this.plugin.settings.label_mobile = DEFAULT_SETTINGS.label_mobile;
-                        label_text.setValue(this.plugin.settings.label_mobile);
-                    } else {
-                        this.plugin.settings.label_desktop = DEFAULT_SETTINGS.label_desktop;
-                        label_text.setValue(this.plugin.settings.label_desktop);
-                    }
-                    this.plugin.debouncedSaveAnnotations(() => { 
-                        this.updateUninstalledPluginSettings(containerEl);
-                    });
+                    label_text.setValue(Platform.isMobile ? DEFAULT_SETTINGS.label_mobile : DEFAULT_SETTINGS.label_desktop);
                 });
         });
 
@@ -433,11 +442,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setIcon("reset")
                 .setTooltip("Reset to default value")
                 .onClick(() => {
-                    this.plugin.settings.label_placeholder = DEFAULT_SETTINGS.label_placeholder;
-                    placeholder_text.setValue(this.plugin.settings.label_placeholder);
-                    this.plugin.debouncedSaveAnnotations(() => {
-                        this.updateUninstalledPluginSettings(containerEl);
-                    });
+                    placeholder_text.setValue(DEFAULT_SETTINGS.label_placeholder);
                 });
         });
 
@@ -467,7 +472,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.hide_placeholders)
             .onChange(async (value: boolean) => {
                 this.plugin.settings.hide_placeholders = value;
-                this.plugin.debouncedSaveAnnotations(() => { this.display(); });
+                this.plugin.debouncedSaveAnnotations(() => { this.updateUninstalledPluginSettings(containerEl); });
             })
         });
 
@@ -476,9 +481,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setIcon("reset")
                 .setTooltip("Reset to default value")
                 .onClick(() => {
-                    this.plugin.settings.hide_placeholders = DEFAULT_SETTINGS.hide_placeholders;
-                    hide_empty_annotations_toggle.setValue(this.plugin.settings.hide_placeholders);
-                    this.plugin.debouncedSaveAnnotations(() => { this.display(); });
+                    hide_empty_annotations_toggle.setValue(DEFAULT_SETTINGS.hide_placeholders);
                 });
         });
 
@@ -496,7 +499,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.delete_placeholder_string_on_insertion)
                 .onChange(async (value: boolean) => {
                     this.plugin.settings.delete_placeholder_string_on_insertion = value;
-                    this.plugin.debouncedSaveAnnotations(() => { this.display(); });
+                    this.plugin.debouncedSaveAnnotations(() => { this.updateUninstalledPluginSettings(containerEl); });
             });
         });
 
@@ -505,29 +508,43 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setIcon("reset")
                 .setTooltip("Reset to default value")
                 .onClick(() => {
-                    this.plugin.settings.delete_placeholder_string_on_insertion = DEFAULT_SETTINGS.delete_placeholder_string_on_insertion;
-                    delete_placeholder_string_toggle.setValue(this.plugin.settings.delete_placeholder_string_on_insertion);
-                    this.plugin.debouncedSaveAnnotations(() => { this.display(); });
+                    delete_placeholder_string_toggle.setValue(DEFAULT_SETTINGS.delete_placeholder_string_on_insertion);
                 });
         });
 
         /* ====== Backups ====== */
-        this.createBackupManager(containerEl);
+        new createBackupManager(this.plugin, containerEl);
 
         /* ====== Personal annotations of no longer installed community plugins ====== */
         this.createUninstalledPluginSettings(containerEl);
-    }
+    }    
+}
 
-    createBackupManager(containerEl: HTMLElement) {
-        new Setting(containerEl)
+class createBackupManager {
+    private backupTableContainer: HTMLElement;
+
+    constructor(private plugin:PluginsAnnotations, private containerEl:HTMLElement) {
+
+        new Setting(this.containerEl)
             .setName('Backups')
             .setHeading();
 
+        this.addBackupButtons();
+
+        // Create a wrapper div for the table
+        this.backupTableContainer = this.containerEl.createDiv();
+        this.backupTableContainer.classList.add('setting-item');
+        this.backupTableContainer.style.display = 'none';
+
+        this.updateListBackups();
+    }
+
+    addBackupButtons() {
         const export_label = (Platform.isDesktopApp) ? ' Use the export and import buttons \
             to copy the current settings and annnotations to an external file and, vicevera, \
             to restore them from an external file.' : '';
 
-        const backup_settings = new Setting(containerEl)
+        const backup_settings = new Setting(this.containerEl)
             .setName('Create a backup copy of your current settings and annotations:')
             .setDesc('Use the backup button to create an internal backup copy. \
                 You can customize the names of existing backups by clicking on their names once you have created them.'
@@ -539,7 +556,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     const backupName = 'Untitled backup';
                     await backupSettings(backupName,this.plugin.settings,this.plugin.settings.backups);
                     await this.plugin.saveSettings();
-                    this.display();
+                    this.updateListBackups();
                 })
             );
 
@@ -579,7 +596,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                                     if(importedData === undefined || importedData === null || typeof importedData !== 'object') throw new Error("Something went wrong with the data in the backup.");
                                     await this.plugin.loadSettings({...importedData,backups:this.plugin.settings.backups});
                                     new Notice('Settings successfully imported.');
-                                    this.display(); // Refresh the display to reflect the imported annotations
+                                    this.updateListBackups();
                                 } catch (error) {
                                     console.error('Error importing settings:', error);
                                     alert('Failed to import settings. Please ensure the file is valid.');
@@ -594,17 +611,19 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 })
             );
         }
+    }
 
+    updateListBackups() {
+        this.backupTableContainer.innerHTML = '';
+        
         // List Existing Backups
         if (this.plugin.settings.backups.length > 0) {
-
+            this.backupTableContainer.style.display = '';
+            
             // Sort the backups by date (most recent first)
             this.plugin.settings.backups.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-            // Create a wrapper div for the table
-            const backupTableContainer = containerEl.createDiv({ cls: 'setting-item' });
-
-            const tableDiv = backupTableContainer.createDiv({ cls: 'plugin-comment-backup-table' });
+            const tableDiv = this.backupTableContainer.createDiv({ cls: 'plugin-comment-backup-table' });
 
             // Create the header row
             const headerRow = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row header' });
@@ -612,7 +631,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Created on' });
             headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: '' });
 
-            this.plugin.settings.backups.forEach((backup, index) => {
+            this.plugin.settings.backups.forEach((backup) => {
                 const rowDiv = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row' });
 
                 // Backup name cell
@@ -622,7 +641,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 // Handle saving the updated name when editing is complete
                 nameDiv.addEventListener('blur', async () => {
                     const newName = nameDiv.textContent?.trim() || 'Unnamed Backup';
-                    this.plugin.settings.backups[index].name = newName;
+                    backup.name = newName;
                     this.plugin.debouncedSaveAnnotations();
                 });
 
@@ -645,19 +664,19 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                         const answer = await showConfirmationDialog(this.plugin.app, 'Delete backup',
                             createFragment((frag) => {
                                 frag.appendText('You are about to restore the settings from the backup named ');
-                                frag.createEl('strong',{text: this.plugin.settings.backups[index].name});
+                                frag.createEl('strong',{text: backup.name});
                                 frag.appendText(' created on ');
-                                frag.createEl('strong',{text: moment(this.plugin.settings.backups[index].date).format('YYYY-MM-DD HH:mm:ss')});
+                                frag.createEl('strong',{text: moment(backup.date).format('YYYY-MM-DD HH:mm:ss')});
                                 frag.appendText('. If you proceed, the current settings will be overwritten with those from the backup. \
                                     If you want to keep a copy of the current settings, make a backup before proceeding.\
                                     Do you want to proceed restoring the seettings from the backup?');
                             }));
                         if(answer) {
-                            const settingsToBeRestored = structuredClone(this.plugin.settings.backups[index].settings);
+                            const settingsToBeRestored = structuredClone(backup.settings);
                             if(settingsToBeRestored === undefined || settingsToBeRestored === null || typeof settingsToBeRestored !== 'object') throw new Error("Something went wrong with the data in the backup.");
                             await this.plugin.loadSettings({...settingsToBeRestored, backups:this.plugin.settings.backups});
                             new Notice(`Annotations restored from backup "${backup.name}"`);
-                            this.display(); // Refresh the display to reflect the restored annotations
+                            this.updateListBackups();
                         }
                     });
 
@@ -666,22 +685,27 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                         const answer = await showConfirmationDialog(this.plugin.app, 'Delete backup',
                             createFragment((frag) => {
                                 frag.appendText('You are about to delete the backup named ');
-                                frag.createEl('strong',{text: this.plugin.settings.backups[index].name});
+                                frag.createEl('strong',{text: backup.name});
                                 frag.appendText(' created on ');
-                                frag.createEl('strong',{text: moment(this.plugin.settings.backups[index].date).format('YYYY-MM-DD HH:mm:ss')});
+                                frag.createEl('strong',{text: moment(backup.date).format('YYYY-MM-DD HH:mm:ss')});
                                 frag.appendText('. Do you want to continue?');
                             }));
                         if(answer) {
-                            this.plugin.settings.backups.splice(index, 1);
+                            const index = this.plugin.settings.backups.indexOf(backup);
+                            if (index !== -1) {
+                                this.plugin.settings.backups.splice(index, 1);  // Removes the element at the found index
+                            }
                             this.plugin.debouncedSaveAnnotations();
                             rowDiv.remove();
                             if(this.plugin.settings.backups.length===0) {
-                                backupTableContainer.remove();
+                                this.backupTableContainer.style.display = 'none';
                             }
                         }
                     });
             });
+        } else {
+            this.backupTableContainer.style.display = 'none';
         }
     }
-}
 
+}
