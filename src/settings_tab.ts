@@ -240,9 +240,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
         new Setting(containerEl).setName('Display').setHeading();
 
-        let label;
-        let label_version;
-        let label_cb;
+        let label: string;
+        let label_version: string;
+        let label_cb: (value: string) => void;
 
         if (Platform.isMobile) {
             label = this.plugin.settings.label_mobile;
