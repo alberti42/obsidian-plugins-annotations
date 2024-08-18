@@ -121,3 +121,7 @@ div.plugin-comment-instructions strong {
 .is-mobile .plugin-comment-backup-buttons {
 	flex-direction: column;
 }
+
+.plugin-comment-selectable {
+    user-select: text;
+}

@@ -21,7 +21,18 @@ export function parseFilePath(filePath: string): ParsedPath {
 // Helper function to show a confirmation dialog
 export function showConfirmationDialog(app: App, title: string, message: DocumentFragment | string): Promise<boolean> {
     return new Promise((resolve) => {
-        const modal = new Modal(app);
+        const modal = new class extends Modal {
+            resolveState: boolean;
+
+            constructor(app:App) {
+                super(app);
+                this.resolveState = false;
+            }
+            onClose() {
+                resolve(this.resolveState); // Resolve the promise as 'false' when the modal is closed without explicit confirmation
+            }
+        }(app);
+
         modal.titleEl.setText(title);
 
         if (typeof message === 'string') {
@@ -32,11 +43,11 @@ export function showConfirmationDialog(app: App, title: string, message: Documen
 
         const buttonContainer = modal.contentEl.createDiv({ cls: 'modal-button-container' });
         buttonContainer.createEl('button', { text: 'Yes', cls: 'mod-cta' }).addEventListener('click', () => {
-            resolve(true);
+            modal.resolveState = true;
             modal.close();
         });
         buttonContainer.createEl('button', { text: 'No' }).addEventListener('click', () => {
-            resolve(false);
+            modal.resolveState = false;
             modal.close();
         });
 

@@ -2,9 +2,10 @@
 
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
-import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent } from "obsidian";
+import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings } from "utils";
+import { DEFAULT_SETTINGS } from 'defaults';
 
 declare const moment: typeof import('moment');
 
@@ -124,7 +125,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Storage').setHeading();
 
         // Add new setting for storing annotations in a Markdown file
-        const toggle_md_file = new Setting(containerEl)
+        const md_file_setting = new Setting(containerEl)
             .setName('Store annotations in a Markdown file:')
             .setDesc('With this option enabled, you can select a Markdown file in your vault to \
                 contain your personal annotations for the installed plugins. This feature is intended \
@@ -135,106 +136,137 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         let file_path_field_control: TextComponent;
         let md_filepath_error_div: HTMLDivElement;
         // Add new setting for markdown file path
-        const file_path_field = new Setting(containerEl)
+        const md_filepath_setting = new Setting(containerEl)
             .setName('Markdown File Path')
             .setDesc(createFragment((frag) => {
-                    frag.appendText('Markdown file where the plugins\' annotations are stored (e.g, 00 Meta/Misc/Plugins annotations.md).');
+                    frag.appendText('Markdown file where the plugins\' annotations are stored (e.g, ');
+                    frag.createEl('em', {'cls': 'plugin-comment-selectable'}).appendText('00 Meta/Misc/Plugins annotations.md');
+                    frag.appendText(').');
                     md_filepath_error_div = frag.createDiv({text: 'Error: the filename must end with .md extension.', cls: "mod-warning" });
                     md_filepath_error_div.style.display = 'none';
-                }))
-            .addText(text => {
+                }));
 
-                let processingChange = false;
+        let md_filepath_text: TextComponent;
+        md_filepath_setting.addText(text => {
+            md_filepath_text = text;
 
-                file_path_field_control = text;
+            let processingChange = false;
 
-                text.setPlaceholder('E.g.: 00 Meta/Plugins annotations.md');
-                text.setValue(this.plugin.settings.markdown_file_path);
+            file_path_field_control = text;
 
-                const inputEl = text.inputEl;
-                const fileSuggestion = new FileSuggestion(this.app, inputEl);
+            text.setPlaceholder('E.g.: 00 Meta/Plugins annotations.md');
+            text.setValue(this.plugin.settings.markdown_file_path);
 
-                const updateVaultFiles = () => {
-                    if(fileSuggestion) {
-                        fileSuggestion.setSuggestions(this.app.vault.getFiles().filter((f) => f.extension === "md"));
-                    }
+            const inputEl = text.inputEl;
+            const fileSuggestion = new FileSuggestion(this.app, inputEl);
+
+            const updateVaultFiles = () => {
+                if(fileSuggestion) {
+                    fileSuggestion.setSuggestions(this.app.vault.getFiles().filter((f) => f.extension === "md"));
+                }
+            }
+
+            updateVaultFiles();
+
+            const onChangeHandler = async (event: Event) => {
+                if(processingChange) {
+                    return; 
+                } else {
+                    processingChange = true;    
                 }
 
-                updateVaultFiles();
+                let filepath = inputEl.value;
 
-                const onChangeHandler = async (event: Event) => {
-                    if(processingChange) {
-                        return; 
-                    } else {
-                        processingChange = true;    
-                    }
+                if(filepath!==this.plugin.settings.markdown_file_path) { // if the path has changed
 
-                    let filepath = inputEl.value;
-
-                    if(filepath!==this.plugin.settings.markdown_file_path) { // if the path has changed
-
-                        if(filepath.trim()==='') {
-                            this.plugin.settings.markdown_file_path = '';
-                            text.setValue(this.plugin.settings.markdown_file_path);
-                            processingChange = false;
-                            this.plugin.debouncedSaveAnnotations();
-                            return;
-                        }
-
-                        filepath = normalizePath(filepath);
-
-                        if (parseFilePath(filepath).ext !== '.md') {
-                            md_filepath_error_div.style.display = '';
-                            text.setValue(this.plugin.settings.markdown_file_path);
-                            processingChange = false;
-                            return;
-                        }
-
-                        md_filepath_error_div.style.display = 'none';
-                        const answer = await handleMarkdownFilePathChange(this.plugin, filepath);
-                        if(answer) {
-                            this.plugin.settings.markdown_file_path = filepath;
-                            await this.plugin.saveSettings();
-                            updateVaultFiles();
-                        }
+                    if(filepath.trim()==='') {
+                        this.plugin.settings.markdown_file_path = '';
                         text.setValue(this.plugin.settings.markdown_file_path);
+                        processingChange = false;
+                        this.plugin.debouncedSaveAnnotations();
+                        return;
                     }
 
-                    processingChange = false;
-                };
+                    filepath = normalizePath(filepath);
 
-                inputEl.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter') {
-                        event.preventDefault();
-                        onChangeHandler(event);
+                    if (parseFilePath(filepath).ext !== '.md') {
+                        md_filepath_error_div.style.display = '';
+                        this.plugin.settings.markdown_file_path = DEFAULT_SETTINGS.markdown_file_path; // reverts to the default behavior
+                        await this.plugin.saveSettings();
+                        processingChange = false;
+                        return;
                     }
-                });
 
-                inputEl.addEventListener('blur', onChangeHandler);
+                    md_filepath_error_div.style.display = 'none';
+                    const answer = await handleMarkdownFilePathChange(this.plugin, filepath);
+                    if(answer) {
+                        this.plugin.settings.markdown_file_path = filepath;
+                        await this.plugin.saveSettings();
+                        updateVaultFiles();
+                    }
+                    text.setValue(this.plugin.settings.markdown_file_path);
+                }
 
-                // Use change explicitly instead of onChange because onChange
-                // reacts to events of type `input` instead of `change`
-                inputEl.addEventListener('change', onChangeHandler);
+                processingChange = false;
+            };
+
+            inputEl.addEventListener('keydown', async (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    onChangeHandler(event);
+                }
             });
 
-        file_path_field.settingEl.style.display = this.plugin.settings.markdown_file_path === '' ? 'none' : '';
+            inputEl.addEventListener('blur', onChangeHandler);
 
-        toggle_md_file.addToggle(toggle => toggle
+            // Use change explicitly instead of onChange because onChange
+            // reacts to events of type `input` instead of `change`
+            inputEl.addEventListener('change', onChangeHandler);
+        });
+
+        md_filepath_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    this.plugin.settings.markdown_file_path = DEFAULT_SETTINGS.markdown_file_path;
+                    md_filepath_text.setValue(this.plugin.settings.markdown_file_path);
+                    this.plugin.debouncedSaveAnnotations();
+                });
+        });
+
+        md_filepath_setting.settingEl.style.display = this.plugin.settings.markdown_file_path === '' ? 'none' : '';
+
+        let md_file_toggle: ToggleComponent;
+        md_file_setting.addToggle(toggle => {
+            md_file_toggle = toggle;
+            toggle
             .setValue(this.plugin.settings.markdown_file_path !== '')
             .onChange(async (value: boolean) => {
                 if (value) {
-                    file_path_field.settingEl.style.display = '';
+                    md_filepath_setting.settingEl.style.display = '';
                     this.plugin.settings.markdown_file_path = file_path_field_control.getValue();
                 } else {
-                    file_path_field.settingEl.style.display = 'none';
+                    md_filepath_setting.settingEl.style.display = 'none';
                     this.plugin.settings.markdown_file_path = '';
                 }
                 this.plugin.debouncedSaveAnnotations();
-            }));
+            })
+        });
+
+        md_file_setting.addExtraButton((button) => {
+                button
+                    .setIcon("reset")
+                    .setTooltip("Reset to default value")
+                    .onClick(() => {
+                        md_file_toggle.setValue(DEFAULT_SETTINGS.markdown_file_path !== '');
+                        this.plugin.debouncedSaveAnnotations();
+                    });
+            });
 
         // Append the settings
-        containerEl.appendChild(toggle_md_file.settingEl);
-        containerEl.appendChild(file_path_field.settingEl);
+        containerEl.appendChild(md_file_setting.settingEl);
+        containerEl.appendChild(md_filepath_setting.settingEl);
 
         /* ==== Display heading ==== */
 
@@ -260,37 +292,70 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     };
         }
 
-        new Setting(containerEl)
-                .setName('Annotation label:')
-                .setDesc(createFragment((frag) => {
-                    frag.appendText(`Choose the annotation label for the ${label_version} version of Obsidian. \
-                    Use HTML code if you want to format it. Enter an empty string if you want \
-                    to hide the label. Use `);
-                    frag.createEl('em').appendText('${plugin_name}');
-                    frag.appendText(' to refer to the plugin name; for example, you can generate automatic links to your notes with label of the kind ');
-                    frag.createEl('em').appendText('[[00 Meta/Installed plugins/${plugin_name} | ${plugin_name}]]');
-                    frag.appendText('.');
-                }))
-                .addText(text => {
-                    text.setPlaceholder('Annotation label');
-                    text.setValue(label);
-                    text.onChange(label_cb)});
+        const label_setting = new Setting(containerEl)
+            .setName('Annotation label:')
+            .setDesc(createFragment((frag) => {
+                frag.appendText(`Choose the annotation label for the ${label_version} version of Obsidian. \
+                Use HTML code if you want to format it. Enter an empty string if you want \
+                to hide the label. Use `);
+                frag.createEl('em').appendText('${plugin_name}');
+                frag.appendText(' as a template for the plugin name; for example, you can generate automatic links to your notes with a label of the kind "');
+                frag.createEl('em', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name} | ${plugin_name}]]');
+                frag.appendText('".');
+            }));
 
-        new Setting(containerEl)
+        let label_text: TextComponent;
+        label_setting.addText(text => {
+            label_text = text;
+            text.setPlaceholder('Annotation label');
+            text.setValue(label);
+            text.onChange(label_cb)});
+
+        label_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    if (Platform.isMobile) {
+                        this.plugin.settings.label_mobile = DEFAULT_SETTINGS.label_mobile;
+                        label_text.setValue(this.plugin.settings.label_mobile);
+                    } else {
+                        this.plugin.settings.label_desktop = DEFAULT_SETTINGS.label_desktop;
+                        label_text.setValue(this.plugin.settings.label_desktop);
+                    }
+                    this.plugin.debouncedSaveAnnotations();
+                });
+        });
+
+        const placeholder_setting = new Setting(containerEl)
             .setName('Placeholder label:')
             .setDesc(createFragment((frag) => {
                     frag.appendText('Choose the label appearing where no user annotation is provied yet. Use ');
-                    frag.createEl('em').appendText('${plugin_name}');
-                    frag.appendText(' to refer to the plugin name.')}))
-            .addText(text => {
-                text.setPlaceholder('Annotation label');
-                text.setValue(this.plugin.settings.label_placeholder);
-                text.onChange(async (value: string) => {
-                    this.plugin.settings.label_placeholder = value;
-                    this.plugin.debouncedSaveAnnotations();
-            })});
+                    frag.createEl('em',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
+                    frag.appendText(' as a template for the plugin name.')}));
 
-        new Setting(containerEl)
+        let placeholder_text: TextComponent;
+        placeholder_setting.addText(text => {
+            placeholder_text = text;
+            text.setPlaceholder('Annotation label');
+            text.setValue(this.plugin.settings.label_placeholder);
+            text.onChange(async (value: string) => {
+                this.plugin.settings.label_placeholder = value;
+                this.plugin.debouncedSaveAnnotations();
+        })});
+
+        placeholder_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    this.plugin.settings.label_placeholder = DEFAULT_SETTINGS.label_placeholder;
+                    placeholder_text.setValue(this.plugin.settings.label_placeholder);
+                    this.plugin.debouncedSaveAnnotations();
+                });
+        });
+
+        const hide_empty_annotations_setting = new Setting(containerEl)
             .setName('Hide empty annotations:')
             .setDesc(createFragment((frag) => {
                 frag.appendText('If this option is enabled, only annotations set by the user \
@@ -307,27 +372,58 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     warning.classList.add('mod-warning');
                     frag.appendChild(p);
                 }
-            }))
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.hide_placeholders)
-                .onChange(async (value: boolean) => {
-                    this.plugin.settings.hide_placeholders = value;
-                    this.plugin.debouncedSaveAnnotations();
-                }));
+            }));
 
-        new Setting(containerEl)
+        let hide_empty_annotations_toggle: ToggleComponent;
+        hide_empty_annotations_setting.addToggle(toggle => {
+            hide_empty_annotations_toggle = toggle;
+            toggle
+            .setValue(this.plugin.settings.hide_placeholders)
+            .onChange(async (value: boolean) => {
+                this.plugin.settings.hide_placeholders = value;
+                this.plugin.debouncedSaveAnnotations();
+            })
+        });
+
+        hide_empty_annotations_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    this.plugin.settings.hide_placeholders = DEFAULT_SETTINGS.hide_placeholders;
+                    hide_empty_annotations_toggle.setValue(this.plugin.settings.hide_placeholders);
+                    this.plugin.debouncedSaveAnnotations();
+                });
+        });
+
+        const delete_placeholder_string_setting = new Setting(containerEl)
             .setName('Delete placeholder text when inserting a new annotation:')
             .setDesc('If this option is enabled, the placeholder text will be deleted \
                     automatically when you start typing a new annotation. If disabled, \
                     the placeholder text will be selected for easier replacement. \
-                    This is a minor customization.')
-            .addToggle(toggle => toggle
+                    This is a minor customization.');
+
+        let delete_placeholder_string_toggle: ToggleComponent;
+        delete_placeholder_string_setting.addToggle(toggle => {
+            delete_placeholder_string_toggle = toggle;
+            toggle
                 .setValue(this.plugin.settings.delete_placeholder_string_on_insertion)
                 .onChange(async (value: boolean) => {
                     this.plugin.settings.delete_placeholder_string_on_insertion = value;
                     this.plugin.debouncedSaveAnnotations();
-            }));
+            });
+        });
 
+        delete_placeholder_string_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    this.plugin.settings.delete_placeholder_string_on_insertion = DEFAULT_SETTINGS.delete_placeholder_string_on_insertion;
+                    delete_placeholder_string_toggle.setValue(this.plugin.settings.delete_placeholder_string_on_insertion);
+                    this.plugin.debouncedSaveAnnotations();
+                });
+        });
 
         /* ====== Backups ====== */
         this.createBackupManager(containerEl);

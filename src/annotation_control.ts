@@ -19,8 +19,6 @@ export class annotationControl {
         this.label = Platform.isMobile ? this.plugin.settings.label_mobile : this.plugin.settings.label_desktop
         this.placeholder = (this.plugin.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
 
-        console.log(pluginId, this.isPlaceholder);
-
         this.annotation_div = document.createElement('div');
         this.annotation_div.className = 'plugin-comment-annotation';
                 
