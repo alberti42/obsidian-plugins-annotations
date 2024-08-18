@@ -13,97 +13,12 @@ declare const moment: typeof import('moment');
 export class PluginsAnnotationsSettingTab extends PluginSettingTab {
     plugin: PluginsAnnotations;
 
-    private uninstalledPlugins:PluginAnnotationDict = {};
+    private uninstalledPluginsManager: UninstalledPluginsManager | null = null;
+    private backupManager: BackupManager | null = null;
 
     constructor(app: App, plugin: PluginsAnnotations) {
         super(app, plugin);
         this.plugin = plugin;
-    }
-
-    createUninstalledPluginSettings(containerEl: HTMLElement) {
-        this.uninstalledPlugins = this.plugin.getUninstalledPlugins();
-        
-        const heading = new Setting(containerEl).setName('Annotations of no longer installed community plugins').setHeading();
-        const headingEl = heading.settingEl;
-
-        const automatic_remove_setting = new Setting(containerEl)
-            .setName('Automatically remove personal annotations of uninstalled plugins:')
-            .setDesc('If this option is enabled, whenever a plugin is uninstalled, the \
-                attached personal annotation is automatically removed. \
-                If this option is disabled, you can still  manually remove the personal \
-                annotations of any plugin that is no longer installed. \
-                The list of the no longer installed plugins is shown below, when the list is not empty.');
-
-        let automatic_remove_toggle: ToggleComponent;
-        automatic_remove_setting.addToggle(toggle => {
-            automatic_remove_toggle = toggle;
-            toggle
-                .setValue(this.plugin.settings.automatic_remove)
-                .onChange(async (value: boolean) => {
-                    this.plugin.settings.automatic_remove = value;
-                    this.plugin.debouncedSaveAnnotations();
-            });
-        });
-
-        automatic_remove_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    automatic_remove_toggle.setValue(DEFAULT_SETTINGS.automatic_remove);
-                });
-        });
-
-        // Check if uninstalledPlugins is empty
-        if (Object.keys(this.uninstalledPlugins).length === 0) return;
-
-        const list_uninstalled_label = new Setting(containerEl)
-            .setName('List of no longer installed plugins:')
-            .setDesc('If you plan to reinstall the plugin in the future, \
-                it is recommended not to remove your annotations, as you can reuse them later.');
-
-        // Iterate over uninstalled plugins and add settings to the new subcontainer
-        sortAnnotations(this.uninstalledPlugins).forEach(pluginId => {
-            const pluginSetting = new Setting(containerEl)
-                .setName(`Plugin ${this.uninstalledPlugins[pluginId].name}`)
-                .addButton(button => button
-                    .setButtonText('Delete')
-                    .setCta()
-                    .onClick(async () => {
-                        delete this.plugin.settings.annotations[pluginId];
-                        delete this.uninstalledPlugins[pluginId];
-                        pluginSetting.settingEl.remove();
-                        this.plugin.debouncedSaveAnnotations();
-                            
-                        // If no more uninstalled plugins, remove the section container
-                        if (Object.keys(this.uninstalledPlugins).length === 0) {
-                            headingEl.remove();
-                            list_uninstalled_label.settingEl.remove();
-                        }
-                    }));
-            
-            pluginSetting.descEl.dataset.plugin=pluginId;
-
-            // Render the annotation
-            new annotationControl(this.plugin,pluginSetting.descEl,pluginId,this.uninstalledPlugins[pluginId].name);
-            
-            // Set the attributes by applying the correct classes
-            pluginSetting.descEl.classList.add('plugin-comment-annotation');
-            pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
-        });
-    }
-
-    updateUninstalledPluginSettings(containerEl: HTMLElement) {
-        const elements = containerEl.querySelectorAll('div.setting-item-description.plugin-comment-annotation');
-        elements.forEach((descEl) => {
-            if (descEl instanceof HTMLElement) {
-                const pluginId = descEl.dataset.plugin;
-                if(pluginId) {
-                    descEl.innerHTML = '';
-                    new annotationControl(this.plugin,descEl,pluginId,this.uninstalledPlugins[pluginId].name);
-                }
-            }
-        });
     }
 
     async display(): Promise<void> {
@@ -172,7 +87,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.editable)
             .onChange((value: boolean) => {
                 this.plugin.settings.editable = value;
-                this.plugin.debouncedSaveAnnotations(() => { this.updateUninstalledPluginSettings(containerEl); });
+                this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
             })
         });
 
@@ -372,7 +287,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             label_cb = (value: string) => {
                             this.plugin.settings.label_mobile = value;
                             this.plugin.debouncedSaveAnnotations(() => { 
-                                this.updateUninstalledPluginSettings(containerEl);
+                                this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
                             });
                     };
         } else {
@@ -381,7 +296,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             label_cb = (value: string) => {
                             this.plugin.settings.label_desktop = value;
                             this.plugin.debouncedSaveAnnotations(() => {
-                                this.updateUninstalledPluginSettings(containerEl);
+                                this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
                             });
                     };
         }
@@ -433,7 +348,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             text.onChange(async (value: string) => {
                 this.plugin.settings.label_placeholder = value;
                 this.plugin.debouncedSaveAnnotations(() => {
-                    this.updateUninstalledPluginSettings(containerEl);
+                    this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
                 });
         })});
 
@@ -472,7 +387,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.hide_placeholders)
             .onChange(async (value: boolean) => {
                 this.plugin.settings.hide_placeholders = value;
-                this.plugin.debouncedSaveAnnotations(() => { this.updateUninstalledPluginSettings(containerEl); });
+                this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
             })
         });
 
@@ -499,7 +414,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.delete_placeholder_string_on_insertion)
                 .onChange(async (value: boolean) => {
                     this.plugin.settings.delete_placeholder_string_on_insertion = value;
-                    this.plugin.debouncedSaveAnnotations(() => { this.updateUninstalledPluginSettings(containerEl); });
+                    this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
             });
         });
 
@@ -513,14 +428,14 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         });
 
         /* ====== Backups ====== */
-        new createBackupManager(this.plugin, containerEl);
+        this.backupManager = new BackupManager(this.plugin, containerEl);
 
         /* ====== Personal annotations of no longer installed community plugins ====== */
-        this.createUninstalledPluginSettings(containerEl);
+        this.uninstalledPluginsManager = new UninstalledPluginsManager(this.plugin,containerEl);
     }    
 }
 
-class createBackupManager {
+class BackupManager {
     private backupTableContainer: HTMLElement;
 
     constructor(private plugin:PluginsAnnotations, private containerEl:HTMLElement) {
@@ -709,3 +624,95 @@ class createBackupManager {
     }
 
 }
+
+class UninstalledPluginsManager {
+
+    private uninstalledPlugins:PluginAnnotationDict = {};
+
+    constructor(private plugin:PluginsAnnotations,private containerEl: HTMLElement) {
+        this.uninstalledPlugins = this.plugin.getUninstalledPlugins();
+        
+        new Setting(containerEl).setName('Annotations of no longer installed community plugins').setHeading();
+        
+        const automatic_remove_setting = new Setting(containerEl)
+            .setName('Automatically remove personal annotations of uninstalled plugins:')
+            .setDesc('If this option is enabled, whenever a plugin is uninstalled, the \
+                attached personal annotation is automatically removed. \
+                If this option is disabled, you can still  manually remove the personal \
+                annotations of any plugin that is no longer installed. \
+                The list of the no longer installed plugins is shown below, when the list is not empty.');
+
+        let automatic_remove_toggle: ToggleComponent;
+        automatic_remove_setting.addToggle(toggle => {
+            automatic_remove_toggle = toggle;
+            toggle
+                .setValue(this.plugin.settings.automatic_remove)
+                .onChange(async (value: boolean) => {
+                    this.plugin.settings.automatic_remove = value;
+                    this.plugin.debouncedSaveAnnotations();
+            });
+        });
+
+        automatic_remove_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    automatic_remove_toggle.setValue(DEFAULT_SETTINGS.automatic_remove);
+                });
+        });
+
+        // Check if uninstalledPlugins is empty
+        if (Object.keys(this.uninstalledPlugins).length === 0) return;
+
+        const list_uninstalled_label = new Setting(containerEl)
+            .setName('List of no longer installed plugins:')
+            .setDesc('If you plan to reinstall the plugin in the future, \
+                it is recommended not to remove your annotations, as you can reuse them later.');
+
+        // Iterate over uninstalled plugins and add settings to the new subcontainer
+        sortAnnotations(this.uninstalledPlugins).forEach(pluginId => {
+            const pluginSetting = new Setting(containerEl)
+                .setName(`Plugin ${this.uninstalledPlugins[pluginId].name}`)
+                .addButton(button => button
+                    .setButtonText('Delete')
+                    .setCta()
+                    .onClick(async () => {
+                        delete this.plugin.settings.annotations[pluginId];
+                        delete this.uninstalledPlugins[pluginId];
+                        pluginSetting.settingEl.remove();
+                        this.plugin.debouncedSaveAnnotations();
+                            
+                        // If no more uninstalled plugins, remove the section container
+                        if (Object.keys(this.uninstalledPlugins).length === 0) {
+                            list_uninstalled_label.settingEl.remove();
+                        }
+                    }));
+            
+            pluginSetting.descEl.dataset.plugin=pluginId;
+
+            // Render the annotation
+            new annotationControl(this.plugin,pluginSetting.descEl,pluginId,this.uninstalledPlugins[pluginId].name);
+            
+            // Set the attributes by applying the correct classes
+            pluginSetting.descEl.classList.add('plugin-comment-annotation');
+            pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
+        });
+    }
+
+    updateUninstalledPluginSettings(containerEl: HTMLElement) {
+        const elements = containerEl.querySelectorAll('div.setting-item-description.plugin-comment-annotation');
+        elements.forEach((descEl) => {
+            if (descEl instanceof HTMLElement) {
+                const pluginId = descEl.dataset.plugin;
+                if(pluginId) {
+                    descEl.innerHTML = '';
+                    new annotationControl(this.plugin,descEl,pluginId,this.uninstalledPlugins[pluginId].name);
+                }
+            }
+        });
+    }
+
+
+}
+
