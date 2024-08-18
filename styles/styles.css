@@ -7,11 +7,6 @@
 	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
 }
 
-.plugin-comment-label {
-    float: left;
-    cursor: default;
-}
-
 .plugin-comment-annotation.plugin-comment-placeholder {
 	color: #CCCCCC; /* Standard placeholder color */
 }
