@@ -221,8 +221,9 @@ export async function backupSettings(backupName: string, toBeBackedUp: unknown, 
     // Deep copy
     const deepCopiedSettings = structuredClone(settingsWithoutBackup);
 
-    // Add the backup with the deep-copied settings
-    destBackups.push({
+    // Add the deep-copy of the settings to the beginning of the array
+    // See: https://stackoverflow.com/a/8073687/4216175
+    destBackups.unshift({
         name: backupName,
         date: new Date(),
         settings: deepCopiedSettings

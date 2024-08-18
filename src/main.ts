@@ -41,10 +41,14 @@ export default class PluginsAnnotations extends Plugin {
                 </svg>';
 
     private mutationObserver: MutationObserver | null = null;
-    private saveTimeout: number | null = null;
     private observedTab: SettingTab | null = null;
     private vaultPath: string | null = null;
 
+    /* For debounced saving */
+    private saveTimeout: number | null = null;
+    private savePromise: Promise<void> | null = null;
+    private resolveSavePromise: (() => void) | null = null;
+    
     async onload() {
 
         // console.clear();
@@ -199,8 +203,8 @@ export default class PluginsAnnotations extends Plugin {
         });
 
         // Merge imported backups with backups created while importing the data
-        importedSettings.backups = [...importedSettings.backups, ...importBackups];
-
+        importedSettings.backups = [...importBackups, ...importedSettings.backups];
+        
         // Merge loaded settings with default settings
         this.settings = Object.assign({}, structuredClone(DEFAULT_SETTINGS), importedSettings);
 
@@ -223,6 +227,7 @@ export default class PluginsAnnotations extends Plugin {
         
         let isRestoreOperation;
         if(data === undefined) {
+            this.waitForSaveToComplete();
             data = await this.loadData();
             isRestoreOperation = false;
         } else {
@@ -541,18 +546,38 @@ export default class PluginsAnnotations extends Plugin {
         });
     }
 
-    debouncedSaveAnnotations(callback: ()=>void = ():void => {}) {
+    debouncedSaveAnnotations(callback: () => void = (): void => {}) {
         const timeout_ms = 100;
 
+        // Clear the previous timeout and resolve the previous promise if necessary
         if (this.saveTimeout) {
             clearTimeout(this.saveTimeout);
+
+            // By stopping the timer, the promise is unlikely to be resolved. So, we need to resolve it manually.
+            if (this.resolveSavePromise) {
+                this.resolveSavePromise(); // Ensure the previous promise is resolved to avoid memory leaks
+            }
         }
-        
-        this.saveTimeout = window.setTimeout(async () => {
-            await this.saveSettings();
-            callback();
-            this.saveTimeout = null;
-        }, timeout_ms);
+
+        // Create a new promise and store the resolve function
+        this.savePromise = new Promise<void>((resolve) => {
+            this.resolveSavePromise = resolve; // Store the resolve function
+
+            this.saveTimeout = window.setTimeout(async () => {
+                await this.saveSettings();
+                callback();
+                this.saveTimeout = null;
+                resolve();  // Resolve the promise when the timer completes
+            }, timeout_ms);
+        });
+    }
+
+    // Helper method to check if a save is in progress and wait for it
+    async waitForSaveToComplete() {
+        if (this.saveTimeout && this.savePromise) {
+            // Wait for the existing promise to resolve
+            await this.savePromise;
+        }
     }
 
     removeCommentsFromTab() {

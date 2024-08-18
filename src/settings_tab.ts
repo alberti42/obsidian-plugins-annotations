@@ -437,6 +437,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
 class BackupManager {
     private backupTableContainer: HTMLElement;
+    private UNTITLED_BACKUP = 'Untitled backup';
 
     constructor(private plugin:PluginsAnnotations, private containerEl:HTMLElement) {
 
@@ -468,7 +469,7 @@ class BackupManager {
                 .setButtonText('Create Backup')
                 .setCta()
                 .onClick(async () => {
-                    const backupName = 'Untitled backup';
+                    const backupName = this.UNTITLED_BACKUP;
                     await backupSettings(backupName,this.plugin.settings,this.plugin.settings.backups);
                     await this.plugin.saveSettings();
                     this.updateListBackups();
@@ -554,9 +555,18 @@ class BackupManager {
                 const nameDiv = nameCell.createDiv({ text: backup.name, attr: { contenteditable: 'true' } });
 
                 // Handle saving the updated name when editing is complete
-                nameDiv.addEventListener('blur', async () => {
-                    const newName = nameDiv.textContent?.trim() || 'Unnamed Backup';
-                    backup.name = newName;
+                nameDiv.addEventListener('input', () => {
+                    const newName = nameDiv.innerText.trim();
+                    backup.name = newName === '' ? this.UNTITLED_BACKUP : newName;
+                    this.plugin.debouncedSaveAnnotations();
+                });
+
+                // Handle saving the updated name when editing is complete
+                nameDiv.addEventListener('blur', () => {
+                    const newName = nameDiv.innerText.trim();
+                    if(newName === '') {
+                        nameDiv.innerText = backup.name;
+                    }
                     this.plugin.debouncedSaveAnnotations();
                 });
 

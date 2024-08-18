@@ -92,22 +92,12 @@ export class annotationControl {
         });
 
         this.annotation_div.addEventListener('input', (event: Event) => {
-            // If the user starts typing, it removes the state of placeholder if this was set
-            if(this.plugin.settings.editable) this.isPlaceholder = false;
-        });
-
-        // Add placeholder class back if no changes are made
-        this.annotation_div.addEventListener('blur', (event:FocusEvent) => {
-            if(!this.plugin.settings.editable) { return; }
-            if(this.clickedLink) return;
-
             const content = this.annotation_div.innerText.trim();
 
-            if (this.isPlaceholder || content === '') { // placeholder
+            if (content === '') { // placeholder
                 this.isPlaceholder = true;
                 this.annotationDesc = '';
                 this.plugin.removeAnnotation(this.pluginId);
-                this.setPlaceholderClasses();
             } else {
                 this.isPlaceholder = false;
                 this.annotationDesc = content.trim();
@@ -115,10 +105,21 @@ export class annotationControl {
                     desc: this.annotationDesc,
                     name: this.pluginName,
                 });
+            }
+            this.plugin.debouncedSaveAnnotations();
+        });
+
+        // Add placeholder class back if no changes are made
+        this.annotation_div.addEventListener('blur', (event:FocusEvent) => {
+            if(!this.plugin.settings.editable) { return; }
+            if(this.clickedLink) return;
+
+            if (this.isPlaceholder) { // placeholder
+                this.setPlaceholderClasses();
+            } else {
                 this.removePlaceholderClasses();   
             }
             this.renderAnnotation();
-            this.plugin.debouncedSaveAnnotations();
         });
     }
 
