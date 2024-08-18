@@ -2,7 +2,7 @@
 
 /* Make sure the input field takes the full width of its parent */
 .plugin-comment {
-	margin-top: 5px;
+	margin-top: var(--size-4-1);;
 	width: 100%;
 	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
 }
@@ -70,7 +70,7 @@ div.plugin-comment-instructions strong {
 
 .plugin-comment-backup-table,
 .plugin-comment-uninstalled {
-	margin-left:40px;
+	margin-left:var(--size-4-10);;
 }
 
 
@@ -92,7 +92,7 @@ div.plugin-comment-instructions strong {
 
 .plugin-comment-backup-table-cell {
     display: table-cell;
-    padding: 8px 0 8px 0;
+    padding: var(--size-4-2) 0 var(--size-4-2) 0;
     border-bottom: 1px solid var(--background-modifier-border);
     vertical-align: middle;
 }
@@ -113,7 +113,7 @@ div.plugin-comment-instructions strong {
 
 .plugin-comment-backup-buttons {
     display: flex;
-    gap: 10px;
+    gap: var(--size-4-2);
     justify-content: flex-end;
 }
 
@@ -124,4 +124,17 @@ div.plugin-comment-instructions strong {
 
 .plugin-comment-selectable {
     user-select: text;
+}
+
+.plugin-comment-icon-container {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+    margin-top: var(--size-4-1);
+    margin-bottom: var(--size-4-1);
+    font-size: 16px;
+}
+
+.plugin-comment-icon-container div {
+    
 }

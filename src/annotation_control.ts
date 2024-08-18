@@ -11,13 +11,15 @@ export class annotationControl {
     private placeholder:string;
     private label:string;
     private annotation_div: HTMLDivElement;
+    private pluginName;
 
-    constructor(private plugin: PluginsAnnotations, private annotation_container:HTMLDivElement, private pluginId:string, private pluginName:string) {
+    constructor(private plugin: PluginsAnnotations, private annotation_container:HTMLElement, private pluginId:string) {
 
         this.clickedLink = false;
         this.isPlaceholder = (this.plugin.settings.annotations.hasOwnProperty(pluginId) && isPluginAnnotation(this.plugin.settings.annotations[pluginId])) ? false : true;
         this.label = Platform.isMobile ? this.plugin.settings.label_mobile : this.plugin.settings.label_desktop
-        this.placeholder = (this.plugin.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
+        this.pluginName = this.plugin.pluginIdToNameMap[pluginId];
+        this.placeholder = (this.plugin.settings.label_placeholder).replace(/\$\{plugin_name\}/g, this.pluginName);
 
         this.annotation_div = document.createElement('div');
         this.annotation_div.className = 'plugin-comment-annotation';

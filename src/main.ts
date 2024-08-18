@@ -13,14 +13,14 @@ import {
     // App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { isPluginsAnnotationsSettings, PluginAnnotation, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
+import { isPluginAnnotation, isPluginsAnnotationsSettings, PluginAnnotation, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
 import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, PluginsAnnotationsSettings_1_5_0, PluginAnnotationDict_1_5_0, isPluginsAnnotationsSettings_1_5_0, } from 'types_legacy'
 import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
-import { backupSettings, delay } from 'utils';
+import { backupSettings, delay, sortAnnotations } from 'utils';
 import { annotationControl } from 'annotation_control';
 
 export default class PluginsAnnotations extends Plugin {
@@ -29,11 +29,22 @@ export default class PluginsAnnotations extends Plugin {
     pluginIdToNameMap: Record<string,string> = {};
     sortedPluginIds: string[] = [];
 
+    svg_unlocked = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-open">\
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
+                     <path d="M7 11v-4c0-2.8 2.2-5 5-5 1.6 0 3.1.8 4 2"/> \
+                </svg>';
+    svg_locked ='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock">\
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>\
+                </svg>';
+
     private mutationObserver: MutationObserver | null = null;
     private saveTimeout: number | null = null;
     private observedTab: SettingTab | null = null;
     private vaultPath: string | null = null;
-    
+
     async onload() {
 
         // console.clear();
@@ -63,7 +74,7 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     /* Load settings for different versions */
-    async importSettings(data: unknown): Promise<{importedSettings: unknown, wasUpdated: boolean}> {
+    async importSettings(data: unknown): Promise<{importedSettings: PluginsAnnotationsSettings, wasUpdated: boolean}> {
 
         const importBackups: PluginBackup[] = [];
 
@@ -72,15 +83,13 @@ export default class PluginsAnnotations extends Plugin {
         
         // Nested function to handle different versions of settings
         const getSettingsFromData = async (data: unknown): Promise<unknown> => {
-            if(data === null) { // if the file is empty
-                return data;
-            } else if (isPluginsAnnotationsSettings(data)) {
+            if (isPluginsAnnotationsSettings(data)) {
                 const settings: PluginsAnnotationsSettings = data;
-                return settings;
+                return settings as PluginsAnnotationsSettings;
             } else if (isPluginsAnnotationsSettings_1_5_0(data)) {
                 // Make a backup
                 await backupSettings('Settings before upgrade from 1.5 to 1.6',data,importBackups);
-                await delay(10); // add a delay to shift the timestamp of the backup
+                await delay(10); // add a small delay to shift the timestamp of the backup
 
                 // Upgrade annotations format
                 const upgradedAnnotations: PluginAnnotationDict = {};
@@ -106,7 +115,7 @@ export default class PluginsAnnotations extends Plugin {
             } else if (isSettingsFormat_1_4_0(data)) { // previous versions where the name of the plugins was not stored
                 // Make a backup
                 await backupSettings('Settings before upgrade from 1.4 to 1.5',data,importBackups);
-                await delay(10); // add a delay to shift the timestamp of the backup
+                await delay(10); // add a small delay to shift the timestamp of the backup
 
                 // Upgrade annotations format
                 const upgradedAnnotations: PluginAnnotationDict_1_5_0 = {};
@@ -138,7 +147,7 @@ export default class PluginsAnnotations extends Plugin {
             } else if (isSettingsFormat_1_3_0(data)) { // previous versions where the name of the plugins was not stored
                 // Make a backup
                 await backupSettings('Settings before upgrade from 1.3 to 1.4',data,importBackups);
-                await delay(10); // add a delay to shift the timestamp of the backup
+                await delay(10); // add a small delay to shift the timestamp of the backup
 
                 // Upgrade annotations format
                 const upgradedAnnotations: PluginAnnotationDict_1_4_0 = {};
@@ -164,7 +173,7 @@ export default class PluginsAnnotations extends Plugin {
             } else {
                 // Make a backup
                 await backupSettings('Settings before upgrade from 1.0 to 1.3',data,importBackups);
-                await delay(10); // add a delay to shift the timestamp of the backup
+                await delay(10); // add a small delay to shift the timestamp of the backup
 
                 // Very first version of the plugin 1.0 -- no options were stored, only the dictionary of annotations
                 const default_new_settings_1_3_0 = structuredClone(DEFAULT_SETTINGS_1_3_0);
@@ -175,7 +184,14 @@ export default class PluginsAnnotations extends Plugin {
             }
         };
 
-        const importedSettings = await getSettingsFromData(data) as PluginsAnnotationsSettings | null;
+        const importedSettings = await getSettingsFromData(data) as PluginsAnnotationsSettings;
+    
+        // for consistency, checks that all imported annotations contain the right information
+        for (const pluginId in importedSettings.annotations) {
+            if(!isPluginAnnotation(importedSettings.annotations[pluginId])) {
+                delete importedSettings.annotations[pluginId];
+            }
+        }
 
         if (importedSettings) {
             importedSettings.backups.forEach((backup: PluginBackup) => {
@@ -193,17 +209,15 @@ export default class PluginsAnnotations extends Plugin {
         this.pluginNameToIdMap = this.constructPluginNameToIdMap();
         this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
         
-        if(data === undefined) {
-            data = await this.loadData();
-        }
+        if(data === undefined) data = await this.loadData();
+        if(forceSave === undefined) forceSave = false;
 
-        if(forceSave === undefined) {
-            forceSave = false;
-        }
-
-        if (!data || typeof data !== 'object') {
-            console.error('Invalid settings.');
-            return;
+        if(data===undefined || data===null || typeof data !== 'object') {
+            // if loadData failes, data is set to undefined
+            // if loadData finds no file, data is set to null
+            // in both cases, we use the default settings
+            // we also added a check that data is of object type to be safer.
+            data = structuredClone(DEFAULT_SETTINGS);
         }
 
         const {importedSettings, wasUpdated} = await this.importSettings(data);
@@ -338,15 +352,7 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     sortPluginAnnotationsByName() {
-        // Create an array of pairs [pluginId, name]
-        const pluginArray = Object.entries(this.settings.annotations).map(([pluginId, annotation]) => {
-            return { pluginId, name: annotation.name };
-        });
-
-        // Sort the array based on the 'name' field
-        pluginArray.sort((a, b) => a.name.localeCompare(b.name));
-        
-        this.sortedPluginIds = pluginArray.map(item => item.pluginId);
+        this.sortedPluginIds = sortAnnotations(this.settings.annotations);
     }
 
 
@@ -427,26 +433,16 @@ export default class PluginsAnnotations extends Plugin {
         // Add new icon to the existing icons container
         const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
         if (headingContainer) {
-            const svg_unlocked = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-open">\
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
-                     <path d="M7 11v-4c0-2.8 2.2-5 5-5 1.6 0 3.1.8 4 2"/> \
-                </svg>';
-            const svg_locked ='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock">\
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>\
-                </svg>';
-
+            
             const newIcon = document.createElement('div');
             newIcon.classList.add('clickable-icon', 'extra-setting-button');
             
             if(this.settings.editable) {
                 newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                newIcon.innerHTML = svg_unlocked;
+                newIcon.innerHTML = this.svg_unlocked;
             } else {
                 newIcon.setAttribute('aria-label', 'Click to be able to edit personal annotations');
-                newIcon.innerHTML = svg_locked;
+                newIcon.innerHTML = this.svg_locked;
             }
 
             newIcon.addEventListener('click', (event:MouseEvent) => {
@@ -455,10 +451,10 @@ export default class PluginsAnnotations extends Plugin {
                 this.debouncedSaveAnnotations();
                 if(this.settings.editable) {
                     newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                    newIcon.innerHTML = svg_unlocked;
+                    newIcon.innerHTML = this.svg_unlocked;
                 } else {
                     newIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
-                    newIcon.innerHTML = svg_locked;
+                    newIcon.innerHTML = this.svg_locked;
 
                 }
                 const plugins = tab.containerEl.querySelectorAll('.plugin-comment-annotation');
@@ -522,7 +518,7 @@ export default class PluginsAnnotations extends Plugin {
                     const annotation_container = document.createElement('div');
                     annotation_container.className = 'plugin-comment';
 
-                    new annotationControl(this,annotation_container,pluginId,pluginName);
+                    new annotationControl(this,annotation_container,pluginId);
                     
                     descriptionDiv.appendChild(annotation_container);                       
                 }

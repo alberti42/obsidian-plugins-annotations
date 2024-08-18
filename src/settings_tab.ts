@@ -4,8 +4,9 @@ import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
-import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings } from "utils";
+import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, sortAnnotations } from "utils";
 import { DEFAULT_SETTINGS } from 'defaults';
+import { annotationControl } from "annotation_control";
 
 declare const moment: typeof import('moment');
 
@@ -20,7 +21,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
     createUninstalledPluginSettings(containerEl: HTMLElement) {
         const uninstalledPlugins:PluginAnnotationDict = this.plugin.getUninstalledPlugins();
         
-        const heading = new Setting(containerEl).setName('Personal annotations of no longer installed community plugins').setHeading();
+        const heading = new Setting(containerEl).setName('Annotations of no longer installed community plugins').setHeading();
         const headingEl = heading.settingEl;
 
         new Setting(containerEl)
@@ -44,9 +45,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setName('List of no longer installed plugins:')
             .setDesc('If you plan to reinstall the plugin in the future, \
                 it is recommended not to remove your annotations, as you can reuse them later.');
-        
+
         // Iterate over uninstalled plugins and add settings to the new subcontainer
-        Object.keys({...uninstalledPlugins}).forEach(pluginId => {
+        sortAnnotations(uninstalledPlugins).forEach(pluginId => {
             const pluginSetting = new Setting(containerEl)
                 .setName(`Plugin ${uninstalledPlugins[pluginId].name}`)
                 .addButton(button => button
@@ -64,9 +65,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                             list_uninstalled_label.settingEl.remove();
                         }
                     }));
+            
             // Render the annotation
-            // FIXME
-            // this.plugin.renderAnnotation(pluginSetting.descEl, uninstalledPlugins[pluginId].type, uninstalledPlugins[pluginId].desc);
+            new annotationControl(this.plugin,pluginSetting.descEl as HTMLDivElement,pluginId);
+            
+            // Set the attributes by applying the correct classes
             pluginSetting.descEl.classList.add('plugin-comment-annotation');
             pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
         });
@@ -91,9 +94,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         const containerEl = this.containerEl;
         containerEl.empty();
 
-        /* ====== Instructions ====== */
+        /* ====== Editing ====== */
 
-        new Setting(containerEl).setName('Instructions').setHeading();
+        new Setting(containerEl).setName('Editing annotations').setHeading();
         
         const instructions_frag = createFragment((frag) => {
             const div = document.createElement('div');
@@ -119,6 +122,50 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         });
 
         new Setting(containerEl).setName(instructions_frag);
+
+        const editable_setting = new Setting(containerEl)
+            .setName('Editable:')
+            .setDesc(createFragment((frag) => {
+                    frag.appendText('If disabled, the annotations cannot be edited from the preference pane and are thus \
+                        protected against accidental changes.  In the ');
+                    frag.appendChild(createPluginsPaneFragment());
+                    frag.appendText(' pane, you can coveniently change this setting by clicking on the displayed icon');
+                    const div = frag.createDiv();
+                    div.classList.add('plugin-comment-icon-container')
+                    const unlock_icon = document.createElement('div');
+                    unlock_icon.innerHTML = this.plugin.svg_unlocked;
+                    const lock_icon = document.createElement('div');
+                    lock_icon.innerHTML = this.plugin.svg_locked;
+                    div.appendText('{');
+                    div.appendChild(lock_icon);
+                    div.appendText(',');
+                    div.appendChild(unlock_icon);
+                    div.appendText('}');
+                    frag.appendText('which either locks (make non-editable) or unlocks (make editable) your personal annotations.')            
+                }));
+
+        let editable_toggle: ToggleComponent;
+        editable_setting.addToggle(toggle => {
+            editable_toggle = toggle;
+            toggle
+            .setValue(this.plugin.settings.editable)
+            .onChange(async (value: boolean) => {
+                this.plugin.settings.editable = value;
+                await this.plugin.saveSettings();
+                this.display();
+            })
+        });
+
+        editable_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    this.plugin.settings.editable = DEFAULT_SETTINGS.editable;
+                    editable_toggle.setValue(this.plugin.settings.editable);
+                    this.plugin.debouncedSaveAnnotations();
+                });
+        });
         
         /* ==== Storage ==== */
 
