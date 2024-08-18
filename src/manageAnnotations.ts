@@ -2,7 +2,7 @@
 
 import PluginsAnnotations from "main";
 import { Platform, TFile } from "obsidian";
-import { createFolderIfNotExists, getFileCaseInsensitive, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog, sortPluginAnnotationsByName } from "utils";
+import { createFolderIfNotExists, getFileCaseInsensitive, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
 import { parse, SyntaxError } from "./peggy.mjs";
 import { PluginAnnotationDict } from "types";
 
@@ -103,7 +103,7 @@ export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations) {
     const header = 'Make changes only within the annotation blocks marked by `<!-- BEGIN ANNOTATION -->` and `<!-- END ANNOTATION -->`. Changes made anywhere else will be overwritten.\n'
 
     const content: string[] = [header];
-    for (const pluginId of sortPluginAnnotationsByName(annotations)) {
+    for (const pluginId of plugin.sortedPluginIds) {
         content.push(`# ${annotations[pluginId].name}\n\n<!-- id: ${pluginId} -->\n<!-- BEGIN ANNOTATION -->\n${annotations[pluginId].desc}\n<!-- END ANNOTATION -->\n`);
     }
     const content_concatenated = content.join('\n');

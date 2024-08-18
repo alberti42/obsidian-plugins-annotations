@@ -13,26 +13,27 @@ import {
     // App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { isPluginsAnnotationsSettings, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
+import { isPluginsAnnotationsSettings, PluginAnnotation, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
 import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, PluginsAnnotationsSettings_1_5_0, PluginAnnotationDict_1_5_0, isPluginsAnnotationsSettings_1_5_0, } from 'types_legacy'
 import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
-import { backupSettings, delay, sortPluginAnnotationsByName } from 'utils';
+import { backupSettings, delay } from 'utils';
 import { annotationControl } from 'annotation_control';
 
 export default class PluginsAnnotations extends Plugin {
     settings: PluginsAnnotationsSettings = structuredClone(DEFAULT_SETTINGS);
     pluginNameToIdMap: Record<string,string> = {};
     pluginIdToNameMap: Record<string,string> = {};
+    sortedPluginIds: string[] = [];
 
     private mutationObserver: MutationObserver | null = null;
     private saveTimeout: number | null = null;
     private observedTab: SettingTab | null = null;
     private vaultPath: string | null = null;
-
+    
     async onload() {
 
         // console.clear();
@@ -209,7 +210,7 @@ export default class PluginsAnnotations extends Plugin {
 
         // Merge loaded settings with default settings
         this.settings = Object.assign({}, structuredClone(DEFAULT_SETTINGS), importedSettings);
-        
+
         if(forceSave || wasUpdated) { // if it requires to store the new settings, the .md file will be overwritten
             await this.saveSettings();
         } else { // otherwise read from the md file
@@ -217,6 +218,8 @@ export default class PluginsAnnotations extends Plugin {
                 await readAnnotationsFromMdFile(this);
             }
         }
+
+        this.sortPluginAnnotationsByName();
     }
 
     // Store the path to the vault
@@ -312,7 +315,7 @@ export default class PluginsAnnotations extends Plugin {
                     // Triggered when pluginId has been uninstalled
                     if (self.settings.automatic_remove && self.settings.annotations.hasOwnProperty(pluginId)) {
                         // If automatic_remove is enabled and there is an annotation, remove the annotation 
-                        delete self.settings.annotations[pluginId];
+                        self.removeAnnotation(pluginId);
                         self.debouncedSaveAnnotations();
                     }
                 };
@@ -322,6 +325,30 @@ export default class PluginsAnnotations extends Plugin {
         // Register the patch to ensure it gets cleaned up
         this.register(removeMonkeyPatchForPlugins);
     }
+
+    removeAnnotation(pluginId: string) {
+        delete this.settings.annotations[pluginId];
+        this.sortedPluginIds = this.sortedPluginIds.filter(item => item !== pluginId);
+    }
+
+    modifyAnnotation(pluginId: string, annotation: PluginAnnotation) {
+        const alreadyExisted = this.settings.annotations.hasOwnProperty(pluginId);
+        this.settings.annotations[pluginId] = annotation;
+        if(!alreadyExisted) this.sortPluginAnnotationsByName();
+    }
+
+    sortPluginAnnotationsByName() {
+        // Create an array of pairs [pluginId, name]
+        const pluginArray = Object.entries(this.settings.annotations).map(([pluginId, annotation]) => {
+            return { pluginId, name: annotation.name };
+        });
+
+        // Sort the array based on the 'name' field
+        pluginArray.sort((a, b) => a.name.localeCompare(b.name));
+        
+        this.sortedPluginIds = pluginArray.map(item => item.pluginId);
+    }
+
 
     async observeTab(tab: SettingTab) {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -547,7 +574,7 @@ export default class PluginsAnnotations extends Plugin {
         const installedPluginIds = new Set(Object.keys(this.app.plugins.manifests));
         const uninstalledPlugins: PluginAnnotationDict = {};
 
-        for (const pluginId of sortPluginAnnotationsByName(this.settings.annotations)) {
+        for (const pluginId of this.sortedPluginIds) {
             if (!installedPluginIds.has(pluginId)) {
                 uninstalledPlugins[pluginId] = this.settings.annotations[pluginId];
             }

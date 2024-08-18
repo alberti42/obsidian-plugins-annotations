@@ -146,23 +146,6 @@ export class FileSuggestion extends AbstractInputSuggest<TFile> {
     }
 }
 
-
-/* Sorting plugins annotations by name */
-
-// Function to sort PluginAnnotationDict based on the name field
-export function sortPluginAnnotationsByName(annotations: PluginAnnotationDict): string[] {
-    // Create an array of pairs [pluginId, name]
-    const pluginArray = Object.entries(annotations).map(([pluginId, annotation]) => {
-        return { pluginId, name: annotation.name };
-    });
-
-    // Sort the array based on the 'name' field
-    pluginArray.sort((a, b) => a.name.localeCompare(b.name));
-    
-    return pluginArray.map(item => item.pluginId);
-}
-
-
 /* Download json settings */
 
 export function downloadJson(data: unknown, filename = 'data.json') {

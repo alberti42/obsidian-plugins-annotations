@@ -7,13 +7,17 @@
 	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
 }
 
-.plugin-comment-annotation.plugin-comment-placeholder {
-	color: #CCCCCC; /* Standard placeholder color */
-}
-
 .plugin-comment.plugin-comment-hidden,
 .plugin-comment.plugin-comment-placeholder {
-	display: none;
+    display: none;
+}
+
+.plugin-comment-annotation:focus:empty:before {
+    content: "\00a0"; /* Non-breaking space to maintain height when focused */
+}
+
+.plugin-comment-annotation.plugin-comment-placeholder {
+	color: #CCCCCC; /* Standard placeholder color */
 }
 
 .plugin-comment-annotation > p:first-child {

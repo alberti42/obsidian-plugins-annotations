@@ -26,7 +26,6 @@ block
 
 annotation_block
   = name:plugin_name tags:tag+ begin_cmd desc:description end_cmd {
-
     const tags_dict = tags.reduce((acc, block) => {
         acc[block.tag] = block.arg;
         return acc;
@@ -58,14 +57,11 @@ plugin_name
 id_field
   = "<!--" _* "id:" _ id:$(!"-->" !_ .)+ _* "-->" newline+ { return { 'tag': 'id', 'arg': id }; }
 
-//type_field
-//  = "<!--" _* "type:" _* type:valid_types _* "-->" newline+ { return { 'tag': 'type', 'arg': type }; }
-
-//valid_types
-//  = $("markdown"i / "html"i / "text"i) { return text().toLowerCase(); }
+cmd_field
+  = "<!--" _* cmd:$(!":" !"-->" .)* ":" _* arg:$(!(_* "-->") .)* _* "-->" newline+ { return { 'tag': cmd, 'arg': arg }; }
 
 tag
-  = id_field // / type_field
+  = id_field / cmd_field
 
 begin_cmd
   = $("<!--" _* "BEGIN" _* "ANNOTATION" _* "-->" newline*)
