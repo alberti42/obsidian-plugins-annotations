@@ -79,7 +79,6 @@ div.plugin-comment-instructions strong {
 	margin-left:0;
 }
 
-
 .plugin-comment-backup-table {
     display: table;
     width: 100%;
@@ -133,8 +132,4 @@ div.plugin-comment-instructions strong {
     margin-top: var(--size-4-1);
     margin-bottom: var(--size-4-1);
     font-size: 16px;
-}
-
-.plugin-comment-icon-container div {
-    
 }

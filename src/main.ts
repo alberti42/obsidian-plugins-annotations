@@ -523,7 +523,7 @@ export default class PluginsAnnotations extends Plugin {
                     const annotation_container = document.createElement('div');
                     annotation_container.className = 'plugin-comment';
 
-                    new annotationControl(this,annotation_container,pluginId);
+                    new annotationControl(this,annotation_container,pluginId,pluginName);
                     
                     descriptionDiv.appendChild(annotation_container);                       
                 }
@@ -541,13 +541,16 @@ export default class PluginsAnnotations extends Plugin {
         });
     }
 
-    debouncedSaveAnnotations(timeout_ms = 250) {
+    debouncedSaveAnnotations(callback: ()=>void = ():void => {}) {
+        const timeout_ms = 100;
+
         if (this.saveTimeout) {
             clearTimeout(this.saveTimeout);
         }
         
-        this.saveTimeout = window.setTimeout(() => {
-            this.saveSettings();
+        this.saveTimeout = window.setTimeout(async () => {
+            await this.saveSettings();
+            callback();
             this.saveTimeout = null;
         }, timeout_ms);
     }

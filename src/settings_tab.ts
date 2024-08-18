@@ -13,13 +13,15 @@ declare const moment: typeof import('moment');
 export class PluginsAnnotationsSettingTab extends PluginSettingTab {
     plugin: PluginsAnnotations;
 
+    private uninstalledPlugins:PluginAnnotationDict = {};
+
     constructor(app: App, plugin: PluginsAnnotations) {
         super(app, plugin);
         this.plugin = plugin;
     }
 
     createUninstalledPluginSettings(containerEl: HTMLElement) {
-        const uninstalledPlugins:PluginAnnotationDict = this.plugin.getUninstalledPlugins();
+        this.uninstalledPlugins = this.plugin.getUninstalledPlugins();
         
         const heading = new Setting(containerEl).setName('Annotations of no longer installed community plugins').setHeading();
         const headingEl = heading.settingEl;
@@ -39,7 +41,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 }));
 
         // Check if uninstalledPlugins is empty
-        if (Object.keys(uninstalledPlugins).length === 0) return;
+        if (Object.keys(this.uninstalledPlugins).length === 0) return;
 
         const list_uninstalled_label = new Setting(containerEl)
             .setName('List of no longer installed plugins:')
@@ -47,31 +49,46 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 it is recommended not to remove your annotations, as you can reuse them later.');
 
         // Iterate over uninstalled plugins and add settings to the new subcontainer
-        sortAnnotations(uninstalledPlugins).forEach(pluginId => {
+        sortAnnotations(this.uninstalledPlugins).forEach(pluginId => {
             const pluginSetting = new Setting(containerEl)
-                .setName(`Plugin ${uninstalledPlugins[pluginId].name}`)
+                .setName(`Plugin ${this.uninstalledPlugins[pluginId].name}`)
                 .addButton(button => button
                     .setButtonText('Delete')
                     .setCta()
                     .onClick(async () => {
                         delete this.plugin.settings.annotations[pluginId];
-                        delete uninstalledPlugins[pluginId];
+                        delete this.uninstalledPlugins[pluginId];
                         pluginSetting.settingEl.remove();
                         this.plugin.debouncedSaveAnnotations();
                             
                         // If no more uninstalled plugins, remove the section container
-                        if (Object.keys(uninstalledPlugins).length === 0) {
+                        if (Object.keys(this.uninstalledPlugins).length === 0) {
                             headingEl.remove();
                             list_uninstalled_label.settingEl.remove();
                         }
                     }));
             
+            pluginSetting.descEl.dataset.plugin=pluginId;
+
             // Render the annotation
-            new annotationControl(this.plugin,pluginSetting.descEl as HTMLDivElement,pluginId);
+            new annotationControl(this.plugin,pluginSetting.descEl,pluginId,this.uninstalledPlugins[pluginId].name);
             
             // Set the attributes by applying the correct classes
             pluginSetting.descEl.classList.add('plugin-comment-annotation');
             pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
+        });
+    }
+
+    updateUninstalledPluginSettings(containerEl: HTMLElement) {
+        const elements = containerEl.querySelectorAll('div.setting-item-description.plugin-comment-annotation');
+        elements.forEach((descEl) => {
+            if (descEl instanceof HTMLElement) {
+                const pluginId = descEl.dataset.plugin;
+                if(pluginId) {
+                    descEl.innerHTML = '';
+                    new annotationControl(this.plugin,descEl,pluginId,this.uninstalledPlugins[pluginId].name);
+                }
+            }
         });
     }
 
@@ -157,10 +174,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             editable_toggle = toggle;
             toggle
             .setValue(this.plugin.settings.editable)
-            .onChange(async (value: boolean) => {
+            .onChange((value: boolean) => {
                 this.plugin.settings.editable = value;
-                await this.plugin.saveSettings();
-                this.display();
+                this.plugin.debouncedSaveAnnotations(() => { this.display(); });
             })
         });
 
@@ -171,7 +187,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .onClick(() => {
                     this.plugin.settings.editable = DEFAULT_SETTINGS.editable;
                     editable_toggle.setValue(this.plugin.settings.editable);
-                    this.plugin.debouncedSaveAnnotations();
+                    this.plugin.debouncedSaveAnnotations(() => { this.display(); });
                 });
         });
         
@@ -232,9 +248,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
                 let filepath = inputEl.value;
 
-                if(filepath!==this.plugin.settings.markdown_file_path) { // if the path has changed
+                if(filepath === '' || filepath!==this.plugin.settings.markdown_file_path) { // if the path has changed
 
                     if(filepath.trim()==='') {
+                        md_filepath_error_div.style.display = 'none';
                         this.plugin.settings.markdown_file_path = '';
                         text.setValue(this.plugin.settings.markdown_file_path);
                         processingChange = false;
@@ -336,14 +353,18 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             label_version = 'mobile';
             label_cb = (value: string) => {
                             this.plugin.settings.label_mobile = value;
-                            this.plugin.debouncedSaveAnnotations();
+                            this.plugin.debouncedSaveAnnotations(() => { 
+                                this.updateUninstalledPluginSettings(containerEl);
+                            });
                     };
         } else {
             label = this.plugin.settings.label_desktop;
             label_version = 'desktop';
             label_cb = (value: string) => {
                             this.plugin.settings.label_desktop = value;
-                            this.plugin.debouncedSaveAnnotations();
+                            this.plugin.debouncedSaveAnnotations(() => {
+                                this.updateUninstalledPluginSettings(containerEl);
+                            });
                     };
         }
 
@@ -378,7 +399,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                         this.plugin.settings.label_desktop = DEFAULT_SETTINGS.label_desktop;
                         label_text.setValue(this.plugin.settings.label_desktop);
                     }
-                    this.plugin.debouncedSaveAnnotations();
+                    this.plugin.debouncedSaveAnnotations(() => { 
+                        this.updateUninstalledPluginSettings(containerEl);
+                    });
                 });
         });
 
@@ -400,7 +423,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             text.setValue(this.plugin.settings.label_placeholder);
             text.onChange(async (value: string) => {
                 this.plugin.settings.label_placeholder = value;
-                this.plugin.debouncedSaveAnnotations();
+                this.plugin.debouncedSaveAnnotations(() => {
+                    this.updateUninstalledPluginSettings(containerEl);
+                });
         })});
 
         placeholder_setting.addExtraButton((button) => {
@@ -410,7 +435,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .onClick(() => {
                     this.plugin.settings.label_placeholder = DEFAULT_SETTINGS.label_placeholder;
                     placeholder_text.setValue(this.plugin.settings.label_placeholder);
-                    this.plugin.debouncedSaveAnnotations();
+                    this.plugin.debouncedSaveAnnotations(() => {
+                        this.updateUninstalledPluginSettings(containerEl);
+                    });
                 });
         });
 
@@ -440,7 +467,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.hide_placeholders)
             .onChange(async (value: boolean) => {
                 this.plugin.settings.hide_placeholders = value;
-                this.plugin.debouncedSaveAnnotations();
+                this.plugin.debouncedSaveAnnotations(() => { this.display(); });
             })
         });
 
@@ -451,7 +478,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .onClick(() => {
                     this.plugin.settings.hide_placeholders = DEFAULT_SETTINGS.hide_placeholders;
                     hide_empty_annotations_toggle.setValue(this.plugin.settings.hide_placeholders);
-                    this.plugin.debouncedSaveAnnotations();
+                    this.plugin.debouncedSaveAnnotations(() => { this.display(); });
                 });
         });
 
@@ -469,7 +496,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.delete_placeholder_string_on_insertion)
                 .onChange(async (value: boolean) => {
                     this.plugin.settings.delete_placeholder_string_on_insertion = value;
-                    this.plugin.debouncedSaveAnnotations();
+                    this.plugin.debouncedSaveAnnotations(() => { this.display(); });
             });
         });
 
@@ -480,7 +507,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .onClick(() => {
                     this.plugin.settings.delete_placeholder_string_on_insertion = DEFAULT_SETTINGS.delete_placeholder_string_on_insertion;
                     delete_placeholder_string_toggle.setValue(this.plugin.settings.delete_placeholder_string_on_insertion);
-                    this.plugin.debouncedSaveAnnotations();
+                    this.plugin.debouncedSaveAnnotations(() => { this.display(); });
                 });
         });
 
@@ -646,8 +673,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                             }));
                         if(answer) {
                             this.plugin.settings.backups.splice(index, 1);
-                            await this.plugin.saveSettings();
-                            this.display(); // Refresh the display to remove the deleted backup
+                            this.plugin.debouncedSaveAnnotations();
+                            rowDiv.remove();
+                            if(this.plugin.settings.backups.length===0) {
+                                backupTableContainer.remove();
+                            }
                         }
                     });
             });
