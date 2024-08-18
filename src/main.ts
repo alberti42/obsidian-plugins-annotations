@@ -413,7 +413,7 @@ export default class PluginsAnnotations extends Plugin {
 
             const newIcon = document.createElement('div');
             newIcon.classList.add('clickable-icon', 'extra-setting-button');
-            console.log('EDITABLE',this.settings.editable);
+            
             if(this.settings.editable) {
                 newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
                 newIcon.innerHTML = svg_unlocked;
@@ -424,8 +424,7 @@ export default class PluginsAnnotations extends Plugin {
 
             newIcon.addEventListener('click', (event:MouseEvent) => {
                 this.settings.editable = !this.settings.editable;
-                console.log("NEW EDITABLE:");
-                console.log(this.settings)
+                
                 this.debouncedSaveAnnotations();
                 if(this.settings.editable) {
                     newIcon.setAttribute('aria-label', 'Click to lock personal annotations');

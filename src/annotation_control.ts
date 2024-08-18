@@ -41,28 +41,11 @@ export class annotationControl {
             }
         }
 
-        // let clickedLinkObj = { status: false };
-
         // Initial render
         this.renderAnnotation(annotation_div,annotationDesc);
 
-        // Handle mousedown event to check if a link was clicked
-        // let clickedLinkk = false;
-        // annotation_div.addEventListener('mousedown', (event:MouseEvent) => {
-        //     console.log("MOUSE DOWN");
-        //     if(!this.plugin.settings.editable) { return; }
-        //     if (event.target && (event.target as HTMLElement).tagName === 'A') {
-        //         clickedLinkk = true;
-        //     } else {
-        //         clickedLinkk = false;
-        //     }
-        //     console.log("CLICKED LINK:",clickedLinkk);
-        // });
-
         // Prevent click event propagation to parent
         annotation_div.addEventListener('click', (event:MouseEvent) => {
-            console.log("CLICK EVENT");
-            console.log(this.plugin.settings);
             if(!this.plugin.settings.editable) { 
                 return; 
             } else {
@@ -93,12 +76,6 @@ export class annotationControl {
                     selection.addRange(range);
                 }
             }
-        });
-
-        // Remove placeholder class when user starts typing
-        annotation_div.addEventListener('focus', (event:FocusEvent) => {
-            console.log("FOCUS");
-            
         });
 
         // Save the comment on input change and update inputTriggered status
@@ -133,7 +110,6 @@ export class annotationControl {
                 };
                 annotation_div.classList.remove('plugin-comment-placeholder');
 
-                // FIXME
                 this.renderAnnotation(annotation_div,content);
             }
             this.plugin.debouncedSaveAnnotations();
@@ -164,9 +140,7 @@ export class annotationControl {
     handleAnnotationLinks(element: HTMLElement) {
         const links = element.querySelectorAll('a');
         links.forEach(link => {
-            console.log(element);
             link.addEventListener('click', (event) => {
-                console.log("CLICKED ON LINK");
                 event.preventDefault();
                 event.stopPropagation();
 

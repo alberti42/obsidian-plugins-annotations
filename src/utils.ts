@@ -158,7 +158,7 @@ export function sortPluginAnnotationsByName(annotations: PluginAnnotationDict): 
 
     // Sort the array based on the 'name' field
     pluginArray.sort((a, b) => a.name.localeCompare(b.name));
-
+    
     return pluginArray.map(item => item.pluginId);
 }
 
