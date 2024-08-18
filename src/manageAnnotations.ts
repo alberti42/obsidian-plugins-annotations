@@ -100,7 +100,7 @@ export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations) {
     const annotations = plugin.settings.annotations;
     // if(Object.keys(annotations).length === 0) return;
 
-    const header = 'Make changes only within the annotation blocks marked by <!-- BEGIN ANNOTATION --> and <!-- END ANNOTATION -->. Changes made anywhere else will be overwritten.\n'
+    const header = 'Make changes only within the annotation blocks marked by `<!-- BEGIN ANNOTATION -->` and `<!-- END ANNOTATION -->`. Changes made anywhere else will be overwritten.\n'
 
     const content: string[] = [header];
     for (const pluginId of sortPluginAnnotationsByName(annotations)) {
