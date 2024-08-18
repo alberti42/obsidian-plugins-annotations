@@ -74,7 +74,7 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     /* Load settings for different versions */
-    async importSettings(data: unknown): Promise<{importedSettings: PluginsAnnotationsSettings, wasUpdated: boolean}> {
+    async importSettings(data: unknown,saveData: boolean): Promise<void> {
 
         const importBackups: PluginBackup[] = [];
 
@@ -193,39 +193,18 @@ export default class PluginsAnnotations extends Plugin {
             }
         }
 
-        if (importedSettings) {
-            importedSettings.backups.forEach((backup: PluginBackup) => {
-                backup.date = new Date(backup.date); // Convert the date string to a Date object
-            });
-            importedSettings.backups = [...importedSettings.backups, ...importBackups];
-        }
+        // Restore date/time stamps from JSON string format
+        importedSettings.backups.forEach((backup: PluginBackup) => {
+            backup.date = new Date(backup.date); // Convert the date string to a Date object
+        });
 
-        return {importedSettings, wasUpdated};
-    }
-
-    async loadSettings(data?: unknown, forceSave?: boolean): Promise<void> {
-        
-        // Create a mapping of names to IDs for the installed plugins
-        this.pluginNameToIdMap = this.constructPluginNameToIdMap();
-        this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
-        
-        if(data === undefined) data = await this.loadData();
-        if(forceSave === undefined) forceSave = false;
-
-        if(data===undefined || data===null || typeof data !== 'object') {
-            // if loadData failes, data is set to undefined
-            // if loadData finds no file, data is set to null
-            // in both cases, we use the default settings
-            // we also added a check that data is of object type to be safer.
-            data = structuredClone(DEFAULT_SETTINGS);
-        }
-
-        const {importedSettings, wasUpdated} = await this.importSettings(data);
+        // Merge imported backups with backups created while importing the data
+        importedSettings.backups = [...importedSettings.backups, ...importBackups];
 
         // Merge loaded settings with default settings
         this.settings = Object.assign({}, structuredClone(DEFAULT_SETTINGS), importedSettings);
 
-        if(forceSave || wasUpdated) { // if it requires to store the new settings, the .md file will be overwritten
+        if(saveData || wasUpdated) { // if it requires to store the new settings, the .md file will be overwritten
             await this.saveSettings();
         } else { // otherwise read from the md file
             if(this.settings.markdown_file_path!=='') {
@@ -234,6 +213,32 @@ export default class PluginsAnnotations extends Plugin {
         }
 
         this.sortPluginAnnotationsByName();
+    }
+
+    async loadSettings(data?: unknown): Promise<void> {
+
+        // Create a mapping of names to IDs for the installed plugins
+        this.pluginNameToIdMap = this.constructPluginNameToIdMap();
+        this.pluginIdToNameMap = this.generateInvertedMap(this.pluginNameToIdMap);
+        
+        let isRestoreOperation;
+        if(data === undefined) {
+            data = await this.loadData();
+            isRestoreOperation = false;
+        } else {
+            isRestoreOperation = true;
+        }
+        
+        if(data===undefined || data===null || typeof data !== 'object') {
+            // if loadData failes, data is set to undefined
+            // if loadData finds no file, data is set to null
+            // in both cases, we use the default settings
+            // we also added a check that data is of object type to be safer.
+            data = structuredClone(DEFAULT_SETTINGS);
+        }
+
+        const saveData = isRestoreOperation ? true : false;
+        await this.importSettings(data,saveData);
     }
 
     // Store the path to the vault

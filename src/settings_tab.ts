@@ -511,7 +511,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setButtonText('Export')
                 .setCta()
                 .onClick(async () => {
-                    downloadJson({...this.plugin.settings, backups: []});
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const {backups:_,...rest} = this.plugin.settings;
+                    downloadJson(rest);
                 })
             );
 
@@ -535,14 +537,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                                     const importedData = JSON.parse(event.target?.result as string);
 
                                     // Validate and merge the imported settings
-                                    if (importedData && typeof importedData === 'object') {
-                                        const forceSave = true;
-                                        await this.plugin.loadSettings(importedData,forceSave);
-                                        new Notice('Settings successfully imported.');
-                                        this.display(); // Refresh the display to reflect the imported annotations
-                                    } else {
-                                        alert('Invalid settings file.');
-                                    }
+                                    if(importedData === undefined || importedData === null || typeof importedData !== 'object') throw new Error("Something went wrong with the data in the backup.");
+                                    await this.plugin.loadSettings({...importedData,backups:this.plugin.settings.backups});
+                                    new Notice('Settings successfully imported.');
+                                    this.display(); // Refresh the display to reflect the imported annotations
                                 } catch (error) {
                                     console.error('Error importing settings:', error);
                                     alert('Failed to import settings. Please ensure the file is valid.');
@@ -617,9 +615,8 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                             }));
                         if(answer) {
                             const settingsToBeRestored = structuredClone(this.plugin.settings.backups[index].settings);
-                            if(typeof settingsToBeRestored !== 'object') throw new Error("Something went wrong with the data in the backup.");
-                            const forceSave = true;
-                            await this.plugin.loadSettings({...settingsToBeRestored,backups:this.plugin.settings.backups},forceSave);
+                            if(settingsToBeRestored === undefined || settingsToBeRestored === null || typeof settingsToBeRestored !== 'object') throw new Error("Something went wrong with the data in the backup.");
+                            await this.plugin.loadSettings({...settingsToBeRestored, backups:this.plugin.settings.backups});
                             new Notice(`Annotations restored from backup "${backup.name}"`);
                             this.display(); // Refresh the display to reflect the restored annotations
                         }
