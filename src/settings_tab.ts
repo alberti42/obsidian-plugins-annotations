@@ -99,23 +99,31 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName('Editing annotations').setHeading();
         
         const instructions_frag = createFragment((frag) => {
+
             const div = document.createElement('div');
             div.classList.add('plugin-comment-instructions');
 
             const p1 = document.createElement('p');
             p1.appendText('To add or edit your personal annotations for the installed plugins, go to the ');
             p1.appendChild(createPluginsPaneFragment());
-            p1.appendText(' pane and click over the annotation fields to edit their content');
+            p1.appendText(' pane and click over the annotation field of the plugin you want to edit.');
             div.appendChild(p1);
 
             const p2 = document.createElement('p2');
-            p2.innerHTML = "You can enter rich text annotations using Markdown. \
+            p2.innerText = "You can enter rich text annotations using Markdown just the same way you do in Obsidian. \
                 Once you are finished editing, the Markdown annotation will be rendered correctly.";
             div.appendChild(p2);
 
             const p3 = document.createElement('p');
-            p3.innerHTML = "In Markdown annotations, you can directly link notes inside your \
-                vault by adding links such as [[My notes/Review of plugin XYZ|my plugin note]].";
+            p3.innerText = "You can directly link notes inside your \
+                vault by adding Obsidian links such as ";
+
+            const em = document.createElement('em');
+            em.appendText('[[My notes/Review of plugin XYZ|my plugin note]]');
+            em.classList.add('plugin-comment-selectable');
+            p3.appendChild(em);
+            p3.appendText('.');
+
             div.appendChild(p3);
 
             frag.appendChild(div);
@@ -345,7 +353,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 frag.appendText(`Choose the annotation label for the ${label_version} version of Obsidian. \
                 Use HTML code if you want to format it. Enter an empty string if you want \
                 to hide the label. Use `);
-                frag.createEl('em').appendText('${plugin_name}');
+                frag.createEl('em',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
                 frag.appendText(' as a template for the plugin name; for example, you can generate automatic links to your notes with a label of the kind "');
                 frag.createEl('em', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name} | ${plugin_name}]]');
                 frag.appendText('".');
@@ -379,7 +387,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setDesc(createFragment((frag) => {
                     frag.appendText('Choose the label appearing where no user annotation is provied yet. Use ');
                     frag.createEl('em',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
-                    frag.appendText(' as a template for the plugin name.')}));
+                    frag.appendText(' as a template for the plugin name; for example, you can generate automatic \
+                        links to your notes with a placeholder of the kind "');
+                    frag.createEl('em', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name} | ${plugin_name}]]');
+                    frag.appendText('".')
+                }));
 
         let placeholder_text: TextComponent;
         placeholder_setting.addText(text => {
