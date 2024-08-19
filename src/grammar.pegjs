@@ -80,8 +80,5 @@ not_newline
 
 newline
   = [\n\r]
-
-empty_line
-  = $(_ [\n\r])
   
 _ = [ \f\t\v\u0020\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
