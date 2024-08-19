@@ -97,6 +97,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setTooltip("Reset to default value")
                 .onClick(() => {
                     editable_toggle.setValue(DEFAULT_SETTINGS.editable);
+                    this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
                 });
         });
 
@@ -238,6 +239,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setTooltip("Reset to default value")
                 .onClick(() => {
                     md_filepath_text.setValue(DEFAULT_SETTINGS.markdown_file_path);
+                    this.plugin.debouncedSaveAnnotations();
                 });
         });
 
@@ -266,6 +268,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     .setTooltip("Reset to default value")
                     .onClick(() => {
                         md_file_toggle.setValue(DEFAULT_SETTINGS.markdown_file_path !== '');
+                        this.plugin.debouncedSaveAnnotations();
                     });
             });
 
@@ -285,20 +288,20 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             label = this.plugin.settings.label_mobile;
             label_version = 'mobile';
             label_cb = (value: string) => {
-                            this.plugin.settings.label_mobile = value;
-                            this.plugin.debouncedSaveAnnotations(() => { 
-                                this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
-                            });
-                    };
+                this.plugin.settings.label_mobile = value;
+                this.plugin.debouncedSaveAnnotations(() => { 
+                    this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
+                });
+            };
         } else {
             label = this.plugin.settings.label_desktop;
             label_version = 'desktop';
             label_cb = (value: string) => {
-                            this.plugin.settings.label_desktop = value;
-                            this.plugin.debouncedSaveAnnotations(() => {
-                                this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
-                            });
-                    };
+                this.plugin.settings.label_desktop = value;
+                this.plugin.debouncedSaveAnnotations(() => {
+                    this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
+                });
+            };
         }
 
         const label_setting = new Setting(containerEl)
@@ -325,7 +328,18 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setIcon("reset")
                 .setTooltip("Reset to default value")
                 .onClick(() => {
-                    label_text.setValue(Platform.isMobile ? DEFAULT_SETTINGS.label_mobile : DEFAULT_SETTINGS.label_desktop);
+                    let label: string;
+                    if(Platform.isMobile) {
+                        label = DEFAULT_SETTINGS.label_mobile;
+                        this.plugin.settings.label_mobile = label;
+                    } else {
+                        label = DEFAULT_SETTINGS.label_desktop;
+                        this.plugin.settings.label_desktop = label;
+                    }
+                    label_text.setValue(label);
+                    this.plugin.debouncedSaveAnnotations(() => { 
+                        this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
+                    });
                 });
         });
 
@@ -358,6 +372,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setTooltip("Reset to default value")
                 .onClick(() => {
                     placeholder_text.setValue(DEFAULT_SETTINGS.label_placeholder);
+                    this.plugin.debouncedSaveAnnotations(() => {
+                        this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
+                    });
                 });
         });
 
@@ -397,6 +414,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setTooltip("Reset to default value")
                 .onClick(() => {
                     hide_empty_annotations_toggle.setValue(DEFAULT_SETTINGS.hide_placeholders);
+                    this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
                 });
         });
 
@@ -424,6 +442,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 .setTooltip("Reset to default value")
                 .onClick(() => {
                     delete_placeholder_string_toggle.setValue(DEFAULT_SETTINGS.delete_placeholder_string_on_insertion);
+                    this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
                 });
         });
 
@@ -669,6 +688,7 @@ class UninstalledPluginsManager {
                 .setTooltip("Reset to default value")
                 .onClick(() => {
                     automatic_remove_toggle.setValue(DEFAULT_SETTINGS.automatic_remove);
+                    this.plugin.debouncedSaveAnnotations();
                 });
         });
 
