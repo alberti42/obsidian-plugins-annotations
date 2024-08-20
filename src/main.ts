@@ -40,6 +40,8 @@ export default class PluginsAnnotations extends Plugin {
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>\
                 </svg>';
 
+    private lockIcon: HTMLDivElement | null = null;
+
     private mutationObserver: MutationObserver | null = null;
     private observedTab: SettingTab | null = null;
     private vaultPath: string | null = null;
@@ -48,7 +50,7 @@ export default class PluginsAnnotations extends Plugin {
     private saveTimeout: number | null = null;
     private savePromise: Promise<void> | null = null;
     private resolveSavePromise: (() => void) | null = null;
-    
+
     async onload() {
 
         // console.clear();
@@ -440,31 +442,36 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     async addIcon(tab: SettingTab) {
+        // This should not be necessary, but just in case, remove the icon if it was there
+        this.removeIcon();
+
         // Add new icon to the existing icons container
         const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
         if (headingContainer) {
             
-            const newIcon = document.createElement('div');
-            newIcon.classList.add('clickable-icon', 'extra-setting-button');
+            this.lockIcon = document.createElement('div');
+
+            const lockIcon = this.lockIcon;
+            lockIcon.classList.add('clickable-icon', 'extra-setting-button');
             
             if(this.settings.editable) {
-                newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                newIcon.innerHTML = this.svg_unlocked;
+                lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
+                lockIcon.innerHTML = this.svg_unlocked;
             } else {
-                newIcon.setAttribute('aria-label', 'Click to be able to edit personal annotations');
-                newIcon.innerHTML = this.svg_locked;
+                lockIcon.setAttribute('aria-label', 'Click to be able to edit personal annotations');
+                lockIcon.innerHTML = this.svg_locked;
             }
 
-            newIcon.addEventListener('click', (event:MouseEvent) => {
+            lockIcon.addEventListener('click', (event:MouseEvent) => {
                 this.settings.editable = !this.settings.editable;
                 
                 this.debouncedSaveAnnotations();
                 if(this.settings.editable) {
-                    newIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                    newIcon.innerHTML = this.svg_unlocked;
+                    lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
+                    lockIcon.innerHTML = this.svg_unlocked;
                 } else {
-                    newIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
-                    newIcon.innerHTML = this.svg_locked;
+                    lockIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
+                    lockIcon.innerHTML = this.svg_locked;
 
                 }
                 const plugins = tab.containerEl.querySelectorAll('.plugin-comment-annotation');
@@ -500,7 +507,14 @@ export default class PluginsAnnotations extends Plugin {
                 });
             });
 
-            headingContainer.appendChild(newIcon);
+            headingContainer.appendChild(lockIcon);
+        }
+    }
+
+    removeIcon() {
+        if(this.lockIcon) {
+            this.lockIcon.remove();
+            this.lockIcon = null;
         }
     }
 
@@ -597,6 +611,9 @@ export default class PluginsAnnotations extends Plugin {
 
         // Just in case, disconnect observers if they still exist
         this.disconnectObservers();
+
+        // Remove icons
+        this.removeIcon();
     }
 
     getUninstalledPlugins(): PluginAnnotationDict {
