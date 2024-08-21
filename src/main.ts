@@ -391,14 +391,11 @@ export default class PluginsAnnotations extends Plugin {
                     ): void {
                         next.call(this, pluginManifest, containerEl, nameMatch, authorMatch, descriptionMatch);
 
-                        // Add your custom code for personal annotations here
-                        const annotation = self.settings.annotations[pluginManifest.id];
-                        if (annotation) {
-                            if(containerEl && containerEl.lastElementChild)
-                            {
-                                self.addAnnotation(containerEl.lastElementChild)
-                            }                           
-                        }
+                        // Custom code for personal annotations here
+                        if(containerEl && containerEl.lastElementChild)
+                        {
+                            self.addAnnotation(containerEl.lastElementChild)
+                        }                           
                 };
             }
         });
