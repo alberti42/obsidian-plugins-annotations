@@ -78,7 +78,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         new Setting(containerEl).setName(instructions_frag);
 
         const editable_setting = new Setting(containerEl)
-            .setName('Editable:');
+            .setName('Editable');
 
         let editable_toggle: ToggleComponent;
         editable_setting.addToggle(toggle => {
@@ -134,7 +134,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
         // Add new setting for storing annotations in a Markdown file
         const md_file_setting = new Setting(containerEl)
-            .setName('Store annotations in a Markdown file:')
+            .setName('Store annotations in a Markdown file')
             .setDesc('With this option enabled, you can select a Markdown file in your vault to \
                 contain your personal annotations for the installed plugins. This feature is intended \
                 for power users who prefer to edit annotations directly from a Markdown file. \
@@ -305,7 +305,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         }
 
         const label_setting = new Setting(containerEl)
-            .setName('Annotation label:')
+            .setName('Annotation label')
             .setDesc(createFragment((frag) => {
                 frag.appendText(`Choose the annotation label for the ${label_version} version of Obsidian. \
                 Use HTML code if you want to format it. Enter an empty string if you want \
@@ -344,7 +344,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         });
 
         const placeholder_setting = new Setting(containerEl)
-            .setName('Placeholder label:')
+            .setName('Placeholder label')
             .setDesc(createFragment((frag) => {
                     frag.appendText('Choose the label appearing where no user annotation is provied yet. Use ');
                     frag.createEl('em',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
@@ -379,7 +379,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         });
 
         const hide_empty_annotations_setting = new Setting(containerEl)
-            .setName('Hide empty annotations:')
+            .setName('Hide empty annotations')
             .setDesc(createFragment((frag) => {
                 frag.appendText('If this option is enabled, only annotations set by the user \
                     will be shown. If you want to insert an annotation to a plugin for the first \
@@ -419,7 +419,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         });
 
         const delete_placeholder_string_setting = new Setting(containerEl)
-            .setName('Delete placeholder text when inserting a new annotation:')
+            .setName('Delete placeholder text when inserting a new annotation')
             .setDesc('If this option is enabled, the placeholder text will be deleted \
                     automatically when you start typing a new annotation. If disabled, \
                     the placeholder text will be selected for easier replacement. \
@@ -480,7 +480,7 @@ class BackupManager {
             to restore them from an external file.' : '';
 
         const backup_settings = new Setting(this.containerEl)
-            .setName('Create a backup copy of your current settings and annotations:')
+            .setName('Create a backup copy of your current settings and annotations')
             .setDesc('Use the backup button to create an internal backup copy. \
                 You can customize the names of existing backups by clicking on their names once you have created them.'
                 + export_label)
@@ -664,7 +664,7 @@ class UninstalledPluginsManager {
         new Setting(containerEl).setName('Annotations of no longer installed community plugins').setHeading();
         
         const automatic_remove_setting = new Setting(containerEl)
-            .setName('Automatically remove personal annotations of uninstalled plugins:')
+            .setName('Automatically remove personal annotations of uninstalled plugins')
             .setDesc('If this option is enabled, whenever a plugin is uninstalled, the \
                 attached personal annotation is automatically removed. \
                 If this option is disabled, you can still  manually remove the personal \
@@ -696,7 +696,7 @@ class UninstalledPluginsManager {
         if (Object.keys(this.uninstalledPlugins).length === 0) return;
 
         const list_uninstalled_label = new Setting(containerEl)
-            .setName('List of no longer installed plugins:')
+            .setName('List of no longer installed plugins')
             .setDesc('If you plan to reinstall the plugin in the future, \
                 it is recommended not to remove your annotations, as you can reuse them later.');
 
