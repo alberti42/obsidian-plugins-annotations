@@ -11,7 +11,11 @@ Obsidian Plugins Annotations is a plugin for [Obsidian](https://obsidian.md) tha
 - Detailed instructions how to edit the annotations are provided in the _setting pane_ of the plugin.
 - Possible to lock the annotations with the lock button next to the title "Installed plugins". This feature is useful in combination with the toggle hiding the annotations fields where there is no user annotation yet. 
 
-## Installation
+## Installation 
+
+The preferred method to install the plugin is to use the Community Plugins Preference pane in Obsidian.
+
+## Manual installation
 
 1. Download the latest release from the [Releases](https://github.com/alberti42/obsidian-plugins-annotations/releases) page.
 2. Extract the downloaded package and copy only the following files to your Obsidian plugins folder: `<vault>/.obsidian/plugins/plugins-annotations`:
