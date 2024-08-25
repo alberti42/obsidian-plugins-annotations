@@ -52,6 +52,8 @@ export default class PluginsAnnotations extends Plugin {
     debouncedSaveAnnotations: (callback?: () => void) => void;
     waitForSaveToComplete: () => Promise<void>;
 
+    private communityPluginSettingTabPatched = false;
+
     constructor(app:App, manifest:PluginManifest) {
         super(app, manifest);
 
@@ -338,6 +340,7 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     patchCommunityPluginSettingTab(tab:SettingTab) {
+        if(this.communityPluginSettingTabPatched) return;
 
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
@@ -382,7 +385,9 @@ export default class PluginsAnnotations extends Plugin {
         });
 
         // Register the patch to ensure it gets cleaned up
-        this.register(removeMonkeyPatchForRender);    
+        this.register(removeMonkeyPatchForRender);
+
+        this.communityPluginSettingTabPatched = true;
     }
 
     patchSettings() {
@@ -530,7 +535,7 @@ export default class PluginsAnnotations extends Plugin {
 
     async addIcon(containerEl: HTMLElement) {
         // This should not be necessary, but just in case, remove the icon if it was there
-        this.removeIcon();
+        // this.removeIcon();
 
         // Add new icon to the existing icons container
         const headingContainer = containerEl.querySelector('.setting-item-heading .setting-item-control');
