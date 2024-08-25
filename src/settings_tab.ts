@@ -6,7 +6,9 @@ import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextCo
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, sortAnnotations } from "utils";
 import { DEFAULT_SETTINGS } from 'defaults';
-import { annotationControl } from "annotation_control";
+import { AnnotationControl } from "annotation_control";
+
+import { svg_locked, svg_unlocked } from "graphics";
 
 declare const moment: typeof import('moment');
 
@@ -110,13 +112,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     div.classList.add('plugin-comment-icon-container')
                     const unlock_icon = document.createElement('div');
                     unlock_icon.classList.add('clickable-icon');
-                    unlock_icon.innerHTML = this.plugin.svg_unlocked;
+                    unlock_icon.innerHTML = svg_unlocked;
                     unlock_icon.addEventListener('click', (event:MouseEvent) => {
                         editable_toggle.setValue(true);
                     });         
                     const lock_icon = document.createElement('div');
                     lock_icon.classList.add('clickable-icon');
-                    lock_icon.innerHTML = this.plugin.svg_locked;
+                    lock_icon.innerHTML = svg_locked;
                     lock_icon.addEventListener('click', (event:MouseEvent) => {
                         editable_toggle.setValue(false);
                     });
@@ -446,6 +448,32 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 });
         });
 
+        const show_github_icons_setting = new Setting(containerEl)
+            .setName('Show GitHub links')
+            .setDesc("If this option is enabled, a clickable icon linking to the plugin's GitHub page will be displayed.");
+
+        let show_github_icons_toggle: ToggleComponent;
+        show_github_icons_setting.addToggle(toggle => {
+            show_github_icons_toggle = toggle;
+            toggle
+                .setValue(this.plugin.settings.show_github_icons)
+                .onChange(async (value: boolean) => {
+                    this.plugin.settings.show_github_icons = value;
+                    this.plugin.debouncedSaveAnnotations();
+            });
+        });
+
+        show_github_icons_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    const value = DEFAULT_SETTINGS.show_github_icons
+                    show_github_icons_toggle.setValue(value);
+                });
+        });
+
+
         /* ====== Backups ====== */
         this.backupManager = new BackupManager(this.plugin, containerEl);
 
@@ -722,7 +750,7 @@ class UninstalledPluginsManager {
             pluginSetting.descEl.dataset.plugin=pluginId;
 
             // Render the annotation
-            new annotationControl(this.plugin,pluginSetting.descEl,pluginId,this.uninstalledPlugins[pluginId].name);
+            new AnnotationControl(this.plugin,pluginSetting.descEl,pluginId,this.uninstalledPlugins[pluginId].name);
             
             // Set the attributes by applying the correct classes
             pluginSetting.descEl.classList.add('plugin-comment-annotation');
@@ -737,7 +765,7 @@ class UninstalledPluginsManager {
                 const pluginId = descEl.dataset.plugin;
                 if(pluginId) {
                     descEl.innerHTML = '';
-                    new annotationControl(this.plugin,descEl,pluginId,this.uninstalledPlugins[pluginId].name);
+                    new AnnotationControl(this.plugin,descEl,pluginId,this.uninstalledPlugins[pluginId].name);
                 }
             }
         });

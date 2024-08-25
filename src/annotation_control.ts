@@ -4,14 +4,21 @@ import PluginsAnnotations from "main";
 import { MarkdownRenderer, Platform } from "obsidian";
 import { isPluginAnnotation } from "types";
 
-export class annotationControl {
+const github_prefix = "https://github.com/";
+
+import { svg_github_dark, svg_github_light } from "graphics";
+        
+export class AnnotationControl {
+    static addGitHubIcon(controlDiv: Element) {
+        throw new Error('Method not implemented.');
+    }
     private clickedLink: boolean;
     private isPlaceholder: boolean;
     private annotationDesc:string;
     private placeholder:string;
     private label:string;
     private annotation_div: HTMLDivElement;
-
+    
     constructor(private plugin: PluginsAnnotations, private annotation_container:HTMLElement, private pluginId:string, private pluginName:string) {
 
         this.clickedLink = false;
@@ -182,5 +189,32 @@ export class annotationControl {
                 }
             });
         });
+    }
+
+    addGitHubIcon(controlDiv:Element, repo:string, isDarkMode:boolean) {
+        if (controlDiv) {
+            const GitHubDiv = document.createElement('div');
+            GitHubDiv.classList.add('clickable-icon', 'extra-setting-button', 'github-icon');
+            GitHubDiv.setAttribute('aria-label', 'Open plugin\'s GitHub page');
+            GitHubDiv.innerHTML = isDarkMode ? svg_github_dark : svg_github_light;
+
+            // Add click listener to open the repo URL
+            GitHubDiv.addEventListener('click', () => {
+                // Use Obsidian's native method to open external links
+                window.open(github_prefix + repo, '_blank');
+            });
+
+            // Get all elements with the class .clickable-icon inside controlDiv
+            const clickableIcons = controlDiv.querySelectorAll('.clickable-icon');
+
+            // Insert the new icon as the second last of all clickable icons
+            if (clickableIcons.length > 0) {
+                const lastIcon = clickableIcons[clickableIcons.length - 1];
+                controlDiv.insertBefore(GitHubDiv, lastIcon);
+            } else {
+                // If no clickable icons are found, append it as the first child
+                controlDiv.insertBefore(GitHubDiv, controlDiv.firstChild);
+            }
+        }
     }
 }

@@ -14,35 +14,23 @@ import {
     // App,
 } from 'obsidian';
 import { around } from 'monkey-around';
-import { isPluginAnnotation, isPluginsAnnotationsSettings, PluginAnnotation, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
-import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, PluginsAnnotationsSettings_1_5_0, PluginAnnotationDict_1_5_0, isPluginsAnnotationsSettings_1_5_0, } from 'types_legacy'
-import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0 } from './defaults_legacy';
+import { CommunityPluginInfo, CommunityPluginInfoDict, isPluginAnnotation, isPluginsAnnotationsSettings, PluginAnnotation, PluginAnnotationDict, PluginBackup, PluginsAnnotationsSettings } from './types';
+import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAnnotationsSettings_1_3_0, isPluginAnnotationDictFormat_1_3_0, isSettingsFormat_1_3_0, isSettingsFormat_1_4_0, parseAnnotation_1_4_0, PluginsAnnotationsSettings_1_5_0, PluginAnnotationDict_1_5_0, isPluginsAnnotationsSettings_1_5_0, PluginsAnnotationsSettings_1_6_0, isPluginsAnnotationsSettings_1_6_0, } from 'types_legacy'
+import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0, DEFAULT_SETTINGS_1_6_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
 import { backupSettings, debounceFactoryWithWaitMechanism, delay, sortAnnotations } from 'utils';
-import { annotationControl } from 'annotation_control';
+import { AnnotationControl } from 'annotation_control';
 
+import { svg_locked, svg_unlocked, svg_github_dark, svg_github_light } from "graphics";
+    
 export default class PluginsAnnotations extends Plugin {
     settings: PluginsAnnotationsSettings = structuredClone(DEFAULT_SETTINGS);
     pluginNameToIdMap: Record<string,string> = {};
     pluginIdToNameMap: Record<string,string> = {};
     sortedPluginIds: string[] = [];
-
-    svg_unlocked ='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-open">\
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
-                     <path d="M7 11v-4c0-2.8 2.2-5 5-5 1.6 0 3.1.8 4 2"/> \
-                </svg>';
-    svg_locked ='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock">\
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>\
-                </svg>';
-
-    svg_github_light=atob('PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgY2xhc3M9InN2Zy1pY29uIGx1Y2lkZS1zZXR0aW5ncyI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogIzI0MjkyZjsKICAgICAgICBmaWxsLXJ1bGU6IGV2ZW5vZGQ7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAwcHg7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTEyLC4zQzUuNC4zLjEsNS43LjEsMTIuM3MzLjQsOS44LDguMSwxMS40Yy42LjEuOC0uMy44LS42czAtMS4yLDAtMi4yYy0zLjMuNy00LTEuNC00LTEuNC0uNS0xLjQtMS4zLTEuNy0xLjMtMS43LTEuMS0uNywwLS43LDAtLjcsMS4yLDAsMS44LDEuMiwxLjgsMS4yLDEuMSwxLjgsMi44LDEuMywzLjUsMSwwLS44LjQtMS4zLjctMS42LTIuNi0uMy01LjQtMS4zLTUuNC01LjlzLjUtMi40LDEuMi0zLjJjLS4xLS4zLS41LTEuNS4xLTMuMiwwLDAsMS0uMywzLjMsMS4yLDEtLjMsMi0uNCwzLS40LDEsMCwyLC4xLDMsLjQsMi4zLTEuNSwzLjMtMS4yLDMuMy0xLjIuNywxLjYuMiwyLjkuMSwzLjIuOC44LDEuMiwxLjksMS4yLDMuMiwwLDQuNi0yLjgsNS42LTUuNCw1LjkuNC40LjgsMS4xLjgsMi4yLDAsMS42LDAsMi45LDAsMy4zcy4yLjcuOC42YzQuNy0xLjYsOC4xLTYuMSw4LjEtMTEuNCwwLTYuNi01LjMtMTItMTEuOS0xMloiLz4KPC9zdmc+');
-    svg_github_dark=atob('PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgY2xhc3M9InN2Zy1pY29uIGx1Y2lkZS1zZXR0aW5ncyI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgICBmaWxsLXJ1bGU6IGV2ZW5vZGQ7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAwcHg7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTEyLC4zQzUuNC4zLjEsNS43LjEsMTIuM3MzLjQsOS44LDguMSwxMS40Yy42LjEuOC0uMy44LS42czAtMS4yLDAtMi4yYy0zLjMuNy00LTEuNC00LTEuNC0uNS0xLjQtMS4zLTEuNy0xLjMtMS43LTEuMS0uNywwLS43LDAtLjcsMS4yLDAsMS44LDEuMiwxLjgsMS4yLDEuMSwxLjgsMi44LDEuMywzLjUsMSwwLS44LjQtMS4zLjctMS42LTIuNi0uMy01LjQtMS4zLTUuNC01LjlzLjUtMi40LDEuMi0zLjJjLS4xLS4zLS41LTEuNS4xLTMuMiwwLDAsMS0uMywzLjMsMS4yLDEtLjMsMi0uNCwzLS40LDEsMCwyLC4xLDMsLjQsMi4zLTEuNSwzLjMtMS4yLDMuMy0xLjIuNiwxLjYuMiwyLjkuMSwzLjIuOC44LDEuMiwxLjksMS4yLDMuMiwwLDQuNi0yLjgsNS42LTUuNCw1LjkuNC40LjgsMS4xLjgsMi4yLDAsMS42LDAsMi45LDAsMy4zcy4yLjcuOC42YzQuNy0xLjYsOC4xLTYuMSw4LjEtMTEuNCwwLTYuNi01LjMtMTItMTEuOS0xMloiLz4KPC9zdmc+');
 
     private lockIcon: HTMLDivElement | null = null;
 
@@ -54,6 +42,11 @@ export default class PluginsAnnotations extends Plugin {
     private saveTimeout: number | null = null;
     private savePromise: Promise<void> | null = null;
     private resolveSavePromise: (() => void) | null = null;
+
+    private community_plugins = {} as CommunityPluginInfoDict;
+
+    private handleThemeChange: ((event: MediaQueryListEvent) => void) | null = null;
+    private colorSchemeMedia: MediaQueryList | null = null;
 
      // Declare class methods that will be initialized in the constructor
     debouncedSaveAnnotations: (callback?: () => void) => void;
@@ -69,7 +62,6 @@ export default class PluginsAnnotations extends Plugin {
             async (callback: () => void = (): void => {}) => {
                 await this.saveSettings();
                 if(callback) callback();
-                console.log("FINISHED SAVING ANNOTATIONS");
             }, timeout_debounced_saving_ms);
         this.debouncedSaveAnnotations = debouncedFct;
         this.waitForSaveToComplete = waitFnc;
@@ -77,8 +69,6 @@ export default class PluginsAnnotations extends Plugin {
 
     async onload() {
 
-        // console.clear();
-        
         // console.log('Loading Plugins Annotations');
 
         // Add settings tab. It avoids loading the setting at this stage
@@ -101,6 +91,14 @@ export default class PluginsAnnotations extends Plugin {
                 }
             }
         });
+
+        this.app.workspace.onLayoutReady(async () => {
+            // Wait for all plugins to be loaded
+            this.colorSchemeMedia = matchMedia('(prefers-color-scheme: dark)');
+        });
+
+        // Call this function in your plugin initialization or where appropriate
+        this.loadCommunityPluginsJson();
     }
 
     /* Load settings for different versions */
@@ -114,7 +112,17 @@ export default class PluginsAnnotations extends Plugin {
         // Nested function to handle different versions of settings
         const getSettingsFromData = async (data: unknown): Promise<unknown> => {
             if (isPluginsAnnotationsSettings(data)) {
-                const settings: PluginsAnnotationsSettings = data;
+                return data as PluginsAnnotationsSettings;
+            } else if (isPluginsAnnotationsSettings_1_6_0(data)) {
+                // Make a backup
+                await backupSettings('Settings before upgrade from 1.5 to 1.6',data,importBackups);
+                await delay(10); // add a small delay to shift the timestamp of the backup
+
+                const settings: PluginsAnnotationsSettings = {
+                    ...data,
+                    "compatibility":"1.7.0",
+                    show_github_icons:DEFAULT_SETTINGS.show_github_icons
+                };
                 return settings as PluginsAnnotationsSettings;
             } else if (isPluginsAnnotationsSettings_1_5_0(data)) {
                 // Make a backup
@@ -132,8 +140,8 @@ export default class PluginsAnnotations extends Plugin {
                 const oldSettings: PluginsAnnotationsSettings_1_5_0 = data;
 
                 // Update the data with the new format
-                const default_new_settings = DEFAULT_SETTINGS;
-                const newSettings: PluginsAnnotationsSettings = {
+                const default_new_settings = DEFAULT_SETTINGS_1_6_0;
+                const newSettings: PluginsAnnotationsSettings_1_6_0 = {
                     ...oldSettings,
                     annotations: upgradedAnnotations,
                     plugins_annotations_uuid: default_new_settings.plugins_annotations_uuid,
@@ -393,8 +401,48 @@ export default class PluginsAnnotations extends Plugin {
         this.sortedPluginIds = sortAnnotations(this.settings.annotations);
     }
 
+    listenForThemeChange(tabContainer: HTMLElement) {
+        const pluginsContainer = tabContainer.querySelector('.installed-plugins-container');
+
+        // Remove previous event listener if it exists
+        if (this.handleThemeChange) {
+            if (this.colorSchemeMedia) {
+                this.colorSchemeMedia.removeEventListener("change", this.handleThemeChange);
+            }
+        }
+
+        // Create the event listener with the correct signature
+        this.handleThemeChange = (event: MediaQueryListEvent): void => {
+            const isDarkMode = event.matches;  // true means dark mode is active
+            
+            if (pluginsContainer) {
+                const githubIcons = pluginsContainer.querySelectorAll(
+                    'div.setting-item > div.setting-item-control > div.github-icon'
+                );
+                
+                // Iterate over each github icon and set the appropriate SVG
+                githubIcons.forEach((icon) => {
+                    if (isDarkMode) {
+                        icon.innerHTML = svg_github_dark;
+                    } else {
+                        icon.innerHTML = svg_github_light;
+                    }
+                });
+            }
+        }
+
+        // Add an event listener for changes to the appearance mode
+        if (this.colorSchemeMedia) {
+            this.colorSchemeMedia.addEventListener("change", this.handleThemeChange);
+        }
+    }
+
 
     async observeTab(tab: SettingTab) {
+
+        // just in case, remove previous observers if there are any
+        this.disconnectObservers();
+
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
 
@@ -437,13 +485,16 @@ export default class PluginsAnnotations extends Plugin {
                 // there could be changes in the settings due to synchronization among devices
                 // which only happens after the plugin is loaded
                 await this.loadSettings();
-        
+                await this.loadCommunityPluginsJson();
+                
                 this.addIcon(tab);
                 this.addAnnotations(tab);
             });
 
             observer.observe(tab.containerEl, { childList: true, subtree: false });
             this.mutationObserver = observer;
+
+            this.listenForThemeChange(tab.containerEl);
         }
 
         // force reload - this is convenient because since the loading of the plugin
@@ -479,10 +530,10 @@ export default class PluginsAnnotations extends Plugin {
             
             if(this.settings.editable) {
                 lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                lockIcon.innerHTML = this.svg_unlocked;
+                lockIcon.innerHTML = svg_unlocked;
             } else {
                 lockIcon.setAttribute('aria-label', 'Click to be able to edit personal annotations');
-                lockIcon.innerHTML = this.svg_locked;
+                lockIcon.innerHTML = svg_locked;
             }
 
             lockIcon.addEventListener('click', (event:MouseEvent) => {
@@ -491,10 +542,10 @@ export default class PluginsAnnotations extends Plugin {
                 this.debouncedSaveAnnotations();
                 if(this.settings.editable) {
                     lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                    lockIcon.innerHTML = this.svg_unlocked;
+                    lockIcon.innerHTML = svg_unlocked;
                 } else {
                     lockIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
-                    lockIcon.innerHTML = this.svg_locked;
+                    lockIcon.innerHTML = svg_locked;
 
                 }
                 const plugins = tab.containerEl.querySelectorAll('.plugin-comment-annotation');
@@ -526,7 +577,6 @@ export default class PluginsAnnotations extends Plugin {
                         // Remove the 'plugin-comment-placeholder' class
                         el.classList.remove('plugin-comment-placeholder');  
                     }
-                    
                 });
             });
 
@@ -541,11 +591,38 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
+    async loadCommunityPluginsJson() {
+        const url = 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json';
+
+        try {
+            // Fetch the JSON data from the URL
+            const response = await fetch(url);
+
+            // Check if the response is OK (status code 200-299)
+            if (!response.ok) {
+                // throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+                return;
+            }
+
+            // Parse the JSON data
+            const pluginsData = (await response.json()) as CommunityPluginInfo[];
+
+            this.community_plugins = pluginsData.reduce((acc:CommunityPluginInfoDict, plugin:CommunityPluginInfo) => {
+                acc[plugin.id] = plugin;
+                return acc;
+                }, {} as CommunityPluginInfoDict);
+
+        } catch (error) {
+            console.error('Error loading community plugins JSON:', error);            
+        }
+    }
+
     addAnnotation(pluginDOMElement: Element) {
         const pluginNameDiv = pluginDOMElement.querySelector('.setting-item-name');
         const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
 
         if (!pluginName) {
+            console.log(pluginNameDiv);
             console.warn('Plugin name not found');
             return;
         }
@@ -556,8 +633,6 @@ export default class PluginsAnnotations extends Plugin {
             return;
         }
 
-        const manifest = this.app.plugins.manifests[pluginId];
-
         const settingItemInfo = pluginDOMElement.querySelector('.setting-item-info');
         if (settingItemInfo) {
             const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
@@ -567,29 +642,24 @@ export default class PluginsAnnotations extends Plugin {
                     const annotation_container = document.createElement('div');
                     annotation_container.className = 'plugin-comment';
 
-                    new annotationControl(this,annotation_container,pluginId,pluginName);
+                    const annotationControl = new AnnotationControl(this,annotation_container,pluginId,pluginName);
                     
                     descriptionDiv.appendChild(annotation_container);                       
-                }
-            }
-        }
-        const controlDiv = pluginDOMElement.querySelector('.setting-item-control');
-        if (controlDiv) {
-            const GitHubDiv = document.createElement('div');
-            GitHubDiv.classList.add('clickable-icon', 'extra-setting-button');
-            GitHubDiv.setAttribute('aria-label', 'Open plugin\'s GitHub page');
-            GitHubDiv.innerHTML = this.svg_github_light;
 
-            // Get all elements with the class .clickable-icon inside controlDiv
-            const clickableIcons = controlDiv.querySelectorAll('.clickable-icon');
-            console.log(manifest);
-            // Insert the new icon as the second last of all clickable icons
-            if (clickableIcons.length > 0) {
-                const lastIcon = clickableIcons[clickableIcons.length - 1];
-                controlDiv.insertBefore(GitHubDiv, lastIcon);
-            } else {
-                // If no clickable icons are found, append it as the first child
-                controlDiv.insertBefore(GitHubDiv, controlDiv.firstChild);
+                    if(this.settings.show_github_icons) {
+                        // Get the repository of the plugin
+                        const community_plugins = this.community_plugins[pluginId];
+                        const repo = community_plugins ? community_plugins.repo : undefined;
+                        if (repo) {
+                            const controlDiv = pluginDOMElement.querySelector('.setting-item-control');
+                            if(controlDiv) {
+                                if(this.colorSchemeMedia) {
+                                    annotationControl.addGitHubIcon(controlDiv,repo, this.colorSchemeMedia.matches);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -1,7 +1,34 @@
 // types_legacy.ts
 
-import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0 } from "defaults_legacy";
-import { PluginAnnotation, PluginsAnnotationsSettings } from "types";
+import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0, DEFAULT_SETTINGS_1_6_0 } from "defaults_legacy";
+import { PluginAnnotation, PluginAnnotationDict, PluginBackup } from "types";
+
+/* VERSION 1.6 */
+
+export interface PluginsAnnotationsSettings_1_6_0 {
+    annotations: PluginAnnotationDict;
+    plugins_annotations_uuid: string;
+    hide_placeholders: boolean;
+    delete_placeholder_string_on_insertion: boolean;
+    label_mobile: string;
+    label_desktop: string;
+    label_placeholder: string;
+    editable: boolean;
+    automatic_remove: boolean;
+    markdown_file_path: string;
+    compatibility: "1.6.0";
+    backups: PluginBackup[];
+}
+
+export function isPluginsAnnotationsSettings_1_6_0(s:unknown): s is PluginsAnnotationsSettings_1_6_0 {
+    if (typeof s !== 'object' || s === null) {
+        return false;
+    }
+    return 'annotations' in s
+        && 'compatibility' in s && (s as PluginsAnnotationsSettings_1_6_0).compatibility === '1.6.0'
+        && 'plugins_annotations_uuid' in s
+        && (s as PluginsAnnotationsSettings_1_6_0).plugins_annotations_uuid === DEFAULT_SETTINGS_1_6_0.plugins_annotations_uuid;
+}
 
 /* VERSION 1.5 */
 
@@ -13,8 +40,9 @@ export interface PluginAnnotationDict_1_5_0 {
     [pluginId: string]: PluginAnnotation_1_5_0;
 }
 
-export interface PluginsAnnotationsSettings_1_5_0 extends Omit<PluginsAnnotationsSettings, 'annotations' >{
+export interface PluginsAnnotationsSettings_1_5_0 extends Omit<PluginsAnnotationsSettings_1_6_0, 'annotations' | 'compatibility' >{
     annotations: PluginAnnotationDict_1_5_0;
+    compatibility: "1.5.0";
 }
 
 export function isPluginsAnnotationsSettings_1_5_0(s:unknown): s is PluginsAnnotationsSettings_1_5_0 {

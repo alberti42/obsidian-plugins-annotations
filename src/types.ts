@@ -28,7 +28,8 @@ export interface PluginsAnnotationsSettings {
     editable: boolean;
     automatic_remove: boolean;
     markdown_file_path: string;
-    compatibility: string;
+    show_github_icons: boolean;
+    compatibility: "1.7.0";
     backups: PluginBackup[];
 }
 
@@ -37,10 +38,11 @@ export function isPluginsAnnotationsSettings(s:unknown): s is PluginsAnnotations
         return false;
     }
     return 'annotations' in s
-        && 'compatibility' in s && (s as PluginsAnnotationsSettings).compatibility === '1.6.0'
+        && 'compatibility' in s && (s as PluginsAnnotationsSettings).compatibility === '1.7.0'
         && 'plugins_annotations_uuid' in s
         && (s as PluginsAnnotationsSettings).plugins_annotations_uuid === DEFAULT_SETTINGS.plugins_annotations_uuid;
 }
+
 
 export function isPluginAnnotation(anno:unknown): anno is PluginAnnotation {
     if (typeof anno !== 'object' || anno === null) {
@@ -60,4 +62,14 @@ export interface ParsedPath {
     filename: string,
     ext: string,
     path: string
+}
+
+export type CommunityPluginInfoDict = {[key:string]:CommunityPluginInfo};
+
+export interface CommunityPluginInfo {
+    author: string,
+    description: string,
+    id: string,
+    name: string,
+    repo: string,
 }

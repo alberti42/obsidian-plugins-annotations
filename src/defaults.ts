@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: PluginsAnnotationsSettings = {
     editable: true,
     automatic_remove: false,
     markdown_file_path: '',
+    show_github_icons: true,
     backups: [],
-    compatibility: '1.6.0',
+    compatibility: '1.7.0',
 }
