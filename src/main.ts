@@ -94,26 +94,27 @@ export default class PluginsAnnotations extends Plugin {
             }
         });
 
-
-
-
         const asyncFunc = async (msg: string) => {
             console.log("Processing:", msg);
             return `Processed: ${msg}`;
         };
-        console.log("HEY");
 
-        const { debouncedFct, waitFnc } = debounceFactoryWithWaitMechanism(asyncFunc, 1000);
+        const { debouncedFct, waitFnc } = debounceFactoryWithWaitMechanism(async (msg: string) => {
+            console.log("Saving settings for:", msg);
+            await new Promise(resolve => setTimeout(resolve, 500)); // Simulate async work
+            console.log("Settings saved for:", msg);
+        }, 1000);
 
-        // Make multiple debounced calls, only the last one should execute
-        debouncedFct("Message 1");
-        debouncedFct("Message 2");
-        // Wait for the last debounced call to finish
+        // Trigger debounced function calls
+        debouncedFct("User 1");
+        debouncedFct("User 2");
+
+        // Wait for the last debounced function call to complete
         waitFnc().then(() => {
             console.log("All debounced calls have been completed.");
-        }).catch(error => {
-            console.error("An unexpected error occurred:", error);
         });
+
+
     }
 
     /* Load settings for different versions */
