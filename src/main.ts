@@ -30,7 +30,7 @@ export default class PluginsAnnotations extends Plugin {
     pluginIdToNameMap: Record<string,string> = {};
     sortedPluginIds: string[] = [];
 
-    svg_unlocked = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
+    svg_unlocked ='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" \
                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-open">\
                     <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
                      <path d="M7 11v-4c0-2.8 2.2-5 5-5 1.6 0 3.1.8 4 2"/> \
@@ -40,6 +40,9 @@ export default class PluginsAnnotations extends Plugin {
                     <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>\
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>\
                 </svg>';
+
+    svg_github_light=atob('PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgY2xhc3M9InN2Zy1pY29uIGx1Y2lkZS1zZXR0aW5ncyI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogIzI0MjkyZjsKICAgICAgICBmaWxsLXJ1bGU6IGV2ZW5vZGQ7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAwcHg7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTEyLC4zQzUuNC4zLjEsNS43LjEsMTIuM3MzLjQsOS44LDguMSwxMS40Yy42LjEuOC0uMy44LS42czAtMS4yLDAtMi4yYy0zLjMuNy00LTEuNC00LTEuNC0uNS0xLjQtMS4zLTEuNy0xLjMtMS43LTEuMS0uNywwLS43LDAtLjcsMS4yLDAsMS44LDEuMiwxLjgsMS4yLDEuMSwxLjgsMi44LDEuMywzLjUsMSwwLS44LjQtMS4zLjctMS42LTIuNi0uMy01LjQtMS4zLTUuNC01LjlzLjUtMi40LDEuMi0zLjJjLS4xLS4zLS41LTEuNS4xLTMuMiwwLDAsMS0uMywzLjMsMS4yLDEtLjMsMi0uNCwzLS40LDEsMCwyLC4xLDMsLjQsMi4zLTEuNSwzLjMtMS4yLDMuMy0xLjIuNywxLjYuMiwyLjkuMSwzLjIuOC44LDEuMiwxLjksMS4yLDMuMiwwLDQuNi0yLjgsNS42LTUuNCw1LjkuNC40LjgsMS4xLjgsMi4yLDAsMS42LDAsMi45LDAsMy4zcy4yLjcuOC42YzQuNy0xLjYsOC4xLTYuMSw4LjEtMTEuNCwwLTYuNi01LjMtMTItMTEuOS0xMloiLz4KPC9zdmc+');
+    svg_github_dark=atob('PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgY2xhc3M9InN2Zy1pY29uIGx1Y2lkZS1zZXR0aW5ncyI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgICBmaWxsLXJ1bGU6IGV2ZW5vZGQ7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAwcHg7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTEyLC4zQzUuNC4zLjEsNS43LjEsMTIuM3MzLjQsOS44LDguMSwxMS40Yy42LjEuOC0uMy44LS42czAtMS4yLDAtMi4yYy0zLjMuNy00LTEuNC00LTEuNC0uNS0xLjQtMS4zLTEuNy0xLjMtMS43LTEuMS0uNywwLS43LDAtLjcsMS4yLDAsMS44LDEuMiwxLjgsMS4yLDEuMSwxLjgsMi44LDEuMywzLjUsMSwwLS44LjQtMS4zLjctMS42LTIuNi0uMy01LjQtMS4zLTUuNC01LjlzLjUtMi40LDEuMi0zLjJjLS4xLS4zLS41LTEuNS4xLTMuMiwwLDAsMS0uMywzLjMsMS4yLDEtLjMsMi0uNCwzLS40LDEsMCwyLC4xLDMsLjQsMi4zLTEuNSwzLjMtMS4yLDMuMy0xLjIuNiwxLjYuMiwyLjkuMSwzLjIuOC44LDEuMiwxLjksMS4yLDMuMiwwLDQuNi0yLjgsNS42LTUuNCw1LjkuNC40LjgsMS4xLjgsMi4yLDAsMS42LDAsMi45LDAsMy4zcy4yLjcuOC42YzQuNy0xLjYsOC4xLTYuMSw4LjEtMTEuNCwwLTYuNi01LjMtMTItMTEuOS0xMloiLz4KPC9zdmc+');
 
     private lockIcon: HTMLDivElement | null = null;
 
@@ -52,19 +55,24 @@ export default class PluginsAnnotations extends Plugin {
     private savePromise: Promise<void> | null = null;
     private resolveSavePromise: (() => void) | null = null;
 
-    // public debouncedSaveAnnotations: (callback: () => void = (): void => {}): void;
+     // Declare class methods that will be initialized in the constructor
+    debouncedSaveAnnotations: (callback?: () => void) => void;
+    waitForSaveToComplete: () => Promise<void>;
 
     constructor(app:App, manifest:PluginManifest) {
         super(app, manifest);
 
-        // const { waitFnc, debouncedFct } = debounceFactoryWithWaitMechanism(async (...args: unknown[]): Promise<void> => {
-        //     // Extract the callback if it's provided, otherwise default to a no-op function
-        //     const callback = typeof args[0] === 'function' ? args[0] as () => void : () => {};
 
-        //     await this.saveSettings();
-        //     callback();  // Call the callback after saving settings
-        // }, 100);
-
+        // Set up debounced saving functions
+        const timeout_debounced_saving_ms = 100;
+        const { debouncedFct, waitFnc } = debounceFactoryWithWaitMechanism(
+            async (callback: () => void = (): void => {}) => {
+                await this.saveSettings();
+                if(callback) callback();
+                console.log("FINISHED SAVING ANNOTATIONS");
+            }, timeout_debounced_saving_ms);
+        this.debouncedSaveAnnotations = debouncedFct;
+        this.waitForSaveToComplete = waitFnc;
     }
 
     async onload() {
@@ -93,28 +101,6 @@ export default class PluginsAnnotations extends Plugin {
                 }
             }
         });
-
-        const asyncFunc = async (msg: string) => {
-            console.log("Processing:", msg);
-            return `Processed: ${msg}`;
-        };
-
-        const { debouncedFct, waitFnc } = debounceFactoryWithWaitMechanism(async (msg: string) => {
-            console.log("Saving settings for:", msg);
-            await new Promise(resolve => setTimeout(resolve, 500)); // Simulate async work
-            console.log("Settings saved for:", msg);
-        }, 1000);
-
-        // Trigger debounced function calls
-        debouncedFct("User 1");
-        debouncedFct("User 2");
-
-        // Wait for the last debounced function call to complete
-        waitFnc().then(() => {
-            console.log("All debounced calls have been completed.");
-        });
-
-
     }
 
     /* Load settings for different versions */
@@ -555,23 +541,25 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-    addAnnotation(plugin: Element) {
-        const settingItemInfo = plugin.querySelector('.setting-item-info');
+    addAnnotation(pluginDOMElement: Element) {
+        const pluginNameDiv = pluginDOMElement.querySelector('.setting-item-name');
+        const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
+
+        if (!pluginName) {
+            console.warn('Plugin name not found');
+            return;
+        }
+
+        const pluginId = this.pluginNameToIdMap[pluginName];
+        if (!pluginId) {
+            console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
+            return;
+        }
+
+        const manifest = this.app.plugins.manifests[pluginId];
+
+        const settingItemInfo = pluginDOMElement.querySelector('.setting-item-info');
         if (settingItemInfo) {
-            const pluginNameDiv = plugin.querySelector('.setting-item-name');
-            const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
-
-            if (!pluginName) {
-                console.warn('Plugin name not found');
-                return;
-            }
-
-            const pluginId = this.pluginNameToIdMap[pluginName];
-            if (!pluginId) {
-                console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
-                return;
-            }
-
             const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
             if (descriptionDiv) {
                 const commentDiv = descriptionDiv.querySelector('.plugin-comment');
@@ -584,54 +572,36 @@ export default class PluginsAnnotations extends Plugin {
                     descriptionDiv.appendChild(annotation_container);                       
                 }
             }
+        }
+        const controlDiv = pluginDOMElement.querySelector('.setting-item-control');
+        if (controlDiv) {
+            const GitHubDiv = document.createElement('div');
+            GitHubDiv.classList.add('clickable-icon', 'extra-setting-button');
+            GitHubDiv.setAttribute('aria-label', 'Open plugin\'s GitHub page');
+            GitHubDiv.innerHTML = this.svg_github_light;
 
-            const controlDiv = settingItemInfo.querySelector('.setting-item-control');
-            console.log(controlDiv);
+            // Get all elements with the class .clickable-icon inside controlDiv
+            const clickableIcons = controlDiv.querySelectorAll('.clickable-icon');
+            console.log(manifest);
+            // Insert the new icon as the second last of all clickable icons
+            if (clickableIcons.length > 0) {
+                const lastIcon = clickableIcons[clickableIcons.length - 1];
+                controlDiv.insertBefore(GitHubDiv, lastIcon);
+            } else {
+                // If no clickable icons are found, append it as the first child
+                controlDiv.insertBefore(GitHubDiv, controlDiv.firstChild);
+            }
         }
     }
 
     addAnnotations(tab: SettingTab) {
         const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
         if (!pluginsContainer) return;
-
-        const plugins = pluginsContainer.querySelectorAll('.setting-item');
-        plugins.forEach(plugin => {
-            this.addAnnotation(plugin);
+        
+        const pluginDOMElements = pluginsContainer.querySelectorAll('.setting-item');
+        pluginDOMElements.forEach(pluginDOMElement => {
+            this.addAnnotation(pluginDOMElement);
         });
-    }
-
-    debouncedSaveAnnotations(callback: () => void = (): void => {}) {
-        const timeout_ms = 100;
-
-        // Clear the previous timeout and resolve the previous promise if necessary
-        if (this.saveTimeout) {
-            clearTimeout(this.saveTimeout);
-
-            // By stopping the timer, the promise is unlikely to be resolved. So, we need to resolve it manually.
-            if (this.resolveSavePromise) {
-                this.resolveSavePromise(); // Ensure the previous promise is resolved to avoid memory leaks
-            }
-        }
-
-        // Create a new promise and store the resolve function
-        this.savePromise = new Promise<void>((resolve) => {
-            this.resolveSavePromise = resolve; // Store the resolve function
-
-            this.saveTimeout = window.setTimeout(async () => {
-                await this.saveSettings();
-                callback();
-                this.saveTimeout = null;
-                resolve();  // Resolve the promise when the timer completes
-            }, timeout_ms);
-        });
-    }
-
-    // Helper method to check if a save is in progress and wait for it
-    async waitForSaveToComplete() {
-        if (this.saveTimeout && this.savePromise) {
-            // Wait for the existing promise to resolve
-            await this.savePromise;
-        }
     }
 
     removeCommentsFromTab() {
@@ -646,14 +616,14 @@ export default class PluginsAnnotations extends Plugin {
     onunload() {
         // console.log('Unloading Plugins Annotations');
 
-        // // Remove all comments
-        // this.removeCommentsFromTab();
+        // Remove all comments
+        this.removeCommentsFromTab();
 
-        // // Just in case, disconnect observers if they still exist
-        // this.disconnectObservers();
+        // Just in case, disconnect observers if they still exist
+        this.disconnectObservers();
 
-        // // Remove icons
-        // this.removeIcon();
+        // Remove icons
+        this.removeIcon();
     }
 
     getUninstalledPlugins(): PluginAnnotationDict {

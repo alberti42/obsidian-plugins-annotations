@@ -122,7 +122,7 @@ export function debounceFactory<F extends (...args: unknown[]) => unknown>(func:
     };
 }
 
-export function debounceFactoryWithWaitMechanism<F extends (...args: unknown[]) => void | Promise<void>>(func: F, wait: number) {
+export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) => void | Promise<void>>(func: F, wait: number) {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     let promise: Promise<void> | null = null;
     let resolvePromise: (() => void) | null = null;
@@ -149,16 +149,14 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: unknown[]) 
             promise = new Promise<void>((resolve, reject) => {
                 // Set the new resolvePromise function
                 resolvePromise = () => {
-                    console.log("Resolved old promise")
-                    resolve();  // Reject with a specific cancellation error
+                    resolve();  // Resolve to indicate that the previous execution was cancelled
                 };
 
                 // Schedule the function to run after the debounce delay
                 timeout = setTimeout(async () => {
                     try {
-                        // Await the result of the function and cast it to the expected return type
-                        (await func(...args)) as ReturnType<F>;
-                        resolve();  // Resolve with the result of the function (sync or async)
+                        await func(...args);  // Execute the debounced function
+                        resolve();  // Resolve the promise once the function is done
                     } catch (error) {
                         reject(error);  // Reject the promise if the function throws an error
                     }
@@ -169,16 +167,13 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: unknown[]) 
                 }, wait);
             });
 
-            console.log("Created new promise");
-
-            // After the new promise is created, reject the previous one
+            // After the new promise is created, resolve the previous one
             if (previousResolvePromise) {
-                previousResolvePromise();  // Reject the previous promise with the custom error
+                previousResolvePromise();  // Resolve the previous promise to indicate cancellation
             }
         }
     };
 }
-
 
 /* File suggestions */
 export class FileSuggestion extends AbstractInputSuggest<TFile> {
