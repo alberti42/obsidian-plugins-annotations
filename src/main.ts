@@ -379,7 +379,8 @@ export default class PluginsAnnotations extends Plugin {
                 return function (this: SettingTab, isInitialRender: boolean): void {
                     // Call the original `render` function
                     next.call(this, isInitialRender);
-                    self.addIcon(this.containerEl);                    
+                    self.listenForThemeChange(this.containerEl);
+                    self.addIcon(this.containerEl);
                 };
             }
         });
@@ -402,7 +403,7 @@ export default class PluginsAnnotations extends Plugin {
                         if(self.observedTab!==tab) self.observeTab(tab);
                         self.patchCommunityPluginSettingTab(tab);
                     }
-                    next.call(this, tab);                    
+                    next.call(this, tab);
                 };
             },
             onClose: (next: () => void) => {
@@ -455,12 +456,7 @@ export default class PluginsAnnotations extends Plugin {
     listenForThemeChange(tabContainer: HTMLElement) {
         const pluginsContainer = tabContainer.querySelector('.installed-plugins-container');
 
-        // Remove previous event listener if it exists
-        if (this.handleThemeChange) {
-            if (this.colorSchemeMedia) {
-                this.colorSchemeMedia.removeEventListener("change", this.handleThemeChange);
-            }
-        }
+        this.removeHandleThemeChangeListener();
 
         // Create the event listener with the correct signature
         this.handleThemeChange = (event: MediaQueryListEvent): void => {
@@ -510,8 +506,6 @@ export default class PluginsAnnotations extends Plugin {
 
             observer.observe(tab.containerEl, { childList: true, subtree: false });
             this.mutationObserver = observer;
-
-            this.listenForThemeChange(tab.containerEl);
         }
 
         // force reload - this is convenient because since the loading of the plugin
@@ -704,9 +698,19 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
+    removeHandleThemeChangeListener() {
+        // Remove listeners
+        if (this.handleThemeChange) {
+            if (this.colorSchemeMedia) {
+                this.colorSchemeMedia.removeEventListener("change", this.handleThemeChange);
+            }
+        }
+    }
+
     onunload() {
         // console.log('Unloading Plugins Annotations');
 
+        
         // Remove all comments
         this.removeCommentsFromTab();
 
