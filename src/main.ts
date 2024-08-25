@@ -337,6 +337,54 @@ export default class PluginsAnnotations extends Plugin {
         return invertedMap;
     }
 
+    patchCommunityPluginSettingTab(tab:SettingTab) {
+
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const self = this;
+
+        // Monkey patch for uninstallPlugin
+        const removeMonkeyPatchForRender = around(tab, {
+            renderInstalledPlugin: (next: (
+                    pluginManifest: PluginManifest,
+                    containerEl:HTMLElement,
+                    nameMatch: boolean | null,
+                    authorMatch: boolean | null,
+                    descriptionMatch: boolean | null
+                ) => void ) => {
+
+                return function (this: SettingTab,
+                        pluginManifest: PluginManifest,
+                        containerEl: HTMLElement,
+                        nameMatch: boolean | null,
+                        authorMatch: boolean | null,
+                        descriptionMatch: boolean | null
+                    ): void {
+                        next.call(this, pluginManifest, containerEl, nameMatch, authorMatch, descriptionMatch);
+
+                        // Custom code for personal annotations here
+                        if(containerEl && containerEl.lastElementChild)
+                        {
+                            self.addAnnotation(containerEl.lastElementChild)
+                        }                           
+                };
+            },
+             // Patch for `render` method
+            render: (next: (
+                    isInitialRender: boolean
+                ) => void) => {
+
+                return function (this: SettingTab, isInitialRender: boolean): void {
+                    // Call the original `render` function
+                    next.call(this, isInitialRender);
+                    self.addIcon(this.containerEl);                    
+                };
+            }
+        });
+
+        // Register the patch to ensure it gets cleaned up
+        this.register(removeMonkeyPatchForRender);    
+    }
+
     patchSettings() {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
@@ -345,13 +393,11 @@ export default class PluginsAnnotations extends Plugin {
         const removeMonkeyPatchForSetting = around(this.app.setting, {
             openTab: (next: (tab: SettingTab) => void) => {
                 return function(this: Setting, tab: SettingTab) {
-                    next.call(this, tab);
                     if (tab && tab.id === 'community-plugins') {
-                        if(self.observedTab!==tab)
-                        {
-                            self.observeTab(tab);
-                        }
+                        if(self.observedTab!==tab) self.observeTab(tab);
+                        self.patchCommunityPluginSettingTab(tab);
                     }
+                    next.call(this, tab);                    
                 };
             },
             onClose: (next: () => void) => {
@@ -443,40 +489,6 @@ export default class PluginsAnnotations extends Plugin {
         // just in case, remove previous observers if there are any
         this.disconnectObservers();
 
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const self = this;
-
-        // Monkey patch for uninstallPlugin
-        const removeMonkeyPatchForUpdateSearch = around(tab, {
-            renderInstalledPlugin: (next: (
-                    pluginManifest: PluginManifest,
-                    containerEl:HTMLElement,
-                    nameMatch: boolean | null,
-                    authorMatch: boolean | null,
-                    descriptionMatch: boolean | null
-                ) => void ) => {
-
-                return function (this: SettingTab,
-                        pluginManifest: PluginManifest,
-                        containerEl: HTMLElement,
-                        nameMatch: boolean | null,
-                        authorMatch: boolean | null,
-                        descriptionMatch: boolean | null
-                    ): void {
-                        next.call(this, pluginManifest, containerEl, nameMatch, authorMatch, descriptionMatch);
-
-                        // Custom code for personal annotations here
-                        if(containerEl && containerEl.lastElementChild)
-                        {
-                            self.addAnnotation(containerEl.lastElementChild)
-                        }                           
-                };
-            }
-        });
-
-        // // Register the patch to ensure it gets cleaned up
-        this.register(removeMonkeyPatchForUpdateSearch);    
-
         if(!this.mutationObserver) {
             this.observedTab = tab;
 
@@ -487,7 +499,7 @@ export default class PluginsAnnotations extends Plugin {
                 await this.loadSettings();
                 await this.loadCommunityPluginsJson();
                 
-                this.addIcon(tab);
+                // this.addIcon(tab);
                 this.addAnnotations(tab);
             });
 
@@ -501,10 +513,11 @@ export default class PluginsAnnotations extends Plugin {
         // there could be changes in the settings due to synchronization among devices
         // which only happens after the plugin is loaded
         await this.loadSettings();
-        
+        await this.loadCommunityPluginsJson();
+
         // Initial call to add comments to already present plugins
-        this.addIcon(tab);
-        this.addAnnotations(tab);
+        // this.addIcon(tab);
+        // this.addAnnotations(tab);
     }
 
     disconnectObservers() {
@@ -515,12 +528,12 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-    async addIcon(tab: SettingTab) {
+    async addIcon(containerEl: HTMLElement) {
         // This should not be necessary, but just in case, remove the icon if it was there
         this.removeIcon();
 
         // Add new icon to the existing icons container
-        const headingContainer = tab.containerEl.querySelector('.setting-item-heading .setting-item-control');
+        const headingContainer = containerEl.querySelector('.setting-item-heading .setting-item-control');
         if (headingContainer) {
             
             this.lockIcon = document.createElement('div');
@@ -548,7 +561,7 @@ export default class PluginsAnnotations extends Plugin {
                     lockIcon.innerHTML = svg_locked;
 
                 }
-                const plugins = tab.containerEl.querySelectorAll('.plugin-comment-annotation');
+                const plugins = containerEl.querySelectorAll('.plugin-comment-annotation');
                 plugins.forEach((div:Element) => {
                     if (div instanceof HTMLDivElement) {
                         if(this.settings.editable) {
@@ -592,11 +605,15 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     async loadCommunityPluginsJson() {
-        const url = 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json';
+        // If the user decided not to show the GitHub icons, then avoid running this function
+        if(!this.settings.show_github_icons) return;
+
+        // If it was already loaded, we just return without fetching a new json
+        if(Object.keys(this.community_plugins).length>0) return;
 
         try {
             // Fetch the JSON data from the URL
-            const response = await fetch(url);
+            const response = await fetch('https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json');
 
             // Check if the response is OK (status code 200-299)
             if (!response.ok) {
@@ -622,7 +639,6 @@ export default class PluginsAnnotations extends Plugin {
         const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
 
         if (!pluginName) {
-            console.log(pluginNameDiv);
             console.warn('Plugin name not found');
             return;
         }

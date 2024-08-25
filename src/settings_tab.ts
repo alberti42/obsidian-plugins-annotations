@@ -450,7 +450,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
         const show_github_icons_setting = new Setting(containerEl)
             .setName('Show GitHub links')
-            .setDesc("If this option is enabled, a clickable icon linking to the plugin's GitHub page will be displayed.");
+            .setDesc("If this option is enabled, aclickable icon linking to the plugin's GitHub page will be displayed in the Community plugin pane.");
 
         let show_github_icons_toggle: ToggleComponent;
         show_github_icons_setting.addToggle(toggle => {

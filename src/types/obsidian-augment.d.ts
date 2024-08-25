@@ -19,6 +19,7 @@ declare module "obsidian" {
         name: string;
         navEl: HTMLElement;
         // updateSearch(e: string): void;
+        render(isInitialRender:boolean):void;
         renderInstalledPlugin(
             pluginManifest: PluginManifest,
             containerEl: HTMLElement,
