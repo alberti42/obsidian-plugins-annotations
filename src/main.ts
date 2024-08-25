@@ -9,6 +9,7 @@ import {
     PluginManifest,
     FileSystemAdapter,
     TAbstractFile,
+    App,
     // PluginSettingTab,
     // App,
 } from 'obsidian';
@@ -20,7 +21,7 @@ import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
-import { backupSettings, delay, sortAnnotations } from 'utils';
+import { backupSettings, debounceFactoryWithWaitMechanism, delay, sortAnnotations } from 'utils';
 import { annotationControl } from 'annotation_control';
 
 export default class PluginsAnnotations extends Plugin {
@@ -51,6 +52,21 @@ export default class PluginsAnnotations extends Plugin {
     private savePromise: Promise<void> | null = null;
     private resolveSavePromise: (() => void) | null = null;
 
+    // public debouncedSaveAnnotations: (callback: () => void = (): void => {}): void;
+
+    constructor(app:App, manifest:PluginManifest) {
+        super(app, manifest);
+
+        // const { waitFnc, debouncedFct } = debounceFactoryWithWaitMechanism(async (...args: unknown[]): Promise<void> => {
+        //     // Extract the callback if it's provided, otherwise default to a no-op function
+        //     const callback = typeof args[0] === 'function' ? args[0] as () => void : () => {};
+
+        //     await this.saveSettings();
+        //     callback();  // Call the callback after saving settings
+        // }, 100);
+
+    }
+
     async onload() {
 
         // console.clear();
@@ -76,6 +92,27 @@ export default class PluginsAnnotations extends Plugin {
                     readAnnotationsFromMdFile(this);
                 }
             }
+        });
+
+
+
+
+        const asyncFunc = async (msg: string) => {
+            console.log("Processing:", msg);
+            return `Processed: ${msg}`;
+        };
+        console.log("HEY");
+
+        const { debouncedFct, waitFnc } = debounceFactoryWithWaitMechanism(asyncFunc, 1000);
+
+        // Make multiple debounced calls, only the last one should execute
+        debouncedFct("Message 1");
+        debouncedFct("Message 2");
+        // Wait for the last debounced call to finish
+        waitFnc().then(() => {
+            console.log("All debounced calls have been completed.");
+        }).catch(error => {
+            console.error("An unexpected error occurred:", error);
         });
     }
 
@@ -229,6 +266,8 @@ export default class PluginsAnnotations extends Plugin {
         
         let isRestoreOperation;
         if(data === undefined) {
+            // we load directly from file, but first wait until
+            // the previous debounced writing operation is completed
             this.waitForSaveToComplete();
             data = await this.loadData();
             isRestoreOperation = false;
@@ -544,6 +583,9 @@ export default class PluginsAnnotations extends Plugin {
                     descriptionDiv.appendChild(annotation_container);                       
                 }
             }
+
+            const controlDiv = settingItemInfo.querySelector('.setting-item-control');
+            console.log(controlDiv);
         }
     }
 
@@ -603,14 +645,14 @@ export default class PluginsAnnotations extends Plugin {
     onunload() {
         // console.log('Unloading Plugins Annotations');
 
-        // Remove all comments
-        this.removeCommentsFromTab();
+        // // Remove all comments
+        // this.removeCommentsFromTab();
 
-        // Just in case, disconnect observers if they still exist
-        this.disconnectObservers();
+        // // Just in case, disconnect observers if they still exist
+        // this.disconnectObservers();
 
-        // Remove icons
-        this.removeIcon();
+        // // Remove icons
+        // this.removeIcon();
     }
 
     getUninstalledPlugins(): PluginAnnotationDict {

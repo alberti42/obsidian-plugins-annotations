@@ -112,6 +112,87 @@ export async function createFolderIfNotExists(vault: Vault, folderPath: string) 
     }
 }
 
+// Utility to debounce rebuilds
+export function debounceFactory<F extends (...args: unknown[]) => unknown>(func: F, wait: number) {
+    let timeout: ReturnType<typeof setTimeout>;
+
+    return (...args: Parameters<F>): void => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+}
+
+export function debounceFactoryWithWaitMechanism<F extends (...args: unknown[]) => ReturnType<F> | Promise<ReturnType<F>>>(func: F, wait: number) {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let promise: Promise<ReturnType<F>> | null = null;
+    let resolvePromise: (() => void) | null = null;
+
+    class CancelledExecution extends Error {
+    constructor(message = 'Debounced function call was cancelled') {
+        super(message);
+        this.name = 'CancelledExecution';
+        }
+    }
+
+    return {
+        // Function to wait for the completion of the current debounced call (if any)
+        waitFnc: async (): Promise<void> => {
+            while (promise) {
+                try {
+                    await promise;
+                } catch (error) {
+                    if (!(error instanceof CancelledExecution)) {
+                        throw error;  // Re-throw if it's not a cancellation
+                    }
+                    // We do nothing if the execution was cancelled
+                }
+            }
+        },
+
+        // The debounced function itself
+        debouncedFct: (...args: Parameters<F>): Promise<ReturnType<F>> => {
+            // Clear the previous timeout to cancel any pending execution
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+
+            // Store the previous resolvePromise to resolve it after the new promise is created
+            const previousResolvePromise = resolvePromise;
+
+            // Create a new promise for the current execution
+            
+            promise = new Promise<ReturnType<F>>((resolve, reject) => {
+                // Now we set the new resolvePromise function
+                resolvePromise = () => {
+                    reject(new CancelledExecution());  // Reject with a specific cancellation error
+                };
+
+                // After the new promise is created, resolve the previous one
+                if (previousResolvePromise) {
+                    previousResolvePromise();  // Resolve the previous promise to prevent leaks
+                }
+
+                // Schedule the function to run after the debounce delay
+                timeout = setTimeout(async () => {
+                    try {
+                        // Await the result of the function and cast it to the expected return type
+                        const result = (await func(...args)) as ReturnType<F>;  
+                        resolve(result);  // Resolve with the result of the function (sync or async)
+                    } catch (error) {
+                        reject(error);  // Reject the promise if the function throws an error
+                    }
+
+                    // Clear the stored promise and resolve function after execution
+                    promise = null;
+                    resolvePromise = null;
+                }, wait);
+            });
+            // Return the promise, allowing the caller to await the debounced execution
+            return promise;
+        }
+    };
+}
+
 /* File suggestions */
 export class FileSuggestion extends AbstractInputSuggest<TFile> {
     private files:TFile[] = [];
@@ -235,3 +316,4 @@ export async function backupSettings(backupName: string, toBeBackedUp: unknown, 
 export function delay(ms: number) {
     return new Promise( resolve => setTimeout(resolve, ms) );
 }
+
