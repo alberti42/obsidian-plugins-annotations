@@ -2,7 +2,7 @@
 
 /* Make sure the input field takes the full width of its parent */
 .plugin-comment {
-	margin-top: var(--size-4-1);;
+	margin-top: var(--size-4-1);
 	width: 100%;
 	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
 }
