@@ -95,6 +95,9 @@ export class AnnotationControl {
             } else {
                 // replaces the rendered content with the annotation containig template strings and Markdown links
                 this.annotation_div.innerText = this.annotationDesc;
+
+                // Select existing text
+                this.selectExistingText();
             }
         });
 
@@ -153,7 +156,7 @@ export class AnnotationControl {
     selectExistingText () {
         const range = document.createRange();
         range.selectNodeContents(this.annotation_div);
-        const selection = window.getSelection();
+        const selection = getSelection();
         if (selection) {
             selection.removeAllRanges();
             selection.addRange(range);
