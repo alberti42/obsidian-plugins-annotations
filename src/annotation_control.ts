@@ -72,7 +72,7 @@ export class AnnotationControl {
             }
         });
 
-        this.annotation_div.addEventListener('focus', (event:FocusEvent) => {
+        this.annotation_div.addEventListener('focus', async (event:FocusEvent) => {
             if(this.clickedLink) return;
 
             if (this.isPlaceholder) {
@@ -95,6 +95,9 @@ export class AnnotationControl {
             } else {
                 // replaces the rendered content with the annotation containig template strings and Markdown links
                 this.annotation_div.innerText = this.annotationDesc;
+
+                // Select existing text
+                this.selectExistingText();
             }
         });
 
@@ -151,13 +154,20 @@ export class AnnotationControl {
     }
 
     selectExistingText () {
-        const range = document.createRange();
-        range.selectNodeContents(this.annotation_div);
-        const selection = window.getSelection();
-        if (selection) {
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
+        // Ensure the DOM is updated before selecting the text
+        // requestAnimationFrame ensures that the browser has completed the 
+        // DOM updates and layout recalculations before running your selection code.
+        // It ensures that all DOM manipulations are fully processed before the next paint,
+        // even though the callback is executed before that repaint occurs. 
+        requestAnimationFrame(() => {
+            const range = document.createRange();
+            range.selectNodeContents(this.annotation_div);
+            const selection = getSelection();
+            if (selection) {
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        });
     }
 
     async renderAnnotation() {
