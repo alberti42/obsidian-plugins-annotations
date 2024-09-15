@@ -149,7 +149,7 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) =>
             promise = new Promise<void>((resolve, reject) => {
                 // Set the new resolvePromise function
                 resolvePromise = () => {
-                    resolve();  // Resolve to indicate that the previous execution was cancelled
+                    resolve();  // Reference to resolve() used when the previous execution is cancelled
                 };
 
                 // Schedule the function to run after the debounce delay
