@@ -57,7 +57,6 @@ export default class PluginsAnnotations extends Plugin {
     constructor(app:App, manifest:PluginManifest) {
         super(app, manifest);
 
-
         // Set up debounced saving functions
         const timeout_debounced_saving_ms = 100;
         const { debouncedFct, waitFnc } = debounceFactoryWithWaitMechanism(
