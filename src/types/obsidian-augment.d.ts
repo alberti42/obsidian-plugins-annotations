@@ -58,6 +58,7 @@ declare module "obsidian" {
         plugins: Record<string, Plugin>;
         getPlugin(id: string): Plugin;
         uninstallPlugin(pluginId: string): Promise<void>;
+        installPlugin(repo: string, version: string, manifest: PluginManifest): Promise<void>
     }
     
     interface InternalPlugins {

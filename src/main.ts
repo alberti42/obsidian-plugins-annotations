@@ -432,6 +432,12 @@ export default class PluginsAnnotations extends Plugin {
                     }
                 };
             },
+            installPlugin: (next: (repo: string, version: string, manifest: PluginManifest) => Promise<void>) => {
+                return async function (this: Plugins, repo: string, version: string, manifest: PluginManifest): Promise<void> {
+                    await next.call(this, repo, version, manifest);
+                    self.pluginNameToIdMap[manifest.name] = manifest.id;
+                };
+            },
         });
 
         // Register the patch to ensure it gets cleaned up
@@ -487,8 +493,6 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     async observeCommunityPluginsTab(tab: SettingTab) {
-
-        console.log("CALLED");
 
         // just in case, remove previous observers if there are any
         this.disconnectObservers();
