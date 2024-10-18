@@ -81,7 +81,7 @@ export default class PluginsAnnotations extends Plugin {
 
             const activeTab = this.app.setting.activeTab;
             if (activeTab && activeTab.id === 'community-plugins') {
-                this.observeTab(activeTab);
+                this.observeCommunityPluginsTab(activeTab);
             }
         });
 
@@ -399,7 +399,7 @@ export default class PluginsAnnotations extends Plugin {
             openTab: (next: (tab: SettingTab) => void) => {
                 return async function(this: Setting, tab: SettingTab) {
                     if (tab && tab.id === 'community-plugins') {
-                        if(self.observedTab!==tab) await self.observeTab(tab);
+                        if(self.observedTab!==tab) await self.observeCommunityPluginsTab(tab);
                         self.patchCommunityPluginSettingTab(tab);
                     }
                     next.call(this, tab);
@@ -484,10 +484,12 @@ export default class PluginsAnnotations extends Plugin {
     }
 
 
-    async observeTab(tab: SettingTab) {
+    async observeCommunityPluginsTab(tab: SettingTab) {
+
+        if(this.mutationObserver) return;
 
         // just in case, remove previous observers if there are any
-        this.disconnectObservers();
+        // this.disconnectObservers();
 
         if(!this.mutationObserver) {
             this.observedTab = tab;
