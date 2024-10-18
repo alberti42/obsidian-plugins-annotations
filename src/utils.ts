@@ -140,6 +140,8 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) =>
             // Clear the previous timeout to cancel any pending execution
             if (timeout) {
                 clearTimeout(timeout);
+                timeout = null;
+                console.log(`TIMEOUT: ${timeout}\nCALLED: ${new Date()}`)
             }
 
             // Store the previous resolvePromise to reject it after the new promise is created
@@ -154,16 +156,16 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) =>
 
                 // Schedule the function to run after the debounce delay
                 timeout = setTimeout(async () => {
+                    promise = null;
+                    resolvePromise = null;
+                    timeout = null;
                     try {
                         await func(...args);  // Execute the debounced function
+                        // Clear the stored promise and resolve function after execution
                         resolve();  // Resolve the promise once the function is done
                     } catch (error) {
                         reject(error);  // Reject the promise if the function throws an error
                     }
-
-                    // Clear the stored promise and resolve function after execution
-                    promise = null;
-                    resolvePromise = null;
                 }, wait);
             });
 
