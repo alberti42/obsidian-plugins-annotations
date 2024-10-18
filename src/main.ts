@@ -76,13 +76,18 @@ export default class PluginsAnnotations extends Plugin {
         // because the cache about the files in the vault is not created yet.
         this.addSettingTab(new PluginsAnnotationsSettingTab(this.app, this));
         
-        this.app.workspace.onLayoutReady(() => {
+        this.app.workspace.onLayoutReady(async () => {
             this.patchSettings();
 
             const activeTab = this.app.setting.activeTab;
             if (activeTab && activeTab.id === 'community-plugins') {
-                this.observeCommunityPluginsTab(activeTab);
+                await this.observeCommunityPluginsTab(activeTab);
+                this.patchCommunityPluginSettingTab(activeTab);
+                this.addAnnotations(activeTab);
             }
+
+            // Wait for all plugins to be loaded
+            this.colorSchemeMedia = matchMedia('(prefers-color-scheme: dark)');
         });
 
         this.app.vault.on('modify', (modifiedFile: TAbstractFile) => {
@@ -91,11 +96,6 @@ export default class PluginsAnnotations extends Plugin {
                     readAnnotationsFromMdFile(this);
                 }
             }
-        });
-
-        this.app.workspace.onLayoutReady(async () => {
-            // Wait for all plugins to be loaded
-            this.colorSchemeMedia = matchMedia('(prefers-color-scheme: dark)');
         });
 
         // Call this function in your plugin initialization or where appropriate
@@ -364,10 +364,7 @@ export default class PluginsAnnotations extends Plugin {
                         next.call(this, pluginManifest, containerEl, nameMatch, authorMatch, descriptionMatch);
 
                         // Custom code for personal annotations here
-                        if(containerEl && containerEl.lastElementChild)
-                        {
-                            self.addAnnotation(containerEl.lastElementChild)
-                        }                           
+                        if(containerEl && containerEl.lastElementChild) self.addAnnotation(containerEl.lastElementChild);
                 };
             },
              // Patch for `render` method
@@ -399,20 +396,24 @@ export default class PluginsAnnotations extends Plugin {
             openTab: (next: (tab: SettingTab) => void) => {
                 return async function(this: Setting, tab: SettingTab) {
                     if (tab && tab.id === 'community-plugins') {
-                        if(self.observedTab!==tab) await self.observeCommunityPluginsTab(tab);
-                        self.patchCommunityPluginSettingTab(tab);
+                        if(self.observedTab!==tab) {
+                            await self.observeCommunityPluginsTab(tab);
+                            self.patchCommunityPluginSettingTab(tab);
+                        }
                     }
                     next.call(this, tab);
                 };
             },
+            /*
             onClose: (next: () => void) => {
                 return function (this: Setting) {
                     const result = next.call(this);
                     // closing settings pane
-                    self.disconnectObservers();
+                    // self.disconnectObservers();
                     return result;
                 };
             }
+            */
         });
 
         // Register the cleanup for openTab patch
@@ -453,9 +454,11 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     listenForThemeChange(tabContainer: HTMLElement) {
-        const pluginsContainer = tabContainer.querySelector('.installed-plugins-container');
+        if(this.handleThemeChange) return;
 
-        this.removeHandleThemeChangeListener();
+        // this.removeHandleThemeChangeListener();
+
+        const pluginsContainer = tabContainer.querySelector('.installed-plugins-container');
 
         // Create the event listener with the correct signature
         this.handleThemeChange = (event: MediaQueryListEvent): void => {
@@ -483,41 +486,33 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-
     async observeCommunityPluginsTab(tab: SettingTab) {
 
-        if(this.mutationObserver) return;
+        console.log("CALLED");
 
         // just in case, remove previous observers if there are any
-        // this.disconnectObservers();
+        this.disconnectObservers();
 
-        if(!this.mutationObserver) {
-            this.observedTab = tab;
+        this.observedTab = tab;
 
-            const observer = new MutationObserver(async () => {
-                // force reload - this is convenient because since the loading of the plugin
-                // there could be changes in the settings due to synchronization among devices
-                // which only happens after the plugin is loaded
-                await this.loadSettings();
-                await this.loadCommunityPluginsJson();
-                
-                // this.addIcon(tab);
-                this.addAnnotations(tab);
-            });
+        const observer = new MutationObserver(async () => {
+            // force reload - this is convenient because since the loading of the plugin
+            // there could be changes in the settings due to synchronization among devices
+            // which only happens after the plugin is loaded
+            await this.loadSettings();
+            await this.loadCommunityPluginsJson();
+            
+            this.addAnnotations(tab);
+        });
 
-            observer.observe(tab.containerEl, { childList: true, subtree: false });
-            this.mutationObserver = observer;
-        }
-
+        observer.observe(tab.containerEl, { childList: true, subtree: false });
+        this.mutationObserver = observer;
+        
         // force reload - this is convenient because since the loading of the plugin
         // there could be changes in the settings due to synchronization among devices
         // which only happens after the plugin is loaded
         await this.loadSettings();
         await this.loadCommunityPluginsJson();
-
-        // Initial call to add comments to already present plugins
-        // this.addIcon(tab);
-        // this.addAnnotations(tab);
     }
 
     disconnectObservers() {
@@ -711,7 +706,6 @@ export default class PluginsAnnotations extends Plugin {
     onunload() {
         // console.log('Unloading Plugins Annotations');
 
-        
         // Remove all comments
         this.removeCommentsFromTab();
 
@@ -720,6 +714,9 @@ export default class PluginsAnnotations extends Plugin {
 
         // Remove icons
         this.removeIcon();
+
+        // Remove listner to theme change
+        this.removeHandleThemeChangeListener();
     }
 
     getUninstalledPlugins(): PluginAnnotationDict {
