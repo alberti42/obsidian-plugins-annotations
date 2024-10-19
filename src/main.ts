@@ -393,6 +393,8 @@ export default class PluginsAnnotations extends Plugin {
         
         // Patch openTab to detect when a tab is opened
         const removeMonkeyPatchForSetting = around(this.app.setting, {
+            // Important: keep openTab as regular function and do not make it async because
+            // it would break its contract with the other parts of Obsidian and other plugins 
             openTab: (next: (tab: SettingTab) => void) => {
                 return function(this: Setting, tab: SettingTab) {
                     if (tab && tab.id === 'community-plugins') {
@@ -405,10 +407,10 @@ export default class PluginsAnnotations extends Plugin {
                             }).catch(err => {
                                 console.error("Error observing community plugins tab: ", err);
                             });
+                            return;
                         }
-                    } else {
-                        next.call(this, tab);
                     }
+                    next.call(this, tab);
                 };
             },
             /*
