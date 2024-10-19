@@ -43,14 +43,14 @@ const context = await esbuild.context({
     target: "es2022",
     logLevel: "info",
     sourcemap: prod ? false : "inline",
-    minifySyntax: prod, // Enable syntax minification in production
-    minifyWhitespace: prod, // Disable whitespace minification
-    minifyIdentifiers: prod, // Disable identifier minification
+    // minify: prod,
+    // minifySyntax: prod, // Enable syntax minification in production
+    // minifyWhitespace: prod, // Disable whitespace minification
+    // minifyIdentifiers: prod, // Disable identifier minification
     outdir,
     define: {
         "process.env.NODE_ENV": JSON.stringify(prod ? "production" : "development"),
     },
-    minify: prod,
     treeShaking: prod,
 	plugins: [
 		copy({
