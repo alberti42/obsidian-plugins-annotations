@@ -394,14 +394,21 @@ export default class PluginsAnnotations extends Plugin {
         // Patch openTab to detect when a tab is opened
         const removeMonkeyPatchForSetting = around(this.app.setting, {
             openTab: (next: (tab: SettingTab) => void) => {
-                return async function(this: Setting, tab: SettingTab) {
+                return function(this: Setting, tab: SettingTab) {
                     if (tab && tab.id === 'community-plugins') {
-                        if(self.observedTab!==tab) {
-                            await self.observeCommunityPluginsTab(tab);
-                            self.patchCommunityPluginSettingTab(tab);
+                        if (self.observedTab !== tab) {
+                            // Call the async function and handle chaining
+                            self.observeCommunityPluginsTab(tab).then(() => {
+                                // Patch the rendering function of the community plugin preference pane
+                                self.patchCommunityPluginSettingTab(tab);
+                                next.call(this, tab);
+                            }).catch(err => {
+                                console.error("Error observing community plugins tab: ", err);
+                            });
                         }
+                    } else {
+                        next.call(this, tab);
                     }
-                    next.call(this, tab);
                 };
             },
             /*
