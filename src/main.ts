@@ -2,7 +2,6 @@
 
 import {
     Plugin,
-    Setting,
     SettingTab,
     Platform,
     Plugins,
@@ -35,13 +34,8 @@ export default class PluginsAnnotations extends Plugin {
     private lockIcon: HTMLDivElement | null = null;
 
     private mutationObserver: MutationObserver | null = null;
-    private observedTab: SettingTab | null = null;
+    private communityPluginTab: SettingTab | undefined = undefined;
     private vaultPath: string | null = null;
-
-    /* For debounced saving */
-    private saveTimeout: number | null = null;
-    private savePromise: Promise<void> | null = null;
-    private resolveSavePromise: (() => void) | null = null;
 
     private community_plugins = {} as CommunityPluginInfoDict;
 
@@ -66,29 +60,18 @@ export default class PluginsAnnotations extends Plugin {
             }, timeout_debounced_saving_ms);
         this.debouncedSaveAnnotations = debouncedFct;
         this.waitForSaveToComplete = waitFnc;
+
+        this.onLayoutReady = this.onLayoutReady.bind(this);
     }
 
     async onload() {
-
         // console.log('Loading Plugins Annotations');
 
         // Add settings tab. It avoids loading the setting at this stage
         // because the cache about the files in the vault is not created yet.
         this.addSettingTab(new PluginsAnnotationsSettingTab(this.app, this));
         
-        this.app.workspace.onLayoutReady(async () => {
-            this.patchSettings();
-
-            const activeTab = this.app.setting.activeTab;
-            if (activeTab && activeTab.id === 'community-plugins') {
-                await this.observeCommunityPluginsTab(activeTab);
-                this.patchCommunityPluginSettingTab(activeTab);
-                this.addAnnotations(activeTab);
-            }
-
-            // Wait for all plugins to be loaded
-            this.colorSchemeMedia = matchMedia('(prefers-color-scheme: dark)');
-        });
+        this.app.workspace.onLayoutReady(this.onLayoutReady);
 
         this.app.vault.on('modify', (modifiedFile: TAbstractFile) => {
             if(this.settings.markdown_file_path !== '') {
@@ -100,6 +83,37 @@ export default class PluginsAnnotations extends Plugin {
 
         // Call this function in your plugin initialization or where appropriate
         this.loadCommunityPluginsJson();
+    }
+
+    async onLayoutReady() {
+        // Load settings
+        await this.loadSettings();
+        
+        // Load the big json file containing the GitHub address of all community plugins
+        await this.loadCommunityPluginsJson();
+
+        // Store a reference to the community plugin tab
+        this.communityPluginTab = this.app.setting.settingTabs.find((tab:SettingTab):boolean => tab.id === "community-plugins");
+
+        // Patch the rendering function of the community plugin preference pane
+        if(this.communityPluginTab) this.patchCommunityPluginSettingTab(this.communityPluginTab);
+
+        // Monkey-patch functions to detect when community plugins are installed and uninstalled.
+        this.hookOnInstallAndUninstallPlugins();
+
+        // Check whether the community plugin pane is active, and if so apply show the personal annotations right away
+        const activeTab = this.app.setting.activeTab;
+        if (activeTab && activeTab.id === 'community-plugins') {
+            // await this.observeCommunityPluginsTab(activeTab);
+            this.patchCommunityPluginSettingTab(activeTab);
+            this.addAnnotations(activeTab);
+        }
+
+        // Detect color scheme
+        this.colorSchemeMedia = matchMedia('(prefers-color-scheme: dark)');
+
+        // Install listener to theme changes
+        if(this.communityPluginTab && this.communityPluginTab.containerEl) this.listenForThemeChange(this.communityPluginTab.containerEl);
     }
 
     /* Load settings for different versions */
@@ -367,7 +381,7 @@ export default class PluginsAnnotations extends Plugin {
                         if(containerEl && containerEl.lastElementChild) self.addAnnotation(containerEl.lastElementChild);
                 };
             },
-             // Patch for `render` method
+            // Patch for `render` method
             render: (next: (
                     isInitialRender: boolean
                 ) => void) => {
@@ -375,7 +389,6 @@ export default class PluginsAnnotations extends Plugin {
                 return function (this: SettingTab, isInitialRender: boolean): void {
                     // Call the original `render` function
                     next.call(this, isInitialRender);
-                    self.listenForThemeChange(this.containerEl);
                     self.addIcon(this.containerEl);
                 };
             }
@@ -387,46 +400,9 @@ export default class PluginsAnnotations extends Plugin {
         this.communityPluginSettingTabPatched = true;
     }
 
-    patchSettings() {
+    hookOnInstallAndUninstallPlugins() {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
-        
-        // Patch openTab to detect when a tab is opened
-        const removeMonkeyPatchForSetting = around(this.app.setting, {
-            // Important: keep openTab as regular function and do not make it async because
-            // it would break its contract with the other parts of Obsidian and other plugins 
-            openTab: (next: (tab: SettingTab) => void) => {
-                return function(this: Setting, tab: SettingTab) {
-                    if (tab && tab.id === 'community-plugins') {
-                        if (self.observedTab !== tab) {
-                            // Call the async function and handle chaining
-                            self.observeCommunityPluginsTab(tab).then(() => {
-                                // Patch the rendering function of the community plugin preference pane
-                                self.patchCommunityPluginSettingTab(tab);
-                                next.call(this, tab);
-                            }).catch(err => {
-                                console.error("Error observing community plugins tab: ", err);
-                            });
-                            return;
-                        }
-                    }
-                    next.call(this, tab);
-                };
-            },
-            /*
-            onClose: (next: () => void) => {
-                return function (this: Setting) {
-                    const result = next.call(this);
-                    // closing settings pane
-                    // self.disconnectObservers();
-                    return result;
-                };
-            }
-            */
-        });
-
-        // Register the cleanup for openTab patch
-        this.register(removeMonkeyPatchForSetting);
 
         // Monkey patch for uninstallPlugin
         const removeMonkeyPatchForPlugins = around(this.app.plugins, {
@@ -469,14 +445,19 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     listenForThemeChange(tabContainer: HTMLElement) {
+        // If listener is already install, we can directly return
         if(this.handleThemeChange) return;
 
-        // this.removeHandleThemeChangeListener();
-
-        const pluginsContainer = tabContainer.querySelector('.installed-plugins-container');
+        // Check if the color scheme was detected
+        if (this.colorSchemeMedia===null) {
+            console.warn("Color scheme could not be determined.");
+            return;
+        }
 
         // Create the event listener with the correct signature
         this.handleThemeChange = (event: MediaQueryListEvent): void => {
+            const pluginsContainer = tabContainer.querySelector('.installed-plugins-container');
+
             const isDarkMode = event.matches;  // true means dark mode is active
             
             if (pluginsContainer) {
@@ -496,44 +477,7 @@ export default class PluginsAnnotations extends Plugin {
         }
 
         // Add an event listener for changes to the appearance mode
-        if (this.colorSchemeMedia) {
-            this.colorSchemeMedia.addEventListener("change", this.handleThemeChange);
-        }
-    }
-
-    async observeCommunityPluginsTab(tab: SettingTab) {
-
-        // just in case, remove previous observers if there are any
-        this.disconnectObservers();
-
-        this.observedTab = tab;
-
-        const observer = new MutationObserver(async () => {
-            // force reload - this is convenient because since the loading of the plugin
-            // there could be changes in the settings due to synchronization among devices
-            // which only happens after the plugin is loaded
-            await this.loadSettings();
-            await this.loadCommunityPluginsJson();
-            
-            this.addAnnotations(tab);
-        });
-
-        observer.observe(tab.containerEl, { childList: true, subtree: false });
-        this.mutationObserver = observer;
-        
-        // force reload - this is convenient because since the loading of the plugin
-        // there could be changes in the settings due to synchronization among devices
-        // which only happens after the plugin is loaded
-        await this.loadSettings();
-        await this.loadCommunityPluginsJson();
-    }
-
-    disconnectObservers() {
-        if (this.mutationObserver) {
-            this.mutationObserver.disconnect();
-            this.mutationObserver = null;
-            this.observedTab = null;
-        }
+        this.colorSchemeMedia.addEventListener("change", this.handleThemeChange);    
     }
 
     async addIcon(containerEl: HTMLElement) {
@@ -699,8 +643,8 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     removeCommentsFromTab() {
-        if (this.observedTab) {
-            const commentElements = this.observedTab.containerEl.querySelectorAll('.plugin-comment');
+        if (this.communityPluginTab) {
+            const commentElements = this.communityPluginTab.containerEl.querySelectorAll('.plugin-comment');
             commentElements.forEach(element => {
                 element.remove();
             });
@@ -721,9 +665,6 @@ export default class PluginsAnnotations extends Plugin {
 
         // Remove all comments
         this.removeCommentsFromTab();
-
-        // Just in case, disconnect observers if they still exist
-        this.disconnectObservers();
 
         // Remove icons
         this.removeIcon();
