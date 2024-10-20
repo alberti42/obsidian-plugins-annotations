@@ -338,6 +338,10 @@ export default class PluginsAnnotations extends Plugin {
 
         // Update the community plugin pane if this is currently open
         this.updateCommunityPluginPaneIfOpened([loadSettingsPromise]);
+
+        // Update the preference pane if this is currently open
+        const activeTab = this.app.setting.activeTab;
+        if(activeTab && activeTab instanceof PluginsAnnotationsSettingTab) activeTab.display();        
     }
 
     // Store the path to the vault
