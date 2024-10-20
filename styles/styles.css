@@ -47,9 +47,13 @@
 }
 
 /* Setting pane */
+.plugin-comment-settings code {
+	padding: 0;
+}
+
 .plugin-comment-instructions {
-	margin: none;
-	padding: none;
+	margin: 0;
+	padding: 0;
 }
 
 div.plugin-comment-instructions em {

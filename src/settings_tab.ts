@@ -41,6 +41,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         // Clean container in the preference pane 
         const containerEl = this.containerEl;
         containerEl.empty();
+        containerEl.classList.add('plugin-comment-settings');
 
         /* ====== Editing ====== */
 
@@ -66,10 +67,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             p3.innerText = "You can directly link notes inside your \
                 vault by adding Obsidian links such as ";
 
-            const em = document.createElement('em');
-            em.appendText('[[My notes/Review of plugin XYZ|my plugin note]]');
-            em.classList.add('plugin-comment-selectable');
-            p3.appendChild(em);
+            const code = document.createElement('code');
+            code.appendText('[[My notes/Review of plugin XYZ|my plugin note]]');
+            code.classList.add('plugin-comment-selectable');
+            p3.appendChild(code);
             p3.appendText('.');
 
             div.appendChild(p3);
@@ -150,7 +151,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setName('Markdown File Path')
             .setDesc(createFragment((frag) => {
                     frag.appendText('Markdown file where the plugins\' annotations are stored (e.g, ');
-                    frag.createEl('em', {'cls': 'plugin-comment-selectable'}).appendText('00 Meta/Misc/Plugins annotations.md');
+                    frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('00 Meta/Misc/Plugins annotations.md');
                     frag.appendText(').');
                     md_filepath_error_div = frag.createDiv({text: 'Error: the filename must end with .md extension.', cls: "mod-warning" });
                     md_filepath_error_div.style.display = 'none';
@@ -312,10 +313,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 frag.appendText(`Choose the annotation label for the ${label_version} version of Obsidian. \
                 Use HTML code if you want to format it. Enter an empty string if you want \
                 to hide the label. Use `);
-                frag.createEl('em',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
-                frag.appendText(' as a template for the plugin name; for example, you can generate automatic links to your notes with a label of the kind "');
-                frag.createEl('em', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name} | ${plugin_name}]]');
-                frag.appendText('".');
+                frag.createEl('code',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
+                frag.appendText(' as a template for the plugin name; for example, you can generate automatic links to your notes with a label of the kind ');
+                frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name}|${plugin_name}]]');
+                frag.appendText('.');
             }));
 
         let label_text: TextComponent;
@@ -349,11 +350,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setName('Placeholder label')
             .setDesc(createFragment((frag) => {
                     frag.appendText('Choose the label appearing where no user annotation is provied yet. Use ');
-                    frag.createEl('em',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
+                    frag.createEl('code',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
                     frag.appendText(' as a template for the plugin name; for example, you can generate automatic \
-                        links to your notes with a placeholder of the kind "');
-                    frag.createEl('em', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name} | ${plugin_name}]]');
-                    frag.appendText('".')
+                        links to your notes with a placeholder of the kind ');
+                    frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name}|${plugin_name}]]');
+                    frag.appendText('.')
                 }));
 
         let placeholder_text: TextComponent;
