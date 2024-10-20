@@ -141,7 +141,6 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) =>
             if (timeout) {
                 clearTimeout(timeout);
                 timeout = null;
-                console.log(`TIMEOUT: ${timeout}\nCALLED: ${new Date()}`)
             }
 
             // Store the previous resolvePromise to reject it after the new promise is created

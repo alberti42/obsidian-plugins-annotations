@@ -26,7 +26,6 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
 
         // File doesn't exist, ask user if they want to create it
         const createFile = await showConfirmationDialog(plugin.app, 'Create file', message);
-        console.log("CREATEFILE",createFile);
         if (!createFile) return false;
     } else {
         // File exists, ask user if they want to overwrite it

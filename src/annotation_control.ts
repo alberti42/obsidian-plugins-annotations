@@ -9,9 +9,9 @@ const github_prefix = "https://github.com/";
 import { svg_github_dark, svg_github_light } from "graphics";
         
 export class AnnotationControl {
-    static addGitHubIcon(controlDiv: Element) {
-        throw new Error('Method not implemented.');
-    }
+    // static addGitHubIcon(controlDiv: Element) {
+    //     throw new Error('Method not implemented.');
+    // }
     private clickedLink: boolean;
     private isPlaceholder: boolean;
     private annotationDesc:string;
@@ -75,6 +75,8 @@ export class AnnotationControl {
         this.annotation_div.addEventListener('focus', async (event:FocusEvent) => {
             if(this.clickedLink) return;
 
+            this.plugin.annotationBeingEdited=true;
+
             if (this.isPlaceholder) {
                 // If the user decided that the placeholder text needs to be cleared
                 if (this.plugin.settings.delete_placeholder_string_on_insertion) {
@@ -121,6 +123,8 @@ export class AnnotationControl {
 
         // Add placeholder class back if no changes are made
         this.annotation_div.addEventListener('blur', (event:FocusEvent) => {
+            this.plugin.annotationBeingEdited=false;
+            
             if(!this.plugin.settings.editable) { return; }
             if(this.clickedLink) return;
 
@@ -201,7 +205,7 @@ export class AnnotationControl {
         });
     }
 
-    addGitHubIcon(controlDiv:Element, repo:string, isDarkMode:boolean) {
+    addGitHubIcon(controlDiv:Element, repo:string, isDarkMode:boolean):HTMLDivElement | null {
         if (controlDiv) {
             const GitHubDiv = document.createElement('div');
             GitHubDiv.classList.add('clickable-icon', 'extra-setting-button', 'github-icon');
@@ -225,6 +229,8 @@ export class AnnotationControl {
                 // If no clickable icons are found, append it as the first child
                 controlDiv.insertBefore(GitHubDiv, controlDiv.firstChild);
             }
+            return GitHubDiv;
         }
+        return null;
     }
 }

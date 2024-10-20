@@ -33,7 +33,6 @@ export default class PluginsAnnotations extends Plugin {
 
     private lockIcon: HTMLDivElement | null = null;
 
-    private mutationObserver: MutationObserver | null = null;
     private communityPluginTab: SettingTab | undefined = undefined;
     private vaultPath: string | null = null;
 
@@ -48,11 +47,15 @@ export default class PluginsAnnotations extends Plugin {
 
     private communityPluginSettingTabPatched = false;
 
+    private listGitHubIcons:HTMLDivElement[] = [];
+
+    annotationBeingEdited = false;
+
     constructor(app:App, manifest:PluginManifest) {
         super(app, manifest);
 
         // Set up debounced saving functions
-        const timeout_debounced_saving_ms = 100;
+        const timeout_debounced_saving_ms = 200;
         const { debouncedFct, waitFnc } = debounceFactoryWithWaitMechanism(
             async (callback: () => void = (): void => {}) => {
                 await this.saveSettings();
@@ -62,6 +65,7 @@ export default class PluginsAnnotations extends Plugin {
         this.waitForSaveToComplete = waitFnc;
 
         this.onLayoutReady = this.onLayoutReady.bind(this);
+        this.onModifiedFile = this.onModifiedFile.bind(this);
     }
 
     async onload() {
@@ -73,24 +77,39 @@ export default class PluginsAnnotations extends Plugin {
         
         this.app.workspace.onLayoutReady(this.onLayoutReady);
 
-        this.app.vault.on('modify', (modifiedFile: TAbstractFile) => {
-            if(this.settings.markdown_file_path !== '') {
-                if (modifiedFile.path === this.settings.markdown_file_path) {
-                    readAnnotationsFromMdFile(this);
-                }
-            }
-        });
+        this.app.vault.on('modify',this.onModifiedFile);
 
         // Call this function in your plugin initialization or where appropriate
         this.loadCommunityPluginsJson();
     }
 
+    async onModifiedFile(modifiedFile: TAbstractFile){
+        if(this.settings.markdown_file_path !== '') {
+            if (modifiedFile.path === this.settings.markdown_file_path) {
+                if(!this.annotationBeingEdited) {
+                    // Read new annotations
+                    await readAnnotationsFromMdFile(this);
+
+                    // Sort the plugins by name
+                    this.sortPluginAnnotationsByName();
+
+                    // Save the imported annotations to data.json
+                    this.saveDataJson();
+
+                    // Update the community plugin pane if this is currently open
+                    this.updateCommunityPluginPaneIfOpened();
+                }
+
+            }
+        }
+    }
+
     async onLayoutReady() {
         // Load settings
-        await this.loadSettings();
+        const loadSettingsPromise = this.loadSettings();
         
         // Load the big json file containing the GitHub address of all community plugins
-        await this.loadCommunityPluginsJson();
+        const loadCommunityPluginsJsonPromise = this.loadCommunityPluginsJson();
 
         // Store a reference to the community plugin tab
         this.communityPluginTab = this.app.setting.settingTabs.find((tab:SettingTab):boolean => tab.id === "community-plugins");
@@ -101,23 +120,18 @@ export default class PluginsAnnotations extends Plugin {
         // Monkey-patch functions to detect when community plugins are installed and uninstalled.
         this.hookOnInstallAndUninstallPlugins();
 
-        // Check whether the community plugin pane is active, and if so apply show the personal annotations right away
-        const activeTab = this.app.setting.activeTab;
-        if (activeTab && activeTab.id === 'community-plugins') {
-            // await this.observeCommunityPluginsTab(activeTab);
-            this.patchCommunityPluginSettingTab(activeTab);
-            this.addAnnotations(activeTab);
-        }
-
         // Detect color scheme
         this.colorSchemeMedia = matchMedia('(prefers-color-scheme: dark)');
 
         // Install listener to theme changes
         if(this.communityPluginTab && this.communityPluginTab.containerEl) this.listenForThemeChange(this.communityPluginTab.containerEl);
+
+        // Update the community plugin pane if this is currently open
+        this.updateCommunityPluginPaneIfOpened([loadSettingsPromise,loadCommunityPluginsJsonPromise]);
     }
 
     /* Load settings for different versions */
-    async importSettings(data: unknown,saveData: boolean): Promise<void> {
+    async importSettings(data: unknown): Promise<boolean> {
 
         const importBackups: PluginBackup[] = [];
 
@@ -257,18 +271,11 @@ export default class PluginsAnnotations extends Plugin {
         // Merge loaded settings with default settings
         this.settings = Object.assign({}, structuredClone(DEFAULT_SETTINGS), importedSettings);
 
-        if(saveData || wasUpdated) { // if it requires to store the new settings, the .md file will be overwritten
-            await this.saveSettings();
-        } else { // otherwise read from the md file
-            if(this.settings.markdown_file_path!=='') {
-                await readAnnotationsFromMdFile(this);
-            }
-        }
-
-        this.sortPluginAnnotationsByName();
+        return wasUpdated;
     }
 
     async loadSettings(data?: unknown): Promise<void> {
+        // Function loading settings. If `data` is provided, then it is a restore operations.
 
         // Create a mapping of names to IDs for the installed plugins
         this.pluginNameToIdMap = this.constructPluginNameToIdMap();
@@ -293,8 +300,44 @@ export default class PluginsAnnotations extends Plugin {
             data = structuredClone(DEFAULT_SETTINGS);
         }
 
-        const saveData = isRestoreOperation ? true : false;
-        await this.importSettings(data,saveData);
+        const wasUpdated = await this.importSettings(data);
+
+        const saveData = (isRestoreOperation || wasUpdated) ? true : false;
+        if(saveData) { // if it requires to store the new settings, the .md file will be overwritten
+            await this.saveSettings();
+        } else { // otherwise read from the md file
+            if(this.settings.markdown_file_path!=='') {
+                await readAnnotationsFromMdFile(this);
+            }
+        }
+
+        // Sort the plugins by name
+        this.sortPluginAnnotationsByName();
+    }
+
+    async updateCommunityPluginPaneIfOpened(promises?:Promise<void>[]) {
+        // Check whether the community plugin pane is active, and if so apply show the personal annotations right away
+        const activeTab = this.app.setting.activeTab;
+        if (activeTab && activeTab.id === 'community-plugins') {
+            if(promises) await Promise.all(promises);
+            // This approach is not elegant, where we first remove all customizations and then add them again 
+            // with the new settings. However, it is very fast, and it is called very rarely, only when the user
+            // changes the configuration from an external editor or through the synchronization engine, and the
+            // user has the preference pane open at the same time.
+            this.removeCommentsFromTab();
+            this.removeGitHubIcons();
+            this.removeLockIcon();
+            if(this.communityPluginTab && this.communityPluginTab.containerEl) this.addLockIcon(this.communityPluginTab.containerEl);
+            this.addAnnotations();
+        }
+    }
+
+    onExternalSettingsChange() {
+        // Load settings
+        const loadSettingsPromise = this.loadSettings();
+
+        // Update the community plugin pane if this is currently open
+        this.updateCommunityPluginPaneIfOpened([loadSettingsPromise]);
     }
 
     // Store the path to the vault
@@ -313,13 +356,20 @@ export default class PluginsAnnotations extends Plugin {
             return this.vaultPath;
         } else return "";
     }
-    
-    async saveSettings() {
-        try {
+
+    async saveDataJson() {
+       try {
             await this.saveData(this.settings);
         } catch (error) {
             console.error('Failed to save annotations:', error);
         }
+    }
+
+    async saveSettings() {
+        // Save the data to data.json file
+        await this.saveDataJson();
+
+        // Save annotations to the md file
         if(this.settings.markdown_file_path!=='') {
             try {
                 await writeAnnotationsToMdFile(this);
@@ -387,9 +437,11 @@ export default class PluginsAnnotations extends Plugin {
                 ) => void) => {
 
                 return function (this: SettingTab, isInitialRender: boolean): void {
+                    self.listGitHubIcons = [];
+
                     // Call the original `render` function
                     next.call(this, isInitialRender);
-                    self.addIcon(this.containerEl);
+                    self.addLockIcon(this.containerEl);
                 };
             }
         });
@@ -480,10 +532,7 @@ export default class PluginsAnnotations extends Plugin {
         this.colorSchemeMedia.addEventListener("change", this.handleThemeChange);    
     }
 
-    async addIcon(containerEl: HTMLElement) {
-        // This should not be necessary, but just in case, remove the icon if it was there
-        // this.removeIcon();
-
+    async addLockIcon(containerEl: HTMLElement) {
         // Add new icon to the existing icons container
         const headingContainer = containerEl.querySelector('.setting-item-heading .setting-item-control');
         if (headingContainer) {
@@ -549,11 +598,17 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-    removeIcon() {
+    removeLockIcon() {
         if(this.lockIcon) {
             this.lockIcon.remove();
             this.lockIcon = null;
         }
+    }
+
+    removeGitHubIcons() {
+        this.listGitHubIcons.forEach((iconEl:Element) => {
+            iconEl.remove();
+        })
     }
 
     async loadCommunityPluginsJson() {
@@ -622,7 +677,9 @@ export default class PluginsAnnotations extends Plugin {
                             const controlDiv = pluginDOMElement.querySelector('.setting-item-control');
                             if(controlDiv) {
                                 if(this.colorSchemeMedia) {
-                                    annotationControl.addGitHubIcon(controlDiv,repo, this.colorSchemeMedia.matches);
+                                    const isDarkMode = this.colorSchemeMedia.matches;
+                                    const gitHubIcon = annotationControl.addGitHubIcon(controlDiv,repo, isDarkMode);
+                                    if(gitHubIcon) this.listGitHubIcons.push(gitHubIcon);
                                 }
                             }
                         }
@@ -632,9 +689,17 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-    addAnnotations(tab: SettingTab) {
-        const pluginsContainer = tab.containerEl.querySelector('.installed-plugins-container');
-        if (!pluginsContainer) return;
+    addAnnotations() {
+        if(this.communityPluginTab===undefined) {
+            console.warn("Annotations could not be added because the community plugin pane was not detected.")
+            return;
+        }
+
+        const pluginsContainer = this.communityPluginTab.containerEl.querySelector('.installed-plugins-container');
+        if (!pluginsContainer) {
+            console.warn("Annotations could not be added because installed-plugins-container was not detected.")
+            return;
+        }
         
         const pluginDOMElements = pluginsContainer.querySelectorAll('.setting-item');
         pluginDOMElements.forEach(pluginDOMElement => {
@@ -667,10 +732,16 @@ export default class PluginsAnnotations extends Plugin {
         this.removeCommentsFromTab();
 
         // Remove icons
-        this.removeIcon();
+        this.removeLockIcon();
 
         // Remove listner to theme change
         this.removeHandleThemeChangeListener();
+
+        // Unregister other event listeners
+        this.app.vault.off('modify',this.onModifiedFile);
+
+        // Remove GitHub icons
+        this.removeGitHubIcons();
     }
 
     getUninstalledPlugins(): PluginAnnotationDict {
