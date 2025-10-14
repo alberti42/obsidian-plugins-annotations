@@ -55,13 +55,17 @@ export class AnnotationControl {
     }
 
     addEventListeners() {
-        this.annotation_div.addEventListener('mousedown', (event:MouseEvent) => {
+        const linkInteractionHandler = (event: MouseEvent | TouchEvent) => {
             if (event.target && (event.target as HTMLElement).tagName === 'A') {
                 this.clickedLink = true;
             } else {
                 this.clickedLink = false;
             }
-        });
+        };
+
+        this.annotation_div.addEventListener('mousedown', linkInteractionHandler);
+        this.annotation_div.addEventListener('touchstart', linkInteractionHandler, { passive: true });
+
 
         // Prevent click event propagation to parent
         this.annotation_div.addEventListener('click', (event:MouseEvent) => {
@@ -69,6 +73,8 @@ export class AnnotationControl {
                 return; 
             } else {
                 event.stopPropagation();
+                // Explicitly focus to help mobile keyboards appear, especially on Android.
+                this.annotation_div.focus();
             }
         });
 
