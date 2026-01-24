@@ -56,7 +56,10 @@ export class AnnotationControl {
 
     addEventListeners() {
         const linkInteractionHandler = (event: MouseEvent | TouchEvent) => {
-            if (event.target && (event.target as HTMLElement).tagName === 'A') {
+            const target = event.target as HTMLElement | null;
+            // Use closest('a') so clicks on nested elements (e.g., spans inside links) still register as link clicks.
+            // This scenario is likely never occurring, but closest('a') keeps link detection reliable (just in case).
+            if (target && target.closest('a')) {
                 this.clickedLink = true;
             } else {
                 this.clickedLink = false;
@@ -73,8 +76,10 @@ export class AnnotationControl {
                 return; 
             } else {
                 event.stopPropagation();
-                // Explicitly focus to help mobile keyboards appear, especially on Android.
-                this.annotation_div.focus();
+                if (!this.clickedLink) {
+                    // Explicitly focus to help mobile keyboards appear, especially on Android.
+                    this.annotation_div.focus();
+                }
             }
         });
 

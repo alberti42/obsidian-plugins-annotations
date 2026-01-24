@@ -45,7 +45,7 @@ export default class PluginsAnnotations extends Plugin {
     debouncedSaveAnnotations: (callback?: () => void) => void;
     waitForSaveToComplete: () => Promise<void>;
 
-    private communityPluginSettingTabPatched = false;
+	private communityPluginSettingTabPatched = false;
 
     private listGitHubIcons:HTMLDivElement[] = [];
 
@@ -104,18 +104,22 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-    async onLayoutReady() {
-        // Load settings
-        const loadSettingsPromise = this.loadSettings();
-        
-        // Load the big json file containing the GitHub address of all community plugins
-        const loadCommunityPluginsJsonPromise = this.loadCommunityPluginsJson();
+	async onLayoutReady() {
+		// Load settings
+		const loadSettingsPromise = this.loadSettings();
+		
+		// Load the big json file containing the GitHub address of all community plugins
+		const loadCommunityPluginsJsonPromise = this.loadCommunityPluginsJson();
 
-        // Store a reference to the community plugin tab
-        this.communityPluginTab = this.app.setting.settingTabs.find((tab:SettingTab):boolean => tab.id === "community-plugins");
+		// Store a reference to the community plugin tab
+		this.communityPluginTab = this.app.setting.settingTabs.find((tab:SettingTab):boolean => tab.id === "community-plugins");
 
-        // Patch the rendering function of the community plugin preference pane
-        if(this.communityPluginTab) this.patchCommunityPluginSettingTab(this.communityPluginTab);
+		// Patch the rendering function of the community plugin preference pane
+		if(this.communityPluginTab) {
+			this.patchCommunityPluginSettingTab(this.communityPluginTab);
+		} else {
+			console.warn('[Plugins Annotations] Community plugins tab not found; hook not installed.');
+		}
 
         // Monkey-patch functions to detect when community plugins are installed and uninstalled.
         this.hookOnInstallAndUninstallPlugins();
@@ -406,49 +410,46 @@ export default class PluginsAnnotations extends Plugin {
         return invertedMap;
     }
 
-    patchCommunityPluginSettingTab(tab:SettingTab) {
-        if(this.communityPluginSettingTabPatched) return;
+	patchCommunityPluginSettingTab(tab:SettingTab) {
+		if(this.communityPluginSettingTabPatched) return;
 
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const self = this;
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
+		const self = this;
 
         // Monkey patch for uninstallPlugin
-        const removeMonkeyPatchForRender = around(tab, {
-            renderInstalledPlugin: (next: (
-                    pluginManifest: PluginManifest,
-                    containerEl:HTMLElement,
-                    nameMatch: boolean | null,
-                    authorMatch: boolean | null,
-                    descriptionMatch: boolean | null
-                ) => void ) => {
+		const removeMonkeyPatchForRender = around(tab, {
+			renderInstalledPlugin: (next: SettingTab['renderInstalledPlugin']) => {
 
-                return function (this: SettingTab,
-                        pluginManifest: PluginManifest,
-                        containerEl: HTMLElement,
-                        nameMatch: boolean | null,
-                        authorMatch: boolean | null,
-                        descriptionMatch: boolean | null
-                    ): void {
-                        next.call(this, pluginManifest, containerEl, nameMatch, authorMatch, descriptionMatch);
+				return function (this: SettingTab,
+						pluginManifest: PluginManifest,
+						nameMatch: boolean | null,
+						authorMatch: boolean | null,
+						descriptionMatch: boolean | null
+					): void {
+						next.call(this, pluginManifest, nameMatch, authorMatch, descriptionMatch);
 
-                        // Custom code for personal annotations here
-                        if(containerEl && containerEl.lastElementChild) self.addAnnotation(containerEl.lastElementChild);
-                };
-            },
+						// Custom code for personal annotations here
+						const listEl = (this as SettingTab & { installedPlugins?: { listEl?: HTMLElement } }).installedPlugins?.listEl;
+						const targetElement = listEl?.lastElementChild;
+						if (targetElement instanceof HTMLElement) {
+							self.addAnnotation(targetElement);
+						}
+				};
+			},
             // Patch for `render` method
-            render: (next: (
-                    isInitialRender: boolean
-                ) => void) => {
+			render: (next: (
+					isInitialRender: boolean
+				) => void) => {
 
-                return function (this: SettingTab, isInitialRender: boolean): void {
-                    self.listGitHubIcons = [];
+				return function (this: SettingTab, isInitialRender: boolean): void {
+					self.listGitHubIcons = [];
 
-                    // Call the original `render` function
-                    next.call(this, isInitialRender);
-                    self.addLockIcon(this.containerEl);
-                };
-            }
-        });
+					// Call the original `render` function
+					next.call(this, isInitialRender);
+					self.addLockIcon(this.containerEl);
+				};
+			}
+		});
 
         // Register the patch to ensure it gets cleaned up
         this.register(removeMonkeyPatchForRender);
@@ -645,53 +646,53 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-    addAnnotation(pluginDOMElement: Element) {
-        const pluginNameDiv = pluginDOMElement.querySelector('.setting-item-name');
-        const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
+	addAnnotation(pluginDOMElement: Element) {
+		const pluginNameDiv = pluginDOMElement.querySelector('.setting-item-name');
+		const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
 
-        if (!pluginName) {
-            console.warn('Plugin name not found');
-            return;
-        }
+		if (!pluginName) {
+			console.warn('Plugin name not found');
+			return;
+		}
 
-        const pluginId = this.pluginNameToIdMap[pluginName];
-        if (!pluginId) {
-            console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
-            return;
-        }
+		const pluginId = this.pluginNameToIdMap[pluginName];
+		if (!pluginId) {
+			console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
+			return;
+		}
 
-        const settingItemInfo = pluginDOMElement.querySelector('.setting-item-info');
-        if (settingItemInfo) {
-            const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
-            if (descriptionDiv) {
-                const commentDiv = descriptionDiv.querySelector('.plugin-comment');
-                if (!commentDiv) {
-                    const annotation_container = document.createElement('div');
-                    annotation_container.className = 'plugin-comment';
+		const settingItemInfo = pluginDOMElement.querySelector('.setting-item-info');
+		if (settingItemInfo) {
+			const descriptionDiv = settingItemInfo.querySelector('.setting-item-description');
+			if (descriptionDiv) {
+				const commentDiv = descriptionDiv.querySelector('.plugin-comment');
+				if (!commentDiv) {
+					const annotation_container = document.createElement('div');
+					annotation_container.className = 'plugin-comment';
 
                     const annotationControl = new AnnotationControl(this,annotation_container,pluginId,pluginName);
                     
                     descriptionDiv.appendChild(annotation_container);                       
 
-                    if(this.settings.show_github_icons) {
-                        // Get the repository of the plugin
-                        const community_plugins = this.community_plugins[pluginId];
-                        const repo = community_plugins ? community_plugins.repo : undefined;
-                        if (repo) {
-                            const controlDiv = pluginDOMElement.querySelector('.setting-item-control');
-                            if(controlDiv) {
-                                if(this.colorSchemeMedia) {
-                                    const isDarkMode = this.colorSchemeMedia.matches;
-                                    const gitHubIcon = annotationControl.addGitHubIcon(controlDiv,repo, isDarkMode);
-                                    if(gitHubIcon) this.listGitHubIcons.push(gitHubIcon);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+					if(this.settings.show_github_icons) {
+						// Get the repository of the plugin
+						const community_plugins = this.community_plugins[pluginId];
+						const repo = community_plugins ? community_plugins.repo : undefined;
+						if (repo) {
+							const controlDiv = pluginDOMElement.querySelector('.setting-item-control');
+							if(controlDiv) {
+								if(this.colorSchemeMedia) {
+									const isDarkMode = this.colorSchemeMedia.matches;
+									const gitHubIcon = annotationControl.addGitHubIcon(controlDiv,repo, isDarkMode);
+									if(gitHubIcon) this.listGitHubIcons.push(gitHubIcon);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 
     addAnnotations() {
         if(this.communityPluginTab===undefined) {
@@ -760,4 +761,3 @@ export default class PluginsAnnotations extends Plugin {
         return uninstalledPlugins;
     }
 }
-

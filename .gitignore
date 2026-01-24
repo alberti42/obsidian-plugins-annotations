@@ -18,3 +18,12 @@ data.json
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
+
+# iCLoud
+*.nosync
+
+# Sublime
+*sublime-workspace
+
+# Markdown
+*.md

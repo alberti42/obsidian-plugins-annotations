@@ -1,0 +1,29 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "folder_exclude_patterns": [".git", "node_modules", "dist"]
+        }
+    ],
+    "settings": {
+        "tab_size": 4,
+        "translate_tabs_to_spaces": true,
+        "typescript_tsdk": "./node_modules/typescript/lib"
+    },
+    "build_systems": [
+        {
+            "name": "TypeScript Build",
+            "shell_cmd": "npm run build",
+            "working_dir": "${folder}",  // Use ${folder} to point to the project root
+            "file_regex": "^\\s*(.+?\\.ts)\\((\\d+),(\\d+)\\):\\s*(.*)$",
+            "selector": "source.ts"
+        },
+        {
+            "name": "TypeScript Dev",
+            "shell_cmd": "npm run dev",
+            "working_dir": "${folder}",  // Use ${folder} to point to the project root
+            "file_regex": "^\\s*(.+?\\.ts):(\\d+):(\\d+):\\s*(.*)$",
+            "selector": "source.ts"
+        }
+    ]
+}
