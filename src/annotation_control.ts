@@ -55,16 +55,16 @@ export class AnnotationControl {
     }
 
     addEventListeners() {
-		const linkInteractionHandler = (event: MouseEvent | TouchEvent) => {
-			const target = event.target as HTMLElement | null;
-			// Use closest('a') so clicks on nested elements (e.g., spans inside links) still register as link clicks.
-			// This scenario is likely never occurring, but closest('a') keeps link detection reliable (just in case).
-			if (target && target.closest('a')) {
-				this.clickedLink = true;
-			} else {
-				this.clickedLink = false;
-			}
-		};
+        const linkInteractionHandler = (event: MouseEvent | TouchEvent) => {
+            const target = event.target as HTMLElement | null;
+            // Use closest('a') so clicks on nested elements (e.g., spans inside links) still register as link clicks.
+            // This scenario is likely never occurring, but closest('a') keeps link detection reliable (just in case).
+            if (target && target.closest('a')) {
+                this.clickedLink = true;
+            } else {
+                this.clickedLink = false;
+            }
+        };
 
         this.annotation_div.addEventListener('mousedown', linkInteractionHandler);
         this.annotation_div.addEventListener('touchstart', linkInteractionHandler, { passive: true });
@@ -74,13 +74,13 @@ export class AnnotationControl {
         this.annotation_div.addEventListener('click', (event:MouseEvent) => {
             if(!this.plugin.settings.editable) { 
                 return; 
-			} else {
-				event.stopPropagation();
-				if (!this.clickedLink) {
-					// Explicitly focus to help mobile keyboards appear, especially on Android.
-					this.annotation_div.focus();
-				}
-			}
+            } else {
+                event.stopPropagation();
+                if (!this.clickedLink) {
+                    // Explicitly focus to help mobile keyboards appear, especially on Android.
+                    this.annotation_div.focus();
+                }
+            }
         });
 
         this.annotation_div.addEventListener('focus', async (event:FocusEvent) => {
