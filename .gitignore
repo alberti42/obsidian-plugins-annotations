@@ -21,3 +21,9 @@ data.json
 
 # iCLoud
 *.nosync
+
+# Sublime
+*sublime-workspace
+
+# Markdown
+*.md
