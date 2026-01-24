@@ -20,13 +20,12 @@ declare module "obsidian" {
         navEl: HTMLElement;
         // updateSearch(e: string): void;
         render(isInitialRender:boolean):void;
-        renderInstalledPlugin(
-            pluginManifest: PluginManifest,
-            containerEl: HTMLElement,
-            nameMatch: boolean | null,
-            authorMatch: boolean | null,
-            descriptionMatch: boolean | null
-        ): void;
+		renderInstalledPlugin(
+			pluginManifest: PluginManifest,
+			nameMatch: boolean | null,
+			authorMatch: boolean | null,
+			descriptionMatch: boolean | null
+		): void;
     }
     interface Setting {
         onOpen(): void;
