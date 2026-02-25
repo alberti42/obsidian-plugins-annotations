@@ -38,8 +38,8 @@ export default class PluginsAnnotations extends Plugin {
 
     private community_plugins = {} as CommunityPluginInfoDict;
 
-    private handleThemeChange: ((event: MediaQueryListEvent) => void) | null = null;
-    private colorSchemeMedia: MediaQueryList | null = null;
+    // MutationObserver watching document.body class changes to detect Obsidian theme switches
+    private themeObserver: MutationObserver | null = null;
 
      // Declare class methods that will be initialized in the constructor
     debouncedSaveAnnotations: (callback?: () => void) => void;
@@ -123,9 +123,6 @@ export default class PluginsAnnotations extends Plugin {
 
         // Monkey-patch functions to detect when community plugins are installed and uninstalled.
         this.hookOnInstallAndUninstallPlugins();
-
-        // Detect color scheme
-        this.colorSchemeMedia = matchMedia('(prefers-color-scheme: dark)');
 
         // Install listener to theme changes
         if(this.communityPluginTab && this.communityPluginTab.containerEl) this.listenForThemeChange(this.communityPluginTab.containerEl);
@@ -502,39 +499,28 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     listenForThemeChange(tabContainer: HTMLElement) {
-        // If listener is already install, we can directly return
-        if(this.handleThemeChange) return;
+        // If observer is already installed, return immediately to avoid duplicates
+        if (this.themeObserver) return;
 
-        // Check if the color scheme was detected
-        if (this.colorSchemeMedia===null) {
-            console.warn("Color scheme could not be determined.");
-            return;
-        }
-
-        // Create the event listener with the correct signature
-        this.handleThemeChange = (event: MediaQueryListEvent): void => {
+        // Obsidian sets 'theme-dark' or 'theme-light' on document.body; observe class
+        // attribute changes so GitHub icons update whenever the user switches themes,
+        // regardless of the OS-level color scheme.
+        this.themeObserver = new MutationObserver(() => {
+            const isDarkMode = document.body.classList.contains('theme-dark');
             const pluginsContainer = tabContainer.querySelector('.installed-plugins-container');
-
-            const isDarkMode = event.matches;  // true means dark mode is active
-            
             if (pluginsContainer) {
                 const githubIcons = pluginsContainer.querySelectorAll(
                     'div.setting-item > div.setting-item-control > div.github-icon'
                 );
-                
-                // Iterate over each github icon and set the appropriate SVG
+                // Update each icon to match the new theme
                 githubIcons.forEach((icon) => {
-                    if (isDarkMode) {
-                        icon.innerHTML = svg_github_dark;
-                    } else {
-                        icon.innerHTML = svg_github_light;
-                    }
+                    icon.innerHTML = isDarkMode ? svg_github_dark : svg_github_light;
                 });
             }
-        }
+        });
 
-        // Add an event listener for changes to the appearance mode
-        this.colorSchemeMedia.addEventListener("change", this.handleThemeChange);    
+        // Watch only the 'class' attribute to minimise observer overhead
+        this.themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     }
 
     async addLockIcon(containerEl: HTMLElement) {
@@ -681,8 +667,9 @@ export default class PluginsAnnotations extends Plugin {
 						if (repo) {
 							const controlDiv = pluginDOMElement.querySelector('.setting-item-control');
 							if(controlDiv) {
-								if(this.colorSchemeMedia) {
-									const isDarkMode = this.colorSchemeMedia.matches;
+								{
+									// Read Obsidian's active theme from document.body at render time
+									const isDarkMode = document.body.classList.contains('theme-dark');
 									const gitHubIcon = annotationControl.addGitHubIcon(controlDiv,repo, isDarkMode);
 									if(gitHubIcon) this.listGitHubIcons.push(gitHubIcon);
 								}
@@ -722,11 +709,10 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     removeHandleThemeChangeListener() {
-        // Remove listeners
-        if (this.handleThemeChange) {
-            if (this.colorSchemeMedia) {
-                this.colorSchemeMedia.removeEventListener("change", this.handleThemeChange);
-            }
+        // Disconnect and release the MutationObserver used for theme detection
+        if (this.themeObserver) {
+            this.themeObserver.disconnect();
+            this.themeObserver = null;
         }
     }
 
