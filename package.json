@@ -1,6 +1,6 @@
 {
 	"name": "plugins-annotations",
-	"version": "1.0.0",
+	"version": "1.7.11",
 	"description": "Allows adding personal comments to each installed plugin.",
 	"main": "main.js",
 	"scripts": {
