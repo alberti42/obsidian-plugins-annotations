@@ -2,6 +2,7 @@
 
 import {
     Plugin,
+    Setting,
     SettingTab,
     Platform,
     Plugins,
@@ -413,37 +414,23 @@ export default class PluginsAnnotations extends Plugin {
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
 
-        // Monkey patch for uninstallPlugin
+        // Monkey patch the per-plugin renderer of the community-plugins tab.
+		// Obsidian's declarative settings tab calls `renderInstalledPlugin(setting, manifest)`
+		// for every plugin row, on both the initial render and every later re-render, so this
+		// is the single hook we need for injecting annotations and the lock icon.
 		const removeMonkeyPatchForRender = around(tab, {
 			renderInstalledPlugin: (next: SettingTab['renderInstalledPlugin']) => {
 
-				return function (this: SettingTab,
-						pluginManifest: PluginManifest,
-						nameMatch: boolean | null,
-						authorMatch: boolean | null,
-						descriptionMatch: boolean | null
-					): void {
-						next.call(this, pluginManifest, nameMatch, authorMatch, descriptionMatch);
+				return function (this: SettingTab, setting: Setting, manifest: PluginManifest): void {
+						// Render the plugin row using Obsidian's own implementation first.
+						next.call(this, setting, manifest);
 
-						// Custom code for personal annotations here
-						const listEl = (this as SettingTab & { installedPlugins?: { listEl?: HTMLElement } }).installedPlugins?.listEl;
-						const targetElement = listEl?.lastElementChild;
-						if (targetElement instanceof HTMLElement) {
-							self.addAnnotation(targetElement);
+						const settingEl = setting.settingEl;
+						if (settingEl instanceof HTMLElement) {
+							self.addAnnotation(settingEl, manifest.id);
+							// (Re)add the lock icon to the group heading. It is idempotent.
+							self.addLockIcon(this.containerEl);
 						}
-				};
-			},
-            // Patch for `render` method
-			render: (next: (
-					isInitialRender: boolean
-				) => void) => {
-
-				return function (this: SettingTab, isInitialRender: boolean): void {
-					self.listGitHubIcons = [];
-
-					// Call the original `render` function
-					next.call(this, isInitialRender);
-					self.addLockIcon(this.containerEl);
 				};
 			}
 		});
@@ -507,27 +494,36 @@ export default class PluginsAnnotations extends Plugin {
         // regardless of the OS-level color scheme.
         this.themeObserver = new MutationObserver(() => {
             const isDarkMode = document.body.classList.contains('theme-dark');
-            const pluginsContainer = tabContainer.querySelector('.installed-plugins-container');
-            if (pluginsContainer) {
-                const githubIcons = pluginsContainer.querySelectorAll(
-                    'div.setting-item > div.setting-item-control > div.github-icon'
-                );
-                // Update each icon to match the new theme
-                githubIcons.forEach((icon) => {
-                    icon.innerHTML = isDarkMode ? svg_github_dark : svg_github_light;
-                });
-            }
+            const githubIcons = tabContainer.querySelectorAll(
+                'div.setting-item > div.setting-item-control > div.github-icon'
+            );
+            // Update each icon to match the new theme
+            githubIcons.forEach((icon) => {
+                icon.innerHTML = isDarkMode ? svg_github_dark : svg_github_light;
+            });
         });
 
         // Watch only the 'class' attribute to minimise observer overhead
         this.themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     }
 
+    // Locate the control area of the "Installed plugins" group heading, where the lock
+    // icon lives. This tab renders several group headings, so we target the installed-plugins
+    // group (`.setting-group.mod-list`) specifically rather than the first heading found.
+    private findInstalledPluginsHeadingControl(containerEl: HTMLElement): Element | null {
+        const group = containerEl.querySelector('.setting-group.mod-list');
+        return group ? group.querySelector('.setting-item-heading .setting-item-control') : null;
+    }
+
     async addLockIcon(containerEl: HTMLElement) {
         // Add new icon to the existing icons container
-        const headingContainer = containerEl.querySelector('.setting-item-heading .setting-item-control');
+        const headingContainer = this.findInstalledPluginsHeadingControl(containerEl);
         if (headingContainer) {
-            
+            // Idempotent: skip if a lock icon is already present in this heading.
+            if (this.lockIcon && this.lockIcon.isConnected && headingContainer.contains(this.lockIcon)) {
+                return;
+            }
+
             this.lockIcon = document.createElement('div');
 
             const lockIcon = this.lockIcon;
@@ -597,9 +593,18 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     removeGitHubIcons() {
+        // Remove any GitHub icons currently in the tab. We query the DOM (rather than rely
+        // solely on the tracked list) so icons re-created by Obsidian's render reconciliation
+        // are also cleaned up.
+        if (this.communityPluginTab) {
+            this.communityPluginTab.containerEl.querySelectorAll('.github-icon').forEach((iconEl:Element) => {
+                iconEl.remove();
+            });
+        }
         this.listGitHubIcons.forEach((iconEl:Element) => {
             iconEl.remove();
-        })
+        });
+        this.listGitHubIcons = [];
     }
 
     async loadCommunityPluginsJson() {
@@ -632,20 +637,40 @@ export default class PluginsAnnotations extends Plugin {
         }
     }
 
-	addAnnotation(pluginDOMElement: Element) {
-		const pluginNameDiv = pluginDOMElement.querySelector('.setting-item-name');
-		const pluginName = pluginNameDiv ? pluginNameDiv.textContent : null;
+	// Extract the plugin name from a `.setting-item-name` element. Newer Obsidian appends
+	// version/author <span>s to this element, so we read only the leading text node(s)
+	// rather than `textContent` (which would include the version and author).
+	private extractPluginName(nameEl: Element): string {
+		let text = '';
+		nameEl.childNodes.forEach((node: ChildNode) => {
+			if (node.nodeType === Node.TEXT_NODE) {
+				text += node.textContent ?? '';
+			}
+		});
+		return text.trim();
+	}
 
-		if (!pluginName) {
-			console.warn('Plugin name not found');
-			return;
-		}
-
-		const pluginId = this.pluginNameToIdMap[pluginName];
+	addAnnotation(pluginDOMElement: Element, pluginId?: string) {
 		if (!pluginId) {
-			console.warn(`Plugin ID not found for plugin name: ${pluginName}`);
+			// No id supplied (e.g. bulk re-scan): derive it from the displayed plugin name.
+			const pluginNameDiv = pluginDOMElement.querySelector('.setting-item-name');
+			const pluginName = pluginNameDiv ? this.extractPluginName(pluginNameDiv) : null;
+
+			if (!pluginName) {
+				console.warn('Plugin name not found');
+				return;
+			}
+
+			pluginId = this.pluginNameToIdMap[pluginName];
+		}
+
+		if (!pluginId) {
+			console.warn('Plugin ID not found for the plugin row.');
 			return;
 		}
+
+		// Use the canonical name from the installed manifests (falls back to the id).
+		const pluginName = this.pluginIdToNameMap[pluginId] ?? pluginId;
 
 		const settingItemInfo = pluginDOMElement.querySelector('.setting-item-info');
 		if (settingItemInfo) {
@@ -687,13 +712,17 @@ export default class PluginsAnnotations extends Plugin {
             return;
         }
 
-        const pluginsContainer = this.communityPluginTab.containerEl.querySelector('.installed-plugins-container');
+        const containerEl = this.communityPluginTab.containerEl;
+        // The installed plugins are rendered inside `.setting-group.mod-list`; its
+        // `.setting-items` element holds the individual plugin rows.
+        const pluginsContainer = containerEl.querySelector('.setting-group.mod-list .setting-items');
         if (!pluginsContainer) {
-            console.warn("Annotations could not be added because installed-plugins-container was not detected.")
+            console.warn("Annotations could not be added because the installed-plugins list was not detected.")
             return;
         }
-        
-        const pluginDOMElements = pluginsContainer.querySelectorAll('.setting-item');
+
+        // Only iterate direct plugin rows, skipping the group heading (also a `.setting-item`).
+        const pluginDOMElements = pluginsContainer.querySelectorAll(':scope > .setting-item:not(.setting-item-heading)');
         pluginDOMElements.forEach(pluginDOMElement => {
             this.addAnnotation(pluginDOMElement);
         });

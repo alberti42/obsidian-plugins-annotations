@@ -18,14 +18,9 @@ declare module "obsidian" {
         id: string;
         name: string;
         navEl: HTMLElement;
-        // updateSearch(e: string): void;
-        render(isInitialRender:boolean):void;
-		renderInstalledPlugin(
-			pluginManifest: PluginManifest,
-			nameMatch: boolean | null,
-			authorMatch: boolean | null,
-			descriptionMatch: boolean | null
-		): void;
+		// Per-plugin row renderer of the community-plugins tab (Obsidian >= 1.13):
+		// `setting` is the row's Setting component (exposes `settingEl`), `manifest` its plugin manifest.
+		renderInstalledPlugin(setting: Setting, manifest: PluginManifest): void;
     }
     interface Setting {
         onOpen(): void;
