@@ -2,7 +2,7 @@
 
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
-import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
+import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, SettingDefinitionItem, SettingGroup, ToggleComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, setSvgIcon, sortAnnotations } from "utils";
 import { DEFAULT_SETTINGS } from 'default_settings';
@@ -21,16 +21,27 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
     constructor(app: App, plugin: PluginsAnnotations) {
         super(app, plugin);
         this.plugin = plugin;
+        this.containerEl.classList.add('plugin-comment-settings');
     }
 
-    // `PluginSettingTab.display()` is declared to return void; Obsidian calls it without
-    // awaiting. The actual (async) rendering logic lives in `displayAsync()` below, and is
-    // intentionally not awaited here.
-    display(): void {
-        void this.displayAsync();
+    // Declarative settings (Obsidian 1.13.0+) read/write `this.plugin.settings` directly.
+    // Override the write path only, so every `control` entry below goes through the
+    // existing debounced save instead of an immediate, undebounced saveData() call, and
+    // also refreshes the rendered annotations of no-longer-installed plugins, which
+    // depend on several of these settings (labels, placeholders).
+    setControlValue(key: string, value: unknown): Promise<void> {
+        // `key` always comes from a `control` definition below, all of which name real
+        // top-level properties of PluginsAnnotationsSettings.
+        (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+        return new Promise<void>((resolve) => {
+            this.plugin.debouncedSaveAnnotations(() => {
+                this.uninstalledPluginsManager?.updateUninstalledPluginSettings(this.containerEl);
+                resolve();
+            });
+        });
     }
 
-    private async displayAsync(): Promise<void> {
+    getSettingDefinitions(): SettingDefinitionItem[] {
         const createPluginsPaneFragment = (): DocumentFragment => {
             return createFragment((frag) => {
                 const em = frag.createEl('em');
@@ -42,135 +53,249 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             });
         };
 
-        // Load annotations first
-        await this.plugin.loadSettings();
+        return [
+            {
+                type: 'group',
+                heading: 'Editing annotations',
+                items: [
+                    {
+                        name: 'How to edit annotations',
+                        render: (setting) => {
+                            setting.setName(createFragment((frag) => {
+                                const div = activeDocument.createElement('div');
+                                div.classList.add('plugin-comment-instructions');
 
-        // Clean container in the preference pane 
-        const containerEl = this.containerEl;
-        containerEl.empty();
-        containerEl.classList.add('plugin-comment-settings');
+                                const p1 = activeDocument.createElement('p');
+                                p1.appendText('To add or edit your personal annotations for the installed plugins, go to the ');
+                                p1.appendChild(createPluginsPaneFragment());
+                                p1.appendText(' pane and click over the annotation field of the plugin you want to edit.');
+                                div.appendChild(p1);
 
-        /* ====== Editing ====== */
+                                const p2 = activeDocument.createElement('p2');
+                                p2.innerText = "You can enter rich text annotations using Markdown just the same way you do in Obsidian. \
+                                    Once you are finished editing, the Markdown annotation will be rendered correctly.";
+                                div.appendChild(p2);
 
-        new Setting(containerEl).setName('Editing annotations').setHeading();
-        
-        const instructions_frag = createFragment((frag) => {
+                                const p3 = activeDocument.createElement('p');
+                                p3.innerText = "You can directly link notes inside your \
+                                    vault by adding Obsidian links such as ";
 
-            const div = activeDocument.createElement('div');
-            div.classList.add('plugin-comment-instructions');
+                                const code = activeDocument.createElement('code');
+                                code.appendText('[[My notes/Review of plugin XYZ|my plugin note]]');
+                                code.classList.add('plugin-comment-selectable');
+                                p3.appendChild(code);
+                                p3.appendText('.');
 
-            const p1 = activeDocument.createElement('p');
-            p1.appendText('To add or edit your personal annotations for the installed plugins, go to the ');
-            p1.appendChild(createPluginsPaneFragment());
-            p1.appendText(' pane and click over the annotation field of the plugin you want to edit.');
-            div.appendChild(p1);
+                                div.appendChild(p3);
 
-            const p2 = activeDocument.createElement('p2');
-            p2.innerText = "You can enter rich text annotations using Markdown just the same way you do in Obsidian. \
-                Once you are finished editing, the Markdown annotation will be rendered correctly.";
-            div.appendChild(p2);
+                                frag.appendChild(div);
+                            }));
+                        },
+                    },
+                    {
+                        name: 'Editable',
+                        render: (setting) => this.renderEditableToggle(setting, createPluginsPaneFragment),
+                    },
+                ],
+            },
+            {
+                type: 'group',
+                heading: 'Storage',
+                items: [
+                    {
+                        name: 'Store annotations in a Markdown file',
+                        desc: 'With this option enabled, you can select a Markdown file in your vault to \
+                            contain your personal annotations for the installed plugins. This feature is intended \
+                            for power users who prefer to edit annotations directly from a Markdown file. \
+                            A second advantage of this mode is that if you use links to some of your notes in \
+                            the vault, those links will be automatically updated if your notes are later renamed.',
+                        render: (setting) => this.renderMarkdownFileToggle(setting),
+                    },
+                    {
+                        name: 'Markdown File Path',
+                        visible: () => this.plugin.settings.markdown_file_path !== '',
+                        render: (setting) => this.renderMarkdownFilePath(setting),
+                    },
+                ],
+            },
+            {
+                type: 'group',
+                heading: 'Display',
+                items: [
+                    {
+                        name: 'Annotation label',
+                        desc: createFragment((frag) => {
+                            const label_version = Platform.isMobile ? 'mobile' : 'desktop';
+                            frag.appendText(`Choose the annotation label for the ${label_version} version of Obsidian. \
+                            Use HTML code if you want to format it. Enter an empty string if you want \
+                            to hide the label. Use `);
+                            frag.createEl('code',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
+                            frag.appendText(' as a template for the plugin name; for example, you can generate automatic links to your notes with a label of the kind ');
+                            frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name}|${plugin_name}]]');
+                            frag.appendText('.');
+                        }),
+                        control: {
+                            type: 'text',
+                            key: Platform.isMobile ? 'label_mobile' : 'label_desktop',
+                            placeholder: 'Annotation label',
+                        },
+                    },
+                    {
+                        name: 'Placeholder label',
+                        desc: createFragment((frag) => {
+                            frag.appendText('Choose the label appearing where no user annotation is provied yet. Use ');
+                            frag.createEl('code',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
+                            frag.appendText(' as a template for the plugin name; for example, you can generate automatic \
+                                links to your notes with a placeholder of the kind ');
+                            frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name}|${plugin_name}]]');
+                            frag.appendText('.');
+                        }),
+                        control: { type: 'text', key: 'label_placeholder', placeholder: 'Annotation label' },
+                    },
+                    {
+                        name: 'Hide empty annotations',
+                        desc: createFragment((frag) => {
+                            frag.appendText('If this option is enabled, only annotations set by the user \
+                                will be shown. If you want to insert an annotation to a plugin for the first \
+                                time, hover with the mouse over the chosen plugin in the ');
+                            frag.appendChild(createPluginsPaneFragment());
+                            frag.appendText(' pane. The annotation field will appear automatically.');
 
-            const p3 = activeDocument.createElement('p');
-            p3.innerText = "You can directly link notes inside your \
-                vault by adding Obsidian links such as ";
+                            if (Platform.isMobile) {
+                                const p = frag.createEl('p');
+                                const warning = p.createEl('span', {
+                                    text: 'On mobile devices, you can hover over plugins with your finger instead of using the mouse.',
+                                });
+                                warning.classList.add('mod-warning');
+                                frag.appendChild(p);
+                            }
+                        }),
+                        control: { type: 'toggle', key: 'hide_placeholders' },
+                    },
+                    {
+                        name: 'Delete placeholder text when inserting a new annotation',
+                        desc: 'If this option is enabled, the placeholder text will be deleted \
+                                automatically when you start typing a new annotation. If disabled, \
+                                the placeholder text will be selected for easier replacement. \
+                                This is a minor customization.',
+                        control: { type: 'toggle', key: 'delete_placeholder_string_on_insertion' },
+                    },
+                    {
+                        name: 'Show GitHub links',
+                        desc: "If this option is enabled, a clickable icon linking to the plugin's GitHub page will be displayed in the Community plugin pane.",
+                        control: { type: 'toggle', key: 'show_github_icons' },
+                    },
+                ],
+            },
+            {
+                type: 'group',
+                heading: 'Backups',
+                items: [
+                    {
+                        name: 'Create a backup copy of your current settings and annotations',
+                        render: (setting, group) => {
+                            this.backupManager = new BackupManager(this.plugin, setting, group);
+                        },
+                    },
+                ],
+            },
+            {
+                type: 'group',
+                heading: 'Annotations of no longer installed community plugins',
+                items: [
+                    {
+                        name: 'Automatically remove personal annotations of uninstalled plugins',
+                        desc: 'If this option is enabled, whenever a plugin is uninstalled, the \
+                            attached personal annotation is automatically removed. \
+                            If this option is disabled, you can still  manually remove the personal \
+                            annotations of any plugin that is no longer installed. \
+                            The list of the no longer installed plugins is shown below, when the list is not empty.',
+                        control: { type: 'toggle', key: 'automatic_remove' },
+                    },
+                    {
+                        name: 'List of no longer installed plugins',
+                        desc: 'If you plan to reinstall the plugin in the future, \
+                            it is recommended not to remove your annotations, as you can reuse them later.',
+                        visible: () => Object.keys(this.plugin.getUninstalledPlugins()).length > 0,
+                        render: (setting, group) => {
+                            this.uninstalledPluginsManager = new UninstalledPluginsManager(this.plugin, group, () => this.update());
+                        },
+                    },
+                ],
+            },
+        ];
+    }
 
-            const code = activeDocument.createElement('code');
-            code.appendText('[[My notes/Review of plugin XYZ|my plugin note]]');
-            code.classList.add('plugin-comment-selectable');
-            p3.appendChild(code);
-            p3.appendText('.');
-
-            div.appendChild(p3);
-
-            frag.appendChild(div);
-        });
-
-        new Setting(containerEl).setName(instructions_frag);
-
-        const editable_setting = new Setting(containerEl)
-            .setName('Editable');
-
+    private renderEditableToggle(setting: Setting, createPluginsPaneFragment: () => DocumentFragment): void {
         let editable_toggle: ToggleComponent;
-        editable_setting.addToggle(toggle => {
+        setting.addToggle(toggle => {
             editable_toggle = toggle;
             toggle
             .setValue(this.plugin.settings.editable)
             .onChange((value: boolean) => {
                 this.plugin.settings.editable = value;
-                this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
+                this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(this.containerEl); });
             })
         });
 
-        editable_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    editable_toggle.setValue(DEFAULT_SETTINGS.editable);
-                    this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
-                });
+        setting.setDesc(createFragment((frag) => {
+            frag.appendText('If disabled, the annotations cannot be edited from the preference pane and are thus \
+                protected against accidental changes.  In the ');
+            frag.appendChild(createPluginsPaneFragment());
+            frag.appendText(' pane, you can coveniently change this setting by clicking on the displayed icon');
+            const div = frag.createDiv();
+            div.classList.add('plugin-comment-icon-container')
+            const unlock_icon = activeDocument.createElement('div');
+            unlock_icon.classList.add('clickable-icon');
+            setSvgIcon(unlock_icon, svg_unlocked);
+            unlock_icon.addEventListener('click', () => {
+                editable_toggle.setValue(true);
+            });
+            const lock_icon = activeDocument.createElement('div');
+            lock_icon.classList.add('clickable-icon');
+            setSvgIcon(lock_icon, svg_locked);
+            lock_icon.addEventListener('click', () => {
+                editable_toggle.setValue(false);
+            });
+            div.appendText('{');
+            div.appendChild(lock_icon);
+            div.appendText(',');
+            div.appendChild(unlock_icon);
+            div.appendText('}');
+            frag.appendText('which either locks (make non-editable) or unlocks (make editable) your personal annotations.')
+        }));
+    }
+
+    private renderMarkdownFileToggle(setting: Setting): void {
+        setting.addToggle(toggle => {
+            toggle
+            .setValue(this.plugin.settings.markdown_file_path !== '')
+            .onChange(async (value: boolean) => {
+                // Enabling starts from an empty path; the user fills it in via the
+                // "Markdown File Path" row below, which appears once this is on.
+                // Note: unlike the pre-migration behavior, the path typed before a
+                // previous toggle-off is not restored here, since that row is fully
+                // unmounted (not just hidden) while this toggle is off.
+                this.plugin.settings.markdown_file_path = value ? this.plugin.settings.markdown_file_path : '';
+                this.plugin.debouncedSaveAnnotations();
+                // The "Markdown File Path" row's `visible` predicate depends on this value.
+                this.refreshDomState();
+            })
         });
+    }
 
-        editable_setting.setDesc(createFragment((frag) => {
-                    frag.appendText('If disabled, the annotations cannot be edited from the preference pane and are thus \
-                        protected against accidental changes.  In the ');
-                    frag.appendChild(createPluginsPaneFragment());
-                    frag.appendText(' pane, you can coveniently change this setting by clicking on the displayed icon');
-                    const div = frag.createDiv();
-                    div.classList.add('plugin-comment-icon-container')
-                    const unlock_icon = activeDocument.createElement('div');
-                    unlock_icon.classList.add('clickable-icon');
-                    setSvgIcon(unlock_icon, svg_unlocked);
-                    unlock_icon.addEventListener('click', (event:MouseEvent) => {
-                        editable_toggle.setValue(true);
-                    });
-                    const lock_icon = activeDocument.createElement('div');
-                    lock_icon.classList.add('clickable-icon');
-                    setSvgIcon(lock_icon, svg_locked);
-                    lock_icon.addEventListener('click', (event:MouseEvent) => {
-                        editable_toggle.setValue(false);
-                    });
-                    div.appendText('{');
-                    div.appendChild(lock_icon);
-                    div.appendText(',');
-                    div.appendChild(unlock_icon);
-                    div.appendText('}');
-                    frag.appendText('which either locks (make non-editable) or unlocks (make editable) your personal annotations.')            
-                }));
-        
-        /* ==== Storage ==== */
-
-        new Setting(containerEl).setName('Storage').setHeading();
-
-        // Add new setting for storing annotations in a Markdown file
-        const md_file_setting = new Setting(containerEl)
-            .setName('Store annotations in a Markdown file')
-            .setDesc('With this option enabled, you can select a Markdown file in your vault to \
-                contain your personal annotations for the installed plugins. This feature is intended \
-                for power users who prefer to edit annotations directly from a Markdown file. \
-                A second advantage of this mode is that if you use links to some of your notes in \
-                the vault, those links will be automatically updated if your notes are later renamed.');
-
-        let file_path_field_control: TextComponent;
+    private renderMarkdownFilePath(setting: Setting): void {
         let md_filepath_error_div: HTMLDivElement;
-        // Add new setting for markdown file path
-        const md_filepath_setting = new Setting(containerEl)
-            .setName('Markdown File Path')
-            .setDesc(createFragment((frag) => {
-                    frag.appendText('Markdown file where the plugins\' annotations are stored (e.g, ');
-                    frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('00 Meta/Misc/Plugins annotations.md');
-                    frag.appendText(').');
-                    md_filepath_error_div = frag.createDiv({text: 'Error: the filename must end with .md extension.', cls: "mod-warning" });
-                    md_filepath_error_div.hide();
-                }));
+        setting.setDesc(createFragment((frag) => {
+                frag.appendText('Markdown file where the plugins\' annotations are stored (e.g, ');
+                frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('00 Meta/Misc/Plugins annotations.md');
+                frag.appendText(').');
+                md_filepath_error_div = frag.createDiv({text: 'Error: the filename must end with .md extension.', cls: "mod-warning" });
+                md_filepath_error_div.hide();
+            }));
 
-        let md_filepath_text: TextComponent;
-        md_filepath_setting.addText(text => {
-            md_filepath_text = text;
-
+        setting.addText(text => {
             let processingChange = false;
-
-            file_path_field_control = text;
 
             text.setPlaceholder('E.g.: 00 Meta/Plugins annotations.md');
             text.setValue(this.plugin.settings.markdown_file_path);
@@ -188,9 +313,9 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 
             const onChangeHandler = async (event: Event) => {
                 if(processingChange) {
-                    return; 
+                    return;
                 } else {
-                    processingChange = true;    
+                    processingChange = true;
                 }
 
                 let filepath = inputEl.value;
@@ -246,268 +371,18 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             // reacts to events of type `input` instead of `change`
             inputEl.addEventListener('change', triggerChange);
         });
-
-        md_filepath_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    md_filepath_text.setValue(DEFAULT_SETTINGS.markdown_file_path);
-                    this.plugin.debouncedSaveAnnotations();
-                });
-        });
-
-        md_filepath_setting.settingEl.toggle(this.plugin.settings.markdown_file_path !== '');
-
-        let md_file_toggle: ToggleComponent;
-        md_file_setting.addToggle(toggle => {
-            md_file_toggle = toggle;
-            toggle
-            .setValue(this.plugin.settings.markdown_file_path !== '')
-            .onChange(async (value: boolean) => {
-                if (value) {
-                    md_filepath_setting.settingEl.show();
-                    this.plugin.settings.markdown_file_path = file_path_field_control.getValue();
-                } else {
-                    md_filepath_setting.settingEl.hide();
-                    this.plugin.settings.markdown_file_path = '';
-                }
-                this.plugin.debouncedSaveAnnotations();
-            })
-        });
-
-        md_file_setting.addExtraButton((button) => {
-                button
-                    .setIcon("reset")
-                    .setTooltip("Reset to default value")
-                    .onClick(() => {
-                        md_file_toggle.setValue(DEFAULT_SETTINGS.markdown_file_path !== '');
-                        this.plugin.debouncedSaveAnnotations();
-                    });
-            });
-
-        // Append the settings
-        containerEl.appendChild(md_file_setting.settingEl);
-        containerEl.appendChild(md_filepath_setting.settingEl);
-
-        /* ==== Display heading ==== */
-
-        new Setting(containerEl).setName('Display').setHeading();
-
-        let label: string;
-        let label_version: string;
-        let label_cb: (value: string) => void;
-
-        if (Platform.isMobile) {
-            label = this.plugin.settings.label_mobile;
-            label_version = 'mobile';
-            label_cb = (value: string) => {
-                this.plugin.settings.label_mobile = value;
-                this.plugin.debouncedSaveAnnotations(() => { 
-                    this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
-                });
-            };
-        } else {
-            label = this.plugin.settings.label_desktop;
-            label_version = 'desktop';
-            label_cb = (value: string) => {
-                this.plugin.settings.label_desktop = value;
-                this.plugin.debouncedSaveAnnotations(() => {
-                    this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
-                });
-            };
-        }
-
-        const label_setting = new Setting(containerEl)
-            .setName('Annotation label')
-            .setDesc(createFragment((frag) => {
-                frag.appendText(`Choose the annotation label for the ${label_version} version of Obsidian. \
-                Use HTML code if you want to format it. Enter an empty string if you want \
-                to hide the label. Use `);
-                frag.createEl('code',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
-                frag.appendText(' as a template for the plugin name; for example, you can generate automatic links to your notes with a label of the kind ');
-                frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name}|${plugin_name}]]');
-                frag.appendText('.');
-            }));
-
-        let label_text: TextComponent;
-        label_setting.addText(text => {
-            label_text = text;
-            text.setPlaceholder('Annotation label');
-            text.setValue(label);
-            text.onChange(label_cb)});
-
-        label_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    let label: string;
-                    if(Platform.isMobile) {
-                        label = DEFAULT_SETTINGS.label_mobile;
-                        this.plugin.settings.label_mobile = label;
-                    } else {
-                        label = DEFAULT_SETTINGS.label_desktop;
-                        this.plugin.settings.label_desktop = label;
-                    }
-                    label_text.setValue(label);
-                    this.plugin.debouncedSaveAnnotations(() => { 
-                        this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
-                    });
-                });
-        });
-
-        const placeholder_setting = new Setting(containerEl)
-            .setName('Placeholder label')
-            .setDesc(createFragment((frag) => {
-                    frag.appendText('Choose the label appearing where no user annotation is provied yet. Use ');
-                    frag.createEl('code',{cls: 'plugin-comment-selectable'}).appendText('${plugin_name}');
-                    frag.appendText(' as a template for the plugin name; for example, you can generate automatic \
-                        links to your notes with a placeholder of the kind ');
-                    frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('[[00 Meta/Installed plugins/${plugin_name}|${plugin_name}]]');
-                    frag.appendText('.')
-                }));
-
-        let placeholder_text: TextComponent;
-        placeholder_setting.addText(text => {
-            placeholder_text = text;
-            text.setPlaceholder('Annotation label');
-            text.setValue(this.plugin.settings.label_placeholder);
-            text.onChange(async (value: string) => {
-                this.plugin.settings.label_placeholder = value;
-                this.plugin.debouncedSaveAnnotations(() => {
-                    this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
-                });
-        })});
-
-        placeholder_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    placeholder_text.setValue(DEFAULT_SETTINGS.label_placeholder);
-                    this.plugin.debouncedSaveAnnotations(() => {
-                        this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl);
-                    });
-                });
-        });
-
-        const hide_empty_annotations_setting = new Setting(containerEl)
-            .setName('Hide empty annotations')
-            .setDesc(createFragment((frag) => {
-                frag.appendText('If this option is enabled, only annotations set by the user \
-                    will be shown. If you want to insert an annotation to a plugin for the first \
-                    time, hover with the mouse over the chosen plugin in the ');
-                frag.appendChild(createPluginsPaneFragment());
-                frag.appendText(' pane. The annotation field will appear automatically.');
-
-                if (Platform.isMobile) {
-                    const p = frag.createEl('p');
-                    const warning = p.createEl('span', {
-                        text: 'On mobile devices, you can hover over plugins with your finger instead of using the mouse.',
-                    });
-                    warning.classList.add('mod-warning');
-                    frag.appendChild(p);
-                }
-            }));
-
-        let hide_empty_annotations_toggle: ToggleComponent;
-        hide_empty_annotations_setting.addToggle(toggle => {
-            hide_empty_annotations_toggle = toggle;
-            toggle
-            .setValue(this.plugin.settings.hide_placeholders)
-            .onChange(async (value: boolean) => {
-                this.plugin.settings.hide_placeholders = value;
-                this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
-            })
-        });
-
-        hide_empty_annotations_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    hide_empty_annotations_toggle.setValue(DEFAULT_SETTINGS.hide_placeholders);
-                    this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
-                });
-        });
-
-        const delete_placeholder_string_setting = new Setting(containerEl)
-            .setName('Delete placeholder text when inserting a new annotation')
-            .setDesc('If this option is enabled, the placeholder text will be deleted \
-                    automatically when you start typing a new annotation. If disabled, \
-                    the placeholder text will be selected for easier replacement. \
-                    This is a minor customization.');
-
-        let delete_placeholder_string_toggle: ToggleComponent;
-        delete_placeholder_string_setting.addToggle(toggle => {
-            delete_placeholder_string_toggle = toggle;
-            toggle
-                .setValue(this.plugin.settings.delete_placeholder_string_on_insertion)
-                .onChange(async (value: boolean) => {
-                    this.plugin.settings.delete_placeholder_string_on_insertion = value;
-                    this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
-            });
-        });
-
-        delete_placeholder_string_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    delete_placeholder_string_toggle.setValue(DEFAULT_SETTINGS.delete_placeholder_string_on_insertion);
-                    this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(containerEl); });
-                });
-        });
-
-        const show_github_icons_setting = new Setting(containerEl)
-            .setName('Show GitHub links')
-            .setDesc("If this option is enabled, aclickable icon linking to the plugin's GitHub page will be displayed in the Community plugin pane.");
-
-        let show_github_icons_toggle: ToggleComponent;
-        show_github_icons_setting.addToggle(toggle => {
-            show_github_icons_toggle = toggle;
-            toggle
-                .setValue(this.plugin.settings.show_github_icons)
-                .onChange(async (value: boolean) => {
-                    this.plugin.settings.show_github_icons = value;
-                    this.plugin.debouncedSaveAnnotations();
-            });
-        });
-
-        show_github_icons_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    const value = DEFAULT_SETTINGS.show_github_icons
-                    show_github_icons_toggle.setValue(value);
-                });
-        });
-
-
-        /* ====== Backups ====== */
-        this.backupManager = new BackupManager(this.plugin, containerEl);
-
-        /* ====== Personal annotations of no longer installed community plugins ====== */
-        this.uninstalledPluginsManager = new UninstalledPluginsManager(this.plugin,containerEl);
-    }    
+    }
 }
 
 class BackupManager {
     private backupTableContainer: HTMLElement;
     private UNTITLED_BACKUP = 'Untitled backup';
 
-    constructor(private plugin:PluginsAnnotations, private containerEl:HTMLElement) {
-
-        new Setting(this.containerEl)
-            .setName('Backups')
-            .setHeading();
-
+    constructor(private plugin:PluginsAnnotations, private setting: Setting, private group: SettingGroup) {
         this.addBackupButtons();
 
-        // Create a wrapper div for the table
-        this.backupTableContainer = this.containerEl.createDiv();
+        // Create a wrapper div for the table, as a sibling of the row within the same group.
+        this.backupTableContainer = this.group.listEl.createDiv();
         this.backupTableContainer.classList.add('setting-item');
         this.backupTableContainer.hide();
 
@@ -519,8 +394,7 @@ class BackupManager {
             to copy the current settings and annnotations to an external file and, vicevera, \
             to restore them from an external file.' : '';
 
-        const backup_settings = new Setting(this.containerEl)
-            .setName('Create a backup copy of your current settings and annotations')
+        this.setting
             .setDesc('Use the backup button to create an internal backup copy. \
                 You can customize the names of existing backups by clicking on their names once you have created them.'
                 + export_label)
@@ -535,10 +409,10 @@ class BackupManager {
                 })
             );
 
-        backup_settings.controlEl.classList.add('plugin-comment-export-buttons');
+        this.setting.controlEl.classList.add('plugin-comment-export-buttons');
 
         if (Platform.isDesktopApp) {
-            backup_settings.addButton(button => button
+            this.setting.addButton(button => button
                 .setButtonText('Export')
                 .setCta()
                 .onClick(async () => {
@@ -548,7 +422,7 @@ class BackupManager {
                 })
             );
 
-            backup_settings.addButton(button => button
+            this.setting.addButton(button => button
                 .setButtonText('Import')
                 .setCta()
                 .onClick(async () => {
@@ -590,11 +464,11 @@ class BackupManager {
 
     updateListBackups() {
         this.backupTableContainer.innerHTML = '';
-        
+
         // List Existing Backups
         if (this.plugin.settings.backups.length > 0) {
             this.backupTableContainer.show();
-            
+
             // Sort the backups by date (most recent first)
             this.plugin.settings.backups.sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -702,75 +576,38 @@ class UninstalledPluginsManager {
 
     private uninstalledPlugins:PluginAnnotationDict = {};
 
-    constructor(private plugin:PluginsAnnotations,private containerEl: HTMLElement) {
+    constructor(private plugin:PluginsAnnotations, private group: SettingGroup, private onListEmptied: () => void) {
         this.uninstalledPlugins = this.plugin.getUninstalledPlugins();
-        
-        new Setting(containerEl).setName('Annotations of no longer installed community plugins').setHeading();
-        
-        const automatic_remove_setting = new Setting(containerEl)
-            .setName('Automatically remove personal annotations of uninstalled plugins')
-            .setDesc('If this option is enabled, whenever a plugin is uninstalled, the \
-                attached personal annotation is automatically removed. \
-                If this option is disabled, you can still  manually remove the personal \
-                annotations of any plugin that is no longer installed. \
-                The list of the no longer installed plugins is shown below, when the list is not empty.');
 
-        let automatic_remove_toggle: ToggleComponent;
-        automatic_remove_setting.addToggle(toggle => {
-            automatic_remove_toggle = toggle;
-            toggle
-                .setValue(this.plugin.settings.automatic_remove)
-                .onChange(async (value: boolean) => {
-                    this.plugin.settings.automatic_remove = value;
-                    this.plugin.debouncedSaveAnnotations();
-            });
-        });
-
-        automatic_remove_setting.addExtraButton((button) => {
-            button
-                .setIcon("reset")
-                .setTooltip("Reset to default value")
-                .onClick(() => {
-                    automatic_remove_toggle.setValue(DEFAULT_SETTINGS.automatic_remove);
-                    this.plugin.debouncedSaveAnnotations();
-                });
-        });
-
-        // Check if uninstalledPlugins is empty
-        if (Object.keys(this.uninstalledPlugins).length === 0) return;
-
-        const list_uninstalled_label = new Setting(containerEl)
-            .setName('List of no longer installed plugins')
-            .setDesc('If you plan to reinstall the plugin in the future, \
-                it is recommended not to remove your annotations, as you can reuse them later.');
-
-        // Iterate over uninstalled plugins and add settings to the new subcontainer
+        // Iterate over uninstalled plugins and add settings to the group
         sortAnnotations(this.uninstalledPlugins).forEach(pluginId => {
-            const pluginSetting = new Setting(containerEl)
-                .setName(`Plugin ${this.uninstalledPlugins[pluginId].name}`)
-                .addButton(button => button
-                    .setButtonText('Delete')
-                    .setCta()
-                    .onClick(async () => {
-                        delete this.plugin.settings.annotations[pluginId];
-                        delete this.uninstalledPlugins[pluginId];
-                        pluginSetting.settingEl.remove();
-                        this.plugin.debouncedSaveAnnotations();
-                            
-                        // If no more uninstalled plugins, remove the section container
-                        if (Object.keys(this.uninstalledPlugins).length === 0) {
-                            list_uninstalled_label.settingEl.remove();
-                        }
-                    }));
-            
-            pluginSetting.descEl.dataset.plugin=pluginId;
+            this.group.addSetting((pluginSetting) => {
+                pluginSetting
+                    .setName(`Plugin ${this.uninstalledPlugins[pluginId].name}`)
+                    .addButton(button => button
+                        .setButtonText('Delete')
+                        .setCta()
+                        .onClick(() => {
+                            delete this.plugin.settings.annotations[pluginId];
+                            delete this.uninstalledPlugins[pluginId];
+                            this.plugin.debouncedSaveAnnotations();
+                            pluginSetting.settingEl.remove();
 
-            // Render the annotation
-            new AnnotationControl(this.plugin,pluginSetting.descEl,pluginId,this.uninstalledPlugins[pluginId].name);
-            
-            // Set the attributes by applying the correct classes
-            pluginSetting.descEl.classList.add('plugin-comment-annotation');
-            pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
+                            // If no more uninstalled plugins, hide the whole section.
+                            if (Object.keys(this.uninstalledPlugins).length === 0) {
+                                this.onListEmptied();
+                            }
+                        }));
+
+                pluginSetting.descEl.dataset.plugin=pluginId;
+
+                // Render the annotation
+                new AnnotationControl(this.plugin,pluginSetting.descEl,pluginId,this.uninstalledPlugins[pluginId].name);
+
+                // Set the attributes by applying the correct classes
+                pluginSetting.descEl.classList.add('plugin-comment-annotation');
+                pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
+            });
         });
     }
 
@@ -789,4 +626,3 @@ class UninstalledPluginsManager {
 
 
 }
-
