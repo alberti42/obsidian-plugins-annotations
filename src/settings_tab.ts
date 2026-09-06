@@ -225,7 +225,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             inputEl.addEventListener('keydown', async (event) => {
                 if (event.key === 'Enter') {
                     event.preventDefault();
-                    onChangeHandler(event);
+                    await onChangeHandler(event);
                 }
             });
 

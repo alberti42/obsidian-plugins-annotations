@@ -81,7 +81,7 @@ export default class PluginsAnnotations extends Plugin {
         this.app.vault.on('modify',this.onModifiedFile);
 
         // Call this function in your plugin initialization or where appropriate
-        this.loadCommunityPluginsJson();
+        void this.loadCommunityPluginsJson();
     }
 
     async onModifiedFile(modifiedFile: TAbstractFile){
@@ -95,10 +95,10 @@ export default class PluginsAnnotations extends Plugin {
                     this.sortPluginAnnotationsByName();
 
                     // Save the imported annotations to data.json
-                    this.saveDataJson();
+                    await this.saveDataJson();
 
                     // Update the community plugin pane if this is currently open
-                    this.updateCommunityPluginPaneIfOpened();
+                    await this.updateCommunityPluginPaneIfOpened();
                 }
 
             }
@@ -129,7 +129,7 @@ export default class PluginsAnnotations extends Plugin {
         if(this.communityPluginTab && this.communityPluginTab.containerEl) this.listenForThemeChange(this.communityPluginTab.containerEl);
 
         // Update the community plugin pane if this is currently open
-        this.updateCommunityPluginPaneIfOpened([loadSettingsPromise,loadCommunityPluginsJsonPromise]);
+        await this.updateCommunityPluginPaneIfOpened([loadSettingsPromise,loadCommunityPluginsJsonPromise]);
     }
 
     /* Load settings for different versions */
@@ -287,7 +287,7 @@ export default class PluginsAnnotations extends Plugin {
         if(data === undefined) {
             // we load directly from file, but first wait until
             // the previous debounced writing operation is completed
-            this.waitForSaveToComplete();
+            await this.waitForSaveToComplete();
             data = await this.loadData();
             isRestoreOperation = false;
         } else {
@@ -329,21 +329,21 @@ export default class PluginsAnnotations extends Plugin {
             this.removeCommentsFromTab();
             this.removeGitHubIcons();
             this.removeLockIcon();
-            if(this.communityPluginTab && this.communityPluginTab.containerEl) this.addLockIcon(this.communityPluginTab.containerEl);
+            if(this.communityPluginTab && this.communityPluginTab.containerEl) await this.addLockIcon(this.communityPluginTab.containerEl);
             this.addAnnotations();
         }
     }
 
-    onExternalSettingsChange() {
+    async onExternalSettingsChange() {
         // Load settings
         const loadSettingsPromise = this.loadSettings();
 
         // Update the community plugin pane if this is currently open
-        this.updateCommunityPluginPaneIfOpened([loadSettingsPromise]);
+        await this.updateCommunityPluginPaneIfOpened([loadSettingsPromise]);
 
         // Update the preference pane if this is currently open
         const activeTab = this.app.setting.activeTab;
-        if(activeTab && activeTab instanceof PluginsAnnotationsSettingTab) activeTab.display();        
+        if(activeTab && activeTab instanceof PluginsAnnotationsSettingTab) await activeTab.display();
     }
 
     // Store the path to the vault
@@ -429,7 +429,7 @@ export default class PluginsAnnotations extends Plugin {
 						if (settingEl instanceof HTMLElement) {
 							self.addAnnotation(settingEl, manifest.id);
 							// (Re)add the lock icon to the group heading. It is idempotent.
-							self.addLockIcon(this.containerEl);
+							void self.addLockIcon(this.containerEl);
 						}
 				};
 			}

@@ -47,7 +47,7 @@ export class AnnotationControl {
         }
 
         // Initial render
-        this.renderAnnotation();
+        void this.renderAnnotation();
 
         // Add listeners
         this.addEventListeners();
@@ -134,18 +134,18 @@ export class AnnotationControl {
         });
 
         // Add placeholder class back if no changes are made
-        this.annotation_div.addEventListener('blur', (event:FocusEvent) => {
+        this.annotation_div.addEventListener('blur', async (event:FocusEvent) => {
             this.plugin.annotationBeingEdited=false;
-            
+
             if(!this.plugin.settings.editable) { return; }
             if(this.clickedLink) return;
 
             if (this.isPlaceholder) { // placeholder
                 this.setPlaceholderClasses();
             } else {
-                this.removePlaceholderClasses();   
+                this.removePlaceholderClasses();
             }
-            this.renderAnnotation();
+            await this.renderAnnotation();
         });
     }
 
@@ -210,7 +210,7 @@ export class AnnotationControl {
 
                 const href = link.getAttribute('href');
                 if (href) {
-                    this.plugin.app.workspace.openLinkText(href, '', false);
+                    void this.plugin.app.workspace.openLinkText(href, '', false);
                     this.plugin.app.setting.close(); // Close the settings pane when a link is clicked
                 }
             });

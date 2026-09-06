@@ -70,7 +70,7 @@ export async function readAnnotationsFromMdFile(plugin: PluginsAnnotations): Pro
 
     if(!file) {
         // If the file does not exist but we have annotation in memory, write them down
-        writeAnnotationsToMdFile(plugin);
+        await writeAnnotationsToMdFile(plugin);
         return;
     }
 
