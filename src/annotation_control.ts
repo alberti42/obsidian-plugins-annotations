@@ -1,7 +1,7 @@
 // annotationControl.ts
 
 import PluginsAnnotations from "main";
-import { MarkdownRenderer, Platform } from "obsidian";
+import { Component, MarkdownRenderer, Platform } from "obsidian";
 import { isPluginAnnotation } from "types";
 import { setSvgIcon } from "utils";
 
@@ -19,7 +19,14 @@ export class AnnotationControl {
     private placeholder:string;
     private label:string;
     private annotation_div: HTMLDivElement;
-    
+
+    // Owns the child components that MarkdownRenderer registers while rendering this
+    // annotation. Passing the plugin instead would tie them to the plugin's lifetime,
+    // so they would accumulate on every re-render — and renderAnnotation() runs on
+    // every blur.
+    private markdownComponent: Component | null = null;
+
+
     constructor(private plugin: PluginsAnnotations, private annotation_container:HTMLElement, private pluginId:string, private pluginName:string) {
 
         this.clickedLink = false;
@@ -45,6 +52,10 @@ export class AnnotationControl {
             this.annotationDesc = this.placeholder.trim();
             this.setPlaceholderClasses();
         }
+
+        // Tracked by the plugin so it can release this control once its annotation
+        // leaves the DOM, or when the plugin itself unloads.
+        this.plugin.registerAnnotationControl(this);
 
         // Initial render
         void this.renderAnnotation();
@@ -192,6 +203,12 @@ export class AnnotationControl {
     }
 
     async renderAnnotation() {
+        // Release whatever the previous render registered before starting a new one.
+        this.unloadMarkdownComponent();
+        const component = new Component();
+        this.markdownComponent = component;
+        component.load();
+
         this.annotation_div.innerText = '';
         let desc = '';
         if(this.isPlaceholder) {
@@ -199,8 +216,34 @@ export class AnnotationControl {
         } else {
             desc = (this.label + this.annotationDesc).replace(/\$\{plugin_name\}/g, this.pluginName);
         }
-        await MarkdownRenderer.render(this.plugin.app, desc, this.annotation_div, '', this.plugin);
+        await MarkdownRenderer.render(this.plugin.app, desc, this.annotation_div, '', component);
         this.handleAnnotationLinks(this.annotation_div);
+    }
+
+    private unloadMarkdownComponent(): void {
+        this.markdownComponent?.unload();
+        this.markdownComponent = null;
+    }
+
+    // Set once the annotation has actually made it into the document.
+    private wasAttached = false;
+
+    // True once the annotation has been detached from the document — for instance
+    // because the pane holding it was re-rendered — meaning this control is dead.
+    // A control whose element has not been inserted yet is not "detached": the caller
+    // appends it only after the constructor returns, so treating it as dead would
+    // release a control that is about to become visible.
+    get isDetached(): boolean {
+        if (this.annotation_div.isConnected) {
+            this.wasAttached = true;
+            return false;
+        }
+        return this.wasAttached;
+    }
+
+    // Releases everything this control still holds. Safe to call more than once.
+    unload(): void {
+        this.unloadMarkdownComponent();
     }
 
     // Helper function to parse links and add click listeners

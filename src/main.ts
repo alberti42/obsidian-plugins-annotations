@@ -50,6 +50,10 @@ export default class PluginsAnnotations extends Plugin {
 
     private listGitHubIcons:HTMLDivElement[] = [];
 
+    // Live annotation controls, so the components they hold can be released instead of
+    // living as long as the plugin.
+    private annotationControls: AnnotationControl[] = [];
+
     annotationBeingEdited = false;
 
     constructor(app:App, manifest:PluginManifest) {
@@ -733,6 +737,30 @@ export default class PluginsAnnotations extends Plugin {
         });
     }
 
+    registerAnnotationControl(control: AnnotationControl) {
+        // Sweep before tracking a new one, so panes that re-render repeatedly cannot
+        // grow this list without bound.
+        this.releaseDetachedAnnotationControls();
+        this.annotationControls.push(control);
+    }
+
+    // Unloads the controls whose annotation is no longer in the document and forgets
+    // them; the ones still on screen are left alone.
+    private releaseDetachedAnnotationControls() {
+        this.annotationControls = this.annotationControls.filter((control:AnnotationControl) => {
+            if (!control.isDetached) return true;
+            control.unload();
+            return false;
+        });
+    }
+
+    private unloadAllAnnotationControls() {
+        this.annotationControls.forEach((control:AnnotationControl) => {
+            control.unload();
+        });
+        this.annotationControls = [];
+    }
+
     removeCommentsFromTab() {
         if (this.communityPluginTab) {
             const commentElements = this.communityPluginTab.containerEl.querySelectorAll('.plugin-comment');
@@ -740,6 +768,8 @@ export default class PluginsAnnotations extends Plugin {
                 element.remove();
             });
         }
+        // The elements above are gone, so their controls are now detached.
+        this.releaseDetachedAnnotationControls();
     }
 
     removeHandleThemeChangeListener() {
@@ -764,6 +794,10 @@ export default class PluginsAnnotations extends Plugin {
 
         // Remove GitHub icons
         this.removeGitHubIcons();
+
+        // Release the annotation controls still holding rendered Markdown components,
+        // including any whose annotation is still attached to a settings pane.
+        this.unloadAllAnnotationControls();
     }
 
     getUninstalledPlugins(): PluginAnnotationDict {
