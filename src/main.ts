@@ -10,6 +10,7 @@ import {
     FileSystemAdapter,
     TAbstractFile,
     App,
+    requestUrl,
     // PluginSettingTab,
     // App,
 } from 'obsidian';
@@ -617,16 +618,19 @@ export default class PluginsAnnotations extends Plugin {
 
         try {
             // Fetch the JSON data from the URL
-            const response = await fetch('https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json');
+            const response = await requestUrl({
+                url: 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json',
+                throw: false,
+            });
 
             // Check if the response is OK (status code 200-299)
-            if (!response.ok) {
-                // throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+            if (response.status < 200 || response.status >= 300) {
+                // throw new Error(`Failed to fetch: ${response.status}`);
                 return;
             }
 
             // Parse the JSON data
-            const pluginsData = (await response.json()) as CommunityPluginInfo[];
+            const pluginsData = response.json as CommunityPluginInfo[];
 
             this.community_plugins = pluginsData.reduce((acc:CommunityPluginInfoDict, plugin:CommunityPluginInfo) => {
                 acc[plugin.id] = plugin;
