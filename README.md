@@ -30,6 +30,11 @@ The preferred method to install the plugin is to use the Community Plugins Prefe
 2. You will see a text area below each installed plugin where you can add your personal annotation.
 3. Annotations are automatically saved and will be displayed whenever you open the settings pane.
 
+## Privacy
+
+- **Vault access:** the plugin lists the Markdown files in your vault (via Obsidian's `vault.getFiles`/file lookup APIs) only to power the file-path suggestions and case-insensitive lookup used by the optional "Store annotations in a Markdown file" feature. No vault content is read unless you enable that feature and point it at a specific file.
+- **Network access:** the plugin makes one network request, to `raw.githubusercontent.com`, to fetch Obsidian's public list of community plugins (`obsidianmd/obsidian-releases`). This is used solely to show a GitHub icon linking to each plugin's repository, and can be disabled in the settings ("Show GitHub links").
+
 ## Screenshot
 
 ![Screenshot of the setting pane showing installed plugins with annotations by the user](docs/images/screenshot_dark.jpg)
