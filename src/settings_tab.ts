@@ -40,6 +40,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         // `key` always comes from a `control` definition below, all of which name real
         // top-level properties of PluginsAnnotationsSettings.
         (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+
+        // The community plugin list backing the GitHub icons is only fetched at startup
+        // when the icons are enabled, so switching them on later has to fetch it now.
+        if (key === 'show_github_icons' && value === true) {
+            void this.plugin.loadCommunityPluginsJson();
+        }
+
         return new Promise<void>((resolve) => {
             this.plugin.debouncedSaveAnnotations(() => {
                 this.updateUninstalledPluginSettings();

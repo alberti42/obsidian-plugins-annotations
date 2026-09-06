@@ -77,9 +77,6 @@ export default class PluginsAnnotations extends Plugin {
 
         // registerEvent() unregisters the listener automatically on unload.
         this.registerEvent(this.app.vault.on('modify', this.onModifiedFile));
-
-        // Call this function in your plugin initialization or where appropriate
-        void this.loadCommunityPluginsJson();
     }
 
     // Declared as an arrow function (rather than bound in the constructor) so it
@@ -108,9 +105,12 @@ export default class PluginsAnnotations extends Plugin {
 	// Declared as an arrow function (rather than bound in the constructor) so it
 	// keeps its `this` binding when passed as a bare callback to workspace.onLayoutReady.
 	onLayoutReady = async (): Promise<void> => {
-		// Load settings
-		const loadSettingsPromise = this.loadSettings();
-		
+		// Load the settings before anything else: loadCommunityPluginsJson() honours the
+		// show_github_icons setting, so it must not run until the value saved by the user
+		// is known. Otherwise it sees the default (true) and fetches even when the user
+		// turned the GitHub icons off.
+		await this.loadSettings();
+
 		// Load the big json file containing the GitHub address of all community plugins
 		const loadCommunityPluginsJsonPromise = this.loadCommunityPluginsJson();
 
@@ -131,7 +131,7 @@ export default class PluginsAnnotations extends Plugin {
         if(this.communityPluginTab && this.communityPluginTab.containerEl) this.listenForThemeChange(this.communityPluginTab.containerEl);
 
         // Update the community plugin pane if this is currently open
-        await this.updateCommunityPluginPaneIfOpened([loadSettingsPromise,loadCommunityPluginsJsonPromise]);
+        await this.updateCommunityPluginPaneIfOpened([loadCommunityPluginsJsonPromise]);
     };
 
     /* Load settings for different versions */
