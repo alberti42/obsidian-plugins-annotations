@@ -19,7 +19,6 @@ import { PluginAnnotationDict_1_4_0, PluginsAnnotationsSettings_1_4_0, PluginsAn
 import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0, DEFAULT_SETTINGS_1_6_0 } from './defaults_legacy';
 import { DEFAULT_SETTINGS } from 'default_settings';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
-import * as path from 'path';
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
 import { backupSettings, debounceFactoryWithWaitMechanism, delay, setSvgIcon, sortAnnotations } from 'utils';
 import { AnnotationControl } from 'annotation_control';
@@ -357,8 +356,9 @@ export default class PluginsAnnotations extends Plugin {
             if (!(adapter instanceof FileSystemAdapter)) {
                 throw new Error("The vault folder could not be determined.");
             }
-            // Normalize to POSIX-style path
-            this.vaultPath = adapter.getBasePath().split(path.sep).join(path.posix.sep);
+            // Normalize to POSIX-style path (avoids depending on Node's `path` module)
+            const osSep = Platform.isWin ? '\\' : '/';
+            this.vaultPath = adapter.getBasePath().split(osSep).join('/');
             
             return this.vaultPath;
         } else return "";

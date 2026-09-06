@@ -1,8 +1,7 @@
 // utils.ts
 
-import { App, Modal, normalizePath, TAbstractFile, TFile, TFolder, Vault,
+import { App, Modal, normalizePath, Platform, TAbstractFile, TFile, TFolder, Vault,
     AbstractInputSuggest, prepareFuzzySearch, SearchResult } from "obsidian";
-import * as path from "path";
 import { ParsedPath, PluginAnnotationDict, PluginBackup } from "types";
 
 export function parseFilePath(filePath: string): ParsedPath {
@@ -56,7 +55,10 @@ export function showConfirmationDialog(app: App, title: string, message: Documen
 }
 
 export function makePosixPathOScompatible(posixPath:string): string {
-    return posixPath.split(path.posix.sep).join(path.sep);
+    // Avoids depending on Node's `path` module: the OS-native separator is '\' on
+    // Windows and '/' everywhere else.
+    const osSep = Platform.isWin ? '\\' : '/';
+    return posixPath.split('/').join(osSep);
 }
 
 // Joins multiple path segments into a single normalized path.
