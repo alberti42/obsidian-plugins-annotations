@@ -114,16 +114,16 @@ export async function createFolderIfNotExists(vault: Vault, folderPath: string) 
 
 // Utility to debounce rebuilds
 export function debounceFactory<F extends (...args: unknown[]) => unknown>(func: F, wait: number) {
-    let timeout: ReturnType<typeof setTimeout>;
+    let timeout: number;
 
     return (...args: Parameters<F>): void => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func(...args), wait);
+        window.clearTimeout(timeout);
+        timeout = window.setTimeout(() => func(...args), wait);
     };
 }
 
 export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) => void | Promise<void>>(func: F, wait: number) {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let timeout: number | null = null;
     let promise: Promise<void> | null = null;
     let resolvePromise: (() => void) | null = null;
 
@@ -139,7 +139,7 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) =>
         debouncedFct: (...args: Parameters<F>): void => {
             // Clear the previous timeout to cancel any pending execution
             if (timeout) {
-                clearTimeout(timeout);
+                window.clearTimeout(timeout);
                 timeout = null;
             }
 
@@ -154,7 +154,7 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) =>
                 };
 
                 // Schedule the function to run after the debounce delay
-                timeout = setTimeout(async () => {
+                timeout = window.setTimeout(async () => {
                     promise = null;
                     resolvePromise = null;
                     timeout = null;
@@ -245,7 +245,7 @@ export function downloadJson(data: unknown, filename = 'data.json') {
     a.click();
 
     // Clean up
-    setTimeout(() => {
+    window.setTimeout(() => {
         activeDocument.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 0);
@@ -310,6 +310,6 @@ export function setSvgIcon(el: Element, svgMarkup: string): void {
 /* Misc functions */
 
 export function delay(ms: number) {
-    return new Promise( resolve => setTimeout(resolve, ms) );
+    return new Promise( resolve => window.setTimeout(resolve, ms) );
 }
 
