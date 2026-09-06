@@ -308,8 +308,17 @@ const svgParser = new DOMParser();
 // analyzers (and the Obsidian plugin review) flag as unsafe even for trusted markup.
 export function setSvgIcon(el: Element, svgMarkup: string): void {
     el.empty();
-    const parsedSvg = svgParser.parseFromString(svgMarkup, 'image/svg+xml').documentElement;
-    el.appendChild(el.ownerDocument.importNode(parsedSvg, true));
+    const parsed = svgParser.parseFromString(svgMarkup, 'image/svg+xml');
+
+    // Unlike the HTML parser, the XML parser does not throw on malformed input: it
+    // returns a document whose content is a <parsererror> element, which would be
+    // inserted as a broken icon. Report it instead of rendering nothing silently.
+    if (parsed.getElementsByTagName('parsererror').length > 0) {
+        console.error('Failed to parse SVG icon:', parsed.documentElement.textContent);
+        return;
+    }
+
+    el.appendChild(el.ownerDocument.importNode(parsed.documentElement, true));
 }
 
 /* Misc functions */
