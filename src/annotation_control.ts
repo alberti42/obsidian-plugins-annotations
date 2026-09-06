@@ -84,7 +84,7 @@ export class AnnotationControl {
             }
         });
 
-        this.annotation_div.addEventListener('focus', async (event:FocusEvent) => {
+        this.annotation_div.addEventListener('focus', (event:FocusEvent) => {
             if(this.clickedLink) return;
 
             this.plugin.annotationBeingEdited=true;
@@ -134,19 +134,24 @@ export class AnnotationControl {
         });
 
         // Add placeholder class back if no changes are made
-        this.annotation_div.addEventListener('blur', async (event:FocusEvent) => {
-            this.plugin.annotationBeingEdited=false;
+        this.annotation_div.addEventListener('blur', () => { void this.handleBlur(); });
+    }
 
-            if(!this.plugin.settings.editable) { return; }
-            if(this.clickedLink) return;
+    // Handles the 'blur' event: re-applies the placeholder class if no changes were made,
+    // then re-renders the annotation. Kept separate from the listener registration above
+    // so the listener itself stays a plain, void-returning function.
+    async handleBlur(): Promise<void> {
+        this.plugin.annotationBeingEdited=false;
 
-            if (this.isPlaceholder) { // placeholder
-                this.setPlaceholderClasses();
-            } else {
-                this.removePlaceholderClasses();
-            }
-            await this.renderAnnotation();
-        });
+        if(!this.plugin.settings.editable) { return; }
+        if(this.clickedLink) return;
+
+        if (this.isPlaceholder) { // placeholder
+            this.setPlaceholderClasses();
+        } else {
+            this.removePlaceholderClasses();
+        }
+        await this.renderAnnotation();
     }
 
     setPlaceholderClasses() {

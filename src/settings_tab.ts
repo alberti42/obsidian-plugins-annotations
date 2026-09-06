@@ -222,18 +222,22 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 processingChange = false;
             };
 
-            inputEl.addEventListener('keydown', async (event) => {
+            // Wraps the async handler so it can be passed where a void-returning
+            // listener is expected; the returned promise is intentionally ignored.
+            const triggerChange = (event: Event) => { void onChangeHandler(event); };
+
+            inputEl.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
                     event.preventDefault();
-                    await onChangeHandler(event);
+                    triggerChange(event);
                 }
             });
 
-            inputEl.addEventListener('blur', onChangeHandler);
+            inputEl.addEventListener('blur', triggerChange);
 
             // Use change explicitly instead of onChange because onChange
             // reacts to events of type `input` instead of `change`
-            inputEl.addEventListener('change', onChangeHandler);
+            inputEl.addEventListener('change', triggerChange);
         });
 
         md_filepath_setting.addExtraButton((button) => {
@@ -632,49 +636,53 @@ class BackupManager {
 
                 // Add Restore and Delete buttons to the last cell
                 const actionCell = rowDiv.createDiv({ cls: 'plugin-comment-backup-table-cell plugin-comment-backup-buttons' });
+                const handleRestoreClick = async (): Promise<void> => {
+                    const answer = await showConfirmationDialog(this.plugin.app, 'Delete backup',
+                        createFragment((frag) => {
+                            frag.appendText('You are about to restore the settings from the backup named ');
+                            frag.createEl('strong',{text: backup.name});
+                            frag.appendText(' created on ');
+                            frag.createEl('strong',{text: moment(backup.date).format('YYYY-MM-DD HH:mm:ss')});
+                            frag.appendText('. If you proceed, the current settings will be overwritten with those from the backup. \
+                                If you want to keep a copy of the current settings, make a backup before proceeding.\
+                                Do you want to proceed restoring the seettings from the backup?');
+                        }));
+                    if(answer) {
+                        const settingsToBeRestored = structuredClone(backup.settings);
+                        if(settingsToBeRestored === undefined || settingsToBeRestored === null || typeof settingsToBeRestored !== 'object') throw new Error("Something went wrong with the data in the backup.");
+                        await this.plugin.loadSettings({...settingsToBeRestored, backups:this.plugin.settings.backups});
+                        new Notice(`Annotations restored from backup "${backup.name}"`);
+                        this.updateListBackups();
+                    }
+                };
+
                 actionCell.createEl('button', { text: 'Restore', cls: 'mod-cta' })
-                    .addEventListener('click', async () => {
-                        const answer = await showConfirmationDialog(this.plugin.app, 'Delete backup',
-                            createFragment((frag) => {
-                                frag.appendText('You are about to restore the settings from the backup named ');
-                                frag.createEl('strong',{text: backup.name});
-                                frag.appendText(' created on ');
-                                frag.createEl('strong',{text: moment(backup.date).format('YYYY-MM-DD HH:mm:ss')});
-                                frag.appendText('. If you proceed, the current settings will be overwritten with those from the backup. \
-                                    If you want to keep a copy of the current settings, make a backup before proceeding.\
-                                    Do you want to proceed restoring the seettings from the backup?');
-                            }));
-                        if(answer) {
-                            const settingsToBeRestored = structuredClone(backup.settings);
-                            if(settingsToBeRestored === undefined || settingsToBeRestored === null || typeof settingsToBeRestored !== 'object') throw new Error("Something went wrong with the data in the backup.");
-                            await this.plugin.loadSettings({...settingsToBeRestored, backups:this.plugin.settings.backups});
-                            new Notice(`Annotations restored from backup "${backup.name}"`);
-                            this.updateListBackups();
+                    .addEventListener('click', () => { void handleRestoreClick(); });
+
+                const handleDeleteClick = async (): Promise<void> => {
+                    const answer = await showConfirmationDialog(this.plugin.app, 'Delete backup',
+                        createFragment((frag) => {
+                            frag.appendText('You are about to delete the backup named ');
+                            frag.createEl('strong',{text: backup.name});
+                            frag.appendText(' created on ');
+                            frag.createEl('strong',{text: moment(backup.date).format('YYYY-MM-DD HH:mm:ss')});
+                            frag.appendText('. Do you want to continue?');
+                        }));
+                    if(answer) {
+                        const index = this.plugin.settings.backups.indexOf(backup);
+                        if (index !== -1) {
+                            this.plugin.settings.backups.splice(index, 1);  // Removes the element at the found index
                         }
-                    });
+                        this.plugin.debouncedSaveAnnotations();
+                        rowDiv.remove();
+                        if(this.plugin.settings.backups.length===0) {
+                            this.backupTableContainer.hide();
+                        }
+                    }
+                };
 
                 actionCell.createEl('button', { text: 'Delete', cls: 'mod-cta' })
-                    .addEventListener('click', async () => {
-                        const answer = await showConfirmationDialog(this.plugin.app, 'Delete backup',
-                            createFragment((frag) => {
-                                frag.appendText('You are about to delete the backup named ');
-                                frag.createEl('strong',{text: backup.name});
-                                frag.appendText(' created on ');
-                                frag.createEl('strong',{text: moment(backup.date).format('YYYY-MM-DD HH:mm:ss')});
-                                frag.appendText('. Do you want to continue?');
-                            }));
-                        if(answer) {
-                            const index = this.plugin.settings.backups.indexOf(backup);
-                            if (index !== -1) {
-                                this.plugin.settings.backups.splice(index, 1);  // Removes the element at the found index
-                            }
-                            this.plugin.debouncedSaveAnnotations();
-                            rowDiv.remove();
-                            if(this.plugin.settings.backups.length===0) {
-                                this.backupTableContainer.hide();
-                            }
-                        }
-                    });
+                    .addEventListener('click', () => { void handleDeleteClick(); });
             });
         } else {
             this.backupTableContainer.hide();
