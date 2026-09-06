@@ -39,9 +39,9 @@ The preferred method to install the plugin is to use the Community Plugins Prefe
 To contribute to the development of this plugin, follow these steps:
 
 1. Fork the repository on GitHub.
-2. Clone your forked repository somewhere on your local machine:
+2. Clone your forked repository somewhere on your local machine (replace `<your-username>` with your GitHub username):
    ```sh
-   git clone https://github.com/your-username/obsidian-plugins-annotations.git
+   git clone https://github.com/<your-username>/obsidian-plugins-annotations.git
    ```
 3. Navigate to the cloned repository directory:
    ```sh

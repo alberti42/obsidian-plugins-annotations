@@ -5,7 +5,7 @@
 	"minAppVersion": "1.13.0",
 	"description": "Allows adding personal comments to each installed plugin.",
 	"author": "Andrea Alberti",
-	"authorUrl": "https://www.linkedin.com/in/dr-andrea-alberti/",
+	"authorUrl": "https://github.com/alberti42",
 	"fundingUrl": "https://buymeacoffee.com/alberti",
 	"isDesktopOnly": false
 }
