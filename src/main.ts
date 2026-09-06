@@ -75,7 +75,8 @@ export default class PluginsAnnotations extends Plugin {
         
         this.app.workspace.onLayoutReady(this.onLayoutReady);
 
-        this.app.vault.on('modify',this.onModifiedFile);
+        // registerEvent() unregisters the listener automatically on unload.
+        this.registerEvent(this.app.vault.on('modify', this.onModifiedFile));
 
         // Call this function in your plugin initialization or where appropriate
         void this.loadCommunityPluginsJson();
@@ -761,9 +762,6 @@ export default class PluginsAnnotations extends Plugin {
 
         // Remove listner to theme change
         this.removeHandleThemeChangeListener();
-
-        // Unregister other event listeners
-        this.app.vault.off('modify',this.onModifiedFile);
 
         // Remove GitHub icons
         this.removeGitHubIcons();
