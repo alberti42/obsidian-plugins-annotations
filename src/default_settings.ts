@@ -1,4 +1,4 @@
-// defaults.ts
+// default_settings.ts
 
 import { PluginsAnnotationsSettings } from './types';
 

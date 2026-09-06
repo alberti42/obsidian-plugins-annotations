@@ -1,6 +1,6 @@
 // types.ts
 
-import { DEFAULT_SETTINGS } from "defaults";
+import { DEFAULT_SETTINGS } from "default_settings";
 
 export interface PluginAnnotation {
     name: string;  // extended name of the plugin

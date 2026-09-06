@@ -5,7 +5,7 @@ import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, setSvgIcon, sortAnnotations } from "utils";
-import { DEFAULT_SETTINGS } from 'defaults';
+import { DEFAULT_SETTINGS } from 'default_settings';
 import { AnnotationControl } from "annotation_control";
 
 import { svg_locked, svg_unlocked } from "graphics";
