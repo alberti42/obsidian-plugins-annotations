@@ -49,25 +49,25 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         
         const instructions_frag = createFragment((frag) => {
 
-            const div = document.createElement('div');
+            const div = activeDocument.createElement('div');
             div.classList.add('plugin-comment-instructions');
 
-            const p1 = document.createElement('p');
+            const p1 = activeDocument.createElement('p');
             p1.appendText('To add or edit your personal annotations for the installed plugins, go to the ');
             p1.appendChild(createPluginsPaneFragment());
             p1.appendText(' pane and click over the annotation field of the plugin you want to edit.');
             div.appendChild(p1);
 
-            const p2 = document.createElement('p2');
+            const p2 = activeDocument.createElement('p2');
             p2.innerText = "You can enter rich text annotations using Markdown just the same way you do in Obsidian. \
                 Once you are finished editing, the Markdown annotation will be rendered correctly.";
             div.appendChild(p2);
 
-            const p3 = document.createElement('p');
+            const p3 = activeDocument.createElement('p');
             p3.innerText = "You can directly link notes inside your \
                 vault by adding Obsidian links such as ";
 
-            const code = document.createElement('code');
+            const code = activeDocument.createElement('code');
             code.appendText('[[My notes/Review of plugin XYZ|my plugin note]]');
             code.classList.add('plugin-comment-selectable');
             p3.appendChild(code);
@@ -111,13 +111,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     frag.appendText(' pane, you can coveniently change this setting by clicking on the displayed icon');
                     const div = frag.createDiv();
                     div.classList.add('plugin-comment-icon-container')
-                    const unlock_icon = document.createElement('div');
+                    const unlock_icon = activeDocument.createElement('div');
                     unlock_icon.classList.add('clickable-icon');
                     setSvgIcon(unlock_icon, svg_unlocked);
                     unlock_icon.addEventListener('click', (event:MouseEvent) => {
                         editable_toggle.setValue(true);
                     });
-                    const lock_icon = document.createElement('div');
+                    const lock_icon = activeDocument.createElement('div');
                     lock_icon.classList.add('clickable-icon');
                     setSvgIcon(lock_icon, svg_locked);
                     lock_icon.addEventListener('click', (event:MouseEvent) => {
@@ -542,7 +542,7 @@ class BackupManager {
                 .setCta()
                 .onClick(async () => {
                     // Create an input element to upload a file
-                    const input = document.createElement('input');
+                    const input = activeDocument.createElement('input');
                     input.type = 'file';
                     input.accept = '.json'; // Only allow JSON files
 

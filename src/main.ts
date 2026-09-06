@@ -493,7 +493,7 @@ export default class PluginsAnnotations extends Plugin {
         // attribute changes so GitHub icons update whenever the user switches themes,
         // regardless of the OS-level color scheme.
         this.themeObserver = new MutationObserver(() => {
-            const isDarkMode = document.body.classList.contains('theme-dark');
+            const isDarkMode = activeDocument.body.classList.contains('theme-dark');
             const githubIcons = tabContainer.querySelectorAll(
                 'div.setting-item > div.setting-item-control > div.github-icon'
             );
@@ -504,7 +504,7 @@ export default class PluginsAnnotations extends Plugin {
         });
 
         // Watch only the 'class' attribute to minimise observer overhead
-        this.themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        this.themeObserver.observe(activeDocument.body, { attributes: true, attributeFilter: ['class'] });
     }
 
     // Locate the control area of the "Installed plugins" group heading, where the lock
@@ -524,7 +524,7 @@ export default class PluginsAnnotations extends Plugin {
                 return;
             }
 
-            this.lockIcon = document.createElement('div');
+            this.lockIcon = activeDocument.createElement('div');
 
             const lockIcon = this.lockIcon;
             lockIcon.classList.add('clickable-icon', 'extra-setting-button');
@@ -563,7 +563,7 @@ export default class PluginsAnnotations extends Plugin {
                 });
 
                 // Select all div elements that have both 'plugin-comment' and 'plugin-comment-placeholder' classes
-                const placeholders = document.querySelectorAll<HTMLDivElement>(!this.settings.editable ? 'div.plugin-comment.plugin-comment-placeholder' : 'div.plugin-comment.plugin-comment-hidden');
+                const placeholders = activeDocument.querySelectorAll<HTMLDivElement>(!this.settings.editable ? 'div.plugin-comment.plugin-comment-placeholder' : 'div.plugin-comment.plugin-comment-hidden');
 
                 // Loop through each plugin for which the placeholder is shown
                 placeholders.forEach((el) => {
@@ -678,7 +678,7 @@ export default class PluginsAnnotations extends Plugin {
 			if (descriptionDiv) {
 				const commentDiv = descriptionDiv.querySelector('.plugin-comment');
 				if (!commentDiv) {
-					const annotation_container = document.createElement('div');
+					const annotation_container = activeDocument.createElement('div');
 					annotation_container.className = 'plugin-comment';
 
                     const annotationControl = new AnnotationControl(this,annotation_container,pluginId,pluginName);
@@ -693,8 +693,8 @@ export default class PluginsAnnotations extends Plugin {
 							const controlDiv = pluginDOMElement.querySelector('.setting-item-control');
 							if(controlDiv) {
 								{
-									// Read Obsidian's active theme from document.body at render time
-									const isDarkMode = document.body.classList.contains('theme-dark');
+									// Read Obsidian's active theme from activeDocument.body at render time
+									const isDarkMode = activeDocument.body.classList.contains('theme-dark');
 									const gitHubIcon = annotationControl.addGitHubIcon(controlDiv,repo, isDarkMode);
 									if(gitHubIcon) this.listGitHubIcons.push(gitHubIcon);
 								}

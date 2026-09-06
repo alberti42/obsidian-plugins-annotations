@@ -236,17 +236,17 @@ export function downloadJson(data: unknown, filename = 'data.json') {
 
     // Step 3: Create a download link and trigger the download
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = activeDocument.createElement('a');
     a.href = url;
     a.download = filename;
 
     // Append the anchor to the body (required for Firefox)
-    document.body.appendChild(a);
+    activeDocument.body.appendChild(a);
     a.click();
 
     // Clean up
     setTimeout(() => {
-        document.body.removeChild(a);
+        activeDocument.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 0);
 }

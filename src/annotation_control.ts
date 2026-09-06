@@ -27,7 +27,7 @@ export class AnnotationControl {
         this.label = Platform.isMobile ? this.plugin.settings.label_mobile : this.plugin.settings.label_desktop
         this.placeholder = (this.plugin.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
 
-        this.annotation_div = document.createElement('div');
+        this.annotation_div = activeDocument.createElement('div');
         this.annotation_div.className = 'plugin-comment-annotation';
                 
         // Configure editable state
@@ -175,8 +175,8 @@ export class AnnotationControl {
         // DOM updates and layout recalculations before running your selection code.
         // It ensures that all DOM manipulations are fully processed before the next paint,
         // even though the callback is executed before that repaint occurs. 
-        requestAnimationFrame(() => {
-            const range = document.createRange();
+        window.requestAnimationFrame(() => {
+            const range = activeDocument.createRange();
             range.selectNodeContents(this.annotation_div);
             const selection = getSelection();
             if (selection) {
@@ -219,7 +219,7 @@ export class AnnotationControl {
 
     addGitHubIcon(controlDiv:Element, repo:string, isDarkMode:boolean):HTMLDivElement | null {
         if (controlDiv) {
-            const GitHubDiv = document.createElement('div');
+            const GitHubDiv = activeDocument.createElement('div');
             GitHubDiv.classList.add('clickable-icon', 'extra-setting-button', 'github-icon');
             GitHubDiv.setAttribute('aria-label', 'Open plugin\'s GitHub page');
             setSvgIcon(GitHubDiv, isDarkMode ? svg_github_dark : svg_github_light);
