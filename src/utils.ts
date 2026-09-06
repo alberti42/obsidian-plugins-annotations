@@ -274,7 +274,7 @@ export async function backupSettings(backupName: string, toBeBackedUp: unknown, 
     let settingsWithoutBackup;
 
     // Remove the backups field from the settings to be backed up
-    if (toBeBackedUp.hasOwnProperty('backups')) {
+    if (Object.prototype.hasOwnProperty.call(toBeBackedUp, 'backups')) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `backups` is intentionally discarded so it isn't included in the backup being created
         const { backups: _, ...rest } = toBeBackedUp as { backups: unknown };
         settingsWithoutBackup = rest;

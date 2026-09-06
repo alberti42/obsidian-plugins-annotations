@@ -400,7 +400,7 @@ export default class PluginsAnnotations extends Plugin {
     generateInvertedMap(originalMap: Record < string, string >) {
         const invertedMap: Record < string, string > = {};
         for (const key in originalMap) {
-            if (originalMap.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(originalMap, key)) {
                 const value = originalMap[key];
                 invertedMap[value] = key;
             }
@@ -451,7 +451,7 @@ export default class PluginsAnnotations extends Plugin {
                 return async function (this: Plugins, pluginId: string): Promise<void> {
                     await next.call(this, pluginId);
                     // Triggered when pluginId has been uninstalled
-                    if (self.settings.automatic_remove && self.settings.annotations.hasOwnProperty(pluginId)) {
+                    if (self.settings.automatic_remove && Object.prototype.hasOwnProperty.call(self.settings.annotations, pluginId)) {
                         // If automatic_remove is enabled and there is an annotation, remove the annotation 
                         self.removeAnnotation(pluginId);
                         self.debouncedSaveAnnotations();
@@ -476,7 +476,7 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     modifyAnnotation(pluginId: string, annotation: PluginAnnotation) {
-        const alreadyExisted = this.settings.annotations.hasOwnProperty(pluginId);
+        const alreadyExisted = Object.prototype.hasOwnProperty.call(this.settings.annotations, pluginId);
         this.settings.annotations[pluginId] = annotation;
         if(!alreadyExisted) this.sortPluginAnnotationsByName();
     }
