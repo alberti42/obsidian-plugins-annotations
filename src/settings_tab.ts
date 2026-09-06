@@ -154,7 +154,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('00 Meta/Misc/Plugins annotations.md');
                     frag.appendText(').');
                     md_filepath_error_div = frag.createDiv({text: 'Error: the filename must end with .md extension.', cls: "mod-warning" });
-                    md_filepath_error_div.style.display = 'none';
+                    md_filepath_error_div.hide();
                 }));
 
         let md_filepath_text: TextComponent;
@@ -191,7 +191,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 if(filepath === '' || filepath!==this.plugin.settings.markdown_file_path) { // if the path has changed
 
                     if(filepath.trim()==='') {
-                        md_filepath_error_div.style.display = 'none';
+                        md_filepath_error_div.hide();
                         this.plugin.settings.markdown_file_path = '';
                         text.setValue(this.plugin.settings.markdown_file_path);
                         processingChange = false;
@@ -202,14 +202,14 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     filepath = normalizePath(filepath);
 
                     if (parseFilePath(filepath).ext !== '.md') {
-                        md_filepath_error_div.style.display = '';
+                        md_filepath_error_div.show();
                         this.plugin.settings.markdown_file_path = DEFAULT_SETTINGS.markdown_file_path; // reverts to the default behavior
                         await this.plugin.saveSettings();
                         processingChange = false;
                         return;
                     }
 
-                    md_filepath_error_div.style.display = 'none';
+                    md_filepath_error_div.hide();
                     const answer = await handleMarkdownFilePathChange(this.plugin, filepath);
                     if(answer) {
                         this.plugin.settings.markdown_file_path = filepath;
@@ -246,7 +246,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 });
         });
 
-        md_filepath_setting.settingEl.style.display = this.plugin.settings.markdown_file_path === '' ? 'none' : '';
+        md_filepath_setting.settingEl.toggle(this.plugin.settings.markdown_file_path !== '');
 
         let md_file_toggle: ToggleComponent;
         md_file_setting.addToggle(toggle => {
@@ -255,10 +255,10 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.markdown_file_path !== '')
             .onChange(async (value: boolean) => {
                 if (value) {
-                    md_filepath_setting.settingEl.style.display = '';
+                    md_filepath_setting.settingEl.show();
                     this.plugin.settings.markdown_file_path = file_path_field_control.getValue();
                 } else {
-                    md_filepath_setting.settingEl.style.display = 'none';
+                    md_filepath_setting.settingEl.hide();
                     this.plugin.settings.markdown_file_path = '';
                 }
                 this.plugin.debouncedSaveAnnotations();
@@ -498,7 +498,7 @@ class BackupManager {
         // Create a wrapper div for the table
         this.backupTableContainer = this.containerEl.createDiv();
         this.backupTableContainer.classList.add('setting-item');
-        this.backupTableContainer.style.display = 'none';
+        this.backupTableContainer.hide();
 
         this.updateListBackups();
     }
@@ -582,7 +582,7 @@ class BackupManager {
         
         // List Existing Backups
         if (this.plugin.settings.backups.length > 0) {
-            this.backupTableContainer.style.display = '';
+            this.backupTableContainer.show();
             
             // Sort the backups by date (most recent first)
             this.plugin.settings.backups.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -671,13 +671,13 @@ class BackupManager {
                             this.plugin.debouncedSaveAnnotations();
                             rowDiv.remove();
                             if(this.plugin.settings.backups.length===0) {
-                                this.backupTableContainer.style.display = 'none';
+                                this.backupTableContainer.hide();
                             }
                         }
                     });
             });
         } else {
-            this.backupTableContainer.style.display = 'none';
+            this.backupTableContainer.hide();
         }
     }
 
