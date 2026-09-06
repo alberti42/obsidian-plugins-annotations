@@ -4,7 +4,7 @@ import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
 import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
-import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, sortAnnotations } from "utils";
+import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, setSvgIcon, sortAnnotations } from "utils";
 import { DEFAULT_SETTINGS } from 'defaults';
 import { AnnotationControl } from "annotation_control";
 
@@ -113,13 +113,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     div.classList.add('plugin-comment-icon-container')
                     const unlock_icon = document.createElement('div');
                     unlock_icon.classList.add('clickable-icon');
-                    unlock_icon.innerHTML = svg_unlocked;
+                    setSvgIcon(unlock_icon, svg_unlocked);
                     unlock_icon.addEventListener('click', (event:MouseEvent) => {
                         editable_toggle.setValue(true);
-                    });         
+                    });
                     const lock_icon = document.createElement('div');
                     lock_icon.classList.add('clickable-icon');
-                    lock_icon.innerHTML = svg_locked;
+                    setSvgIcon(lock_icon, svg_locked);
                     lock_icon.addEventListener('click', (event:MouseEvent) => {
                         editable_toggle.setValue(false);
                     });

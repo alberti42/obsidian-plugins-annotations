@@ -294,6 +294,19 @@ export async function backupSettings(backupName: string, toBeBackedUp: unknown, 
     });
 }
 
+/* Safe SVG insertion (avoids assigning to innerHTML) */
+
+const svgParser = new DOMParser();
+
+// Parses a trusted, hardcoded SVG markup string and inserts it into `el`, replacing
+// any existing content. Used instead of `el.innerHTML = svgMarkup`, which static
+// analyzers (and the Obsidian plugin review) flag as unsafe even for trusted markup.
+export function setSvgIcon(el: Element, svgMarkup: string): void {
+    el.empty();
+    const parsedSvg = svgParser.parseFromString(svgMarkup, 'image/svg+xml').documentElement;
+    el.appendChild(el.ownerDocument.importNode(parsedSvg, true));
+}
+
 /* Misc functions */
 
 export function delay(ms: number) {

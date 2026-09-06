@@ -3,6 +3,7 @@
 import PluginsAnnotations from "main";
 import { MarkdownRenderer, Platform } from "obsidian";
 import { isPluginAnnotation } from "types";
+import { setSvgIcon } from "utils";
 
 const github_prefix = "https://github.com/";
 
@@ -221,7 +222,7 @@ export class AnnotationControl {
             const GitHubDiv = document.createElement('div');
             GitHubDiv.classList.add('clickable-icon', 'extra-setting-button', 'github-icon');
             GitHubDiv.setAttribute('aria-label', 'Open plugin\'s GitHub page');
-            GitHubDiv.innerHTML = isDarkMode ? svg_github_dark : svg_github_light;
+            setSvgIcon(GitHubDiv, isDarkMode ? svg_github_dark : svg_github_light);
 
             // Add click listener to open the repo URL
             GitHubDiv.addEventListener('click', () => {

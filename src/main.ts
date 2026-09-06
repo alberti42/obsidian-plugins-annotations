@@ -21,7 +21,7 @@ import { DEFAULT_SETTINGS } from 'defaults';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import * as path from 'path';
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
-import { backupSettings, debounceFactoryWithWaitMechanism, delay, sortAnnotations } from 'utils';
+import { backupSettings, debounceFactoryWithWaitMechanism, delay, setSvgIcon, sortAnnotations } from 'utils';
 import { AnnotationControl } from 'annotation_control';
 
 import { svg_locked, svg_unlocked, svg_github_dark, svg_github_light } from "graphics";
@@ -499,7 +499,7 @@ export default class PluginsAnnotations extends Plugin {
             );
             // Update each icon to match the new theme
             githubIcons.forEach((icon) => {
-                icon.innerHTML = isDarkMode ? svg_github_dark : svg_github_light;
+                setSvgIcon(icon, isDarkMode ? svg_github_dark : svg_github_light);
             });
         });
 
@@ -531,10 +531,10 @@ export default class PluginsAnnotations extends Plugin {
             
             if(this.settings.editable) {
                 lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                lockIcon.innerHTML = svg_unlocked;
+                setSvgIcon(lockIcon, svg_unlocked);
             } else {
                 lockIcon.setAttribute('aria-label', 'Click to be able to edit personal annotations');
-                lockIcon.innerHTML = svg_locked;
+                setSvgIcon(lockIcon, svg_locked);
             }
 
             lockIcon.addEventListener('click', (event:MouseEvent) => {
@@ -543,10 +543,10 @@ export default class PluginsAnnotations extends Plugin {
                 this.debouncedSaveAnnotations();
                 if(this.settings.editable) {
                     lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                    lockIcon.innerHTML = svg_unlocked;
+                    setSvgIcon(lockIcon, svg_unlocked);
                 } else {
                     lockIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
-                    lockIcon.innerHTML = svg_locked;
+                    setSvgIcon(lockIcon, svg_locked);
 
                 }
                 const plugins = containerEl.querySelectorAll('.plugin-comment-annotation');
