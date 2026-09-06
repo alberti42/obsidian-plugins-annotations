@@ -243,12 +243,11 @@ export function downloadJson(data: unknown, filename = 'data.json') {
 
     // Step 3: Create a download link and trigger the download
     const url = URL.createObjectURL(blob);
-    const a = activeDocument.createElement('a');
+    // Created directly on the body, which it has to be attached to anyway (required for Firefox)
+    const a = activeDocument.body.createEl('a');
     a.href = url;
     a.download = filename;
 
-    // Append the anchor to the body (required for Firefox)
-    activeDocument.body.appendChild(a);
     a.click();
 
     // Clean up

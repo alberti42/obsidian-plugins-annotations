@@ -97,33 +97,28 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                         name: 'How to edit annotations',
                         render: (setting) => {
                             setting.setName(createFragment((frag) => {
-                                const div = activeDocument.createElement('div');
-                                div.classList.add('plugin-comment-instructions');
+                                const div = frag.createDiv({ cls: 'plugin-comment-instructions' });
 
-                                const p1 = activeDocument.createElement('p');
+                                const p1 = div.createEl('p');
                                 p1.appendText('To add or edit your personal annotations for the installed plugins, go to the ');
                                 p1.appendChild(createPluginsPaneFragment());
                                 p1.appendText(' pane and click over the annotation field of the plugin you want to edit.');
-                                div.appendChild(p1);
 
-                                const p2 = activeDocument.createElement('p2');
-                                p2.innerText = "You can enter rich text annotations using Markdown just the same way you do in Obsidian. \
-                                    Once you are finished editing, the Markdown annotation will be rendered correctly.";
-                                div.appendChild(p2);
+                                // Previously created as a <p2> element, which is not valid HTML: browsers
+                                // render unknown elements inline, so this paragraph neither behaved as a
+                                // block nor picked up the `.plugin-comment-instructions > p` styling.
+                                const p2 = div.createEl('p');
+                                p2.setText("You can enter rich text annotations using Markdown just the same way you do in Obsidian. \
+                                    Once you are finished editing, the Markdown annotation will be rendered correctly.");
 
-                                const p3 = activeDocument.createElement('p');
-                                p3.innerText = "You can directly link notes inside your \
-                                    vault by adding Obsidian links such as ";
-
-                                const code = activeDocument.createElement('code');
-                                code.appendText('[[My notes/Review of plugin XYZ|my plugin note]]');
-                                code.classList.add('plugin-comment-selectable');
-                                p3.appendChild(code);
+                                const p3 = div.createEl('p');
+                                p3.appendText("You can directly link notes inside your \
+                                    vault by adding Obsidian links such as ");
+                                // appendText rather than the `text` option: this is a code
+                                // sample, not UI prose, so it must keep its capitalisation.
+                                p3.createEl('code', { cls: 'plugin-comment-selectable' })
+                                    .appendText('[[My notes/Review of plugin XYZ|my plugin note]]');
                                 p3.appendText('.');
-
-                                div.appendChild(p3);
-
-                                frag.appendChild(div);
                             }));
                         },
                     },
@@ -197,12 +192,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                             frag.appendText(' pane. The annotation field will appear automatically.');
 
                             if (Platform.isMobile) {
-                                const p = frag.createEl('p');
-                                const warning = p.createEl('span', {
+                                // createEl() already appends to the fragment.
+                                frag.createEl('p').createSpan({
+                                    cls: 'mod-warning',
                                     text: 'On mobile devices, you can hover over plugins with your finger instead of using the mouse.',
                                 });
-                                warning.classList.add('mod-warning');
-                                frag.appendChild(p);
                             }
                         }),
                         control: { type: 'toggle', key: 'hide_placeholders' },
@@ -309,24 +303,20 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 protected against accidental changes.  In the ');
             frag.appendChild(createPluginsPaneFragment());
             frag.appendText(' pane, you can coveniently change this setting by clicking on the displayed icon');
-            const div = frag.createDiv();
-            div.classList.add('plugin-comment-icon-container')
-            const unlock_icon = activeDocument.createElement('div');
-            unlock_icon.classList.add('clickable-icon');
-            setSvgIcon(unlock_icon, svg_unlocked);
-            unlock_icon.addEventListener('click', () => {
-                editable_toggle.setValue(true);
-            });
-            const lock_icon = activeDocument.createElement('div');
-            lock_icon.classList.add('clickable-icon');
+            // Built in the order the icons appear, since createDiv() appends as it goes.
+            const div = frag.createDiv({ cls: 'plugin-comment-icon-container' });
+            div.appendText('{');
+            const lock_icon = div.createDiv({ cls: 'clickable-icon' });
             setSvgIcon(lock_icon, svg_locked);
             lock_icon.addEventListener('click', () => {
                 editable_toggle.setValue(false);
             });
-            div.appendText('{');
-            div.appendChild(lock_icon);
             div.appendText(',');
-            div.appendChild(unlock_icon);
+            const unlock_icon = div.createDiv({ cls: 'clickable-icon' });
+            setSvgIcon(unlock_icon, svg_unlocked);
+            unlock_icon.addEventListener('click', () => {
+                editable_toggle.setValue(true);
+            });
             div.appendText('}');
             frag.appendText('which either locks (make non-editable) or unlocks (make editable) your personal annotations.')
         }));
@@ -460,7 +450,7 @@ class BackupManager {
                 You can customize the names of existing backups by clicking on their names once you have created them.'
                 + export_label)
             .addButton(button => button
-                .setButtonText('Create Backup')
+                .setButtonText('Create backup')
                 .setCta()
                 .onClick(async () => {
                     const backupName = this.UNTITLED_BACKUP;
@@ -486,8 +476,10 @@ class BackupManager {
                 .setButtonText('Import')
                 .setCta()
                 .onClick(async () => {
-                    // Create an input element to upload a file
-                    const input = activeDocument.createElement('input');
+                    // Create an input element to upload a file. It is never added to the
+                    // document — it only exists to open the file picker via click() — so
+                    // the global createEl() is used to build it detached.
+                    const input = createEl('input');
                     input.type = 'file';
                     input.accept = '.json'; // Only allow JSON files
 

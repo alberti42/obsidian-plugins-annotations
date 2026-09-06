@@ -530,10 +530,11 @@ export default class PluginsAnnotations extends Plugin {
                 return;
             }
 
-            this.lockIcon = activeDocument.createElement('div');
+            // createDiv() appends to the heading as it creates the icon, which is where
+            // it was being placed at the end of this block anyway.
+            this.lockIcon = headingContainer.createDiv({ cls: ['clickable-icon', 'extra-setting-button'] });
 
             const lockIcon = this.lockIcon;
-            lockIcon.classList.add('clickable-icon', 'extra-setting-button');
             
             if(this.settings.editable) {
                 lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
@@ -586,8 +587,6 @@ export default class PluginsAnnotations extends Plugin {
                     }
                 });
             });
-
-            headingContainer.appendChild(lockIcon);
         }
     }
 
@@ -687,12 +686,9 @@ export default class PluginsAnnotations extends Plugin {
 			if (descriptionDiv) {
 				const commentDiv = descriptionDiv.querySelector('.plugin-comment');
 				if (!commentDiv) {
-					const annotation_container = activeDocument.createElement('div');
-					annotation_container.className = 'plugin-comment';
+					const annotation_container = descriptionDiv.createDiv({ cls: 'plugin-comment' });
 
-                    const annotationControl = new AnnotationControl(this,annotation_container,pluginId,pluginName);
-                    
-                    descriptionDiv.appendChild(annotation_container);                       
+                    const annotationControl = new AnnotationControl(this,annotation_container,pluginId,pluginName);                       
 
 					if(this.settings.show_github_icons) {
 						// Get the repository of the plugin

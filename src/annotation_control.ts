@@ -34,9 +34,10 @@ export class AnnotationControl {
         this.label = Platform.isMobile ? this.plugin.settings.label_mobile : this.plugin.settings.label_desktop
         this.placeholder = (this.plugin.settings.label_placeholder).replace(/\$\{plugin_name\}/g, pluginName);
 
-        this.annotation_div = activeDocument.createElement('div');
-        this.annotation_div.className = 'plugin-comment-annotation';
-                
+        // createDiv() appends to the container as it creates the element, so the
+        // annotation no longer needs to be attached at the end of the constructor.
+        this.annotation_div = annotation_container.createDiv({ cls: 'plugin-comment-annotation' });
+
         // Configure editable state
         if(this.plugin.settings.editable) {
             this.annotation_div.contentEditable = 'true';
@@ -62,8 +63,6 @@ export class AnnotationControl {
 
         // Add listeners
         this.addEventListeners();
-
-        annotation_container.appendChild(this.annotation_div);
     }
 
     addEventListeners() {
@@ -267,8 +266,9 @@ export class AnnotationControl {
 
     addGitHubIcon(controlDiv:Element, repo:string, isDarkMode:boolean):HTMLDivElement | null {
         if (controlDiv) {
-            const GitHubDiv = activeDocument.createElement('div');
-            GitHubDiv.classList.add('clickable-icon', 'extra-setting-button', 'github-icon');
+            // The global createDiv() builds a detached element, since this icon is
+            // positioned with insertBefore() below rather than appended.
+            const GitHubDiv = createDiv({ cls: ['clickable-icon', 'extra-setting-button', 'github-icon'] });
             GitHubDiv.setAttribute('aria-label', 'Open plugin\'s GitHub page');
             setSvgIcon(GitHubDiv, isDarkMode ? svg_github_dark : svg_github_light);
 
