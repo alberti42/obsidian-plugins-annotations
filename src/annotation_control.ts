@@ -199,7 +199,7 @@ export class AnnotationControl {
         } else {
             desc = (this.label + this.annotationDesc).replace(/\$\{plugin_name\}/g, this.pluginName);
         }
-        await MarkdownRenderer.renderMarkdown(desc, this.annotation_div, '', this.plugin);
+        await MarkdownRenderer.render(this.plugin.app, desc, this.annotation_div, '', this.plugin);
         this.handleAnnotationLinks(this.annotation_div);
     }
 
