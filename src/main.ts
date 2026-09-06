@@ -64,9 +64,6 @@ export default class PluginsAnnotations extends Plugin {
             }, timeout_debounced_saving_ms);
         this.debouncedSaveAnnotations = debouncedFct;
         this.waitForSaveToComplete = waitFnc;
-
-        this.onLayoutReady = this.onLayoutReady.bind(this);
-        this.onModifiedFile = this.onModifiedFile.bind(this);
     }
 
     async onload() {
@@ -84,7 +81,9 @@ export default class PluginsAnnotations extends Plugin {
         void this.loadCommunityPluginsJson();
     }
 
-    async onModifiedFile(modifiedFile: TAbstractFile){
+    // Declared as an arrow function (rather than bound in the constructor) so it
+    // keeps its `this` binding when passed as a bare callback to vault.on/off.
+    onModifiedFile = async (modifiedFile: TAbstractFile): Promise<void> => {
         if(this.settings.markdown_file_path !== '') {
             if (modifiedFile.path === this.settings.markdown_file_path) {
                 if(!this.annotationBeingEdited) {
@@ -103,9 +102,11 @@ export default class PluginsAnnotations extends Plugin {
 
             }
         }
-    }
+    };
 
-	async onLayoutReady() {
+	// Declared as an arrow function (rather than bound in the constructor) so it
+	// keeps its `this` binding when passed as a bare callback to workspace.onLayoutReady.
+	onLayoutReady = async (): Promise<void> => {
 		// Load settings
 		const loadSettingsPromise = this.loadSettings();
 		
@@ -130,7 +131,7 @@ export default class PluginsAnnotations extends Plugin {
 
         // Update the community plugin pane if this is currently open
         await this.updateCommunityPluginPaneIfOpened([loadSettingsPromise,loadCommunityPluginsJsonPromise]);
-    }
+    };
 
     /* Load settings for different versions */
     async importSettings(data: unknown): Promise<boolean> {
