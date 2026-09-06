@@ -29,8 +29,9 @@
 }
 
 /* Mobile specific styles */
-.is-mobile .plugin-comment-annotation::after {
-        content: "" !important;
+/* Doubled class selector raises specificity so this wins without !important */
+.is-mobile .plugin-comment-annotation.plugin-comment-annotation::after {
+        content: "";
 }
 
 .plugin-comment-annotation {
