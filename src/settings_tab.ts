@@ -2,7 +2,7 @@
 
 import PluginsAnnotations from "main";
 import { handleMarkdownFilePathChange } from "manageAnnotations";
-import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, SettingDefinitionItem, SettingGroup, ToggleComponent } from "obsidian";
+import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, SettingDefinitionItem, SettingGroupItem, ToggleComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, setSvgIcon, sortAnnotations } from "utils";
 import { DEFAULT_SETTINGS } from 'default_settings';
@@ -15,12 +15,13 @@ declare const moment: typeof import('moment');
 export class PluginsAnnotationsSettingTab extends PluginSettingTab {
     plugin: PluginsAnnotations;
 
-    private uninstalledPluginsManager: UninstalledPluginsManager | null = null;
-    private backupManager: BackupManager | null = null;
+    private uninstalledPlugins: PluginAnnotationDict = {};
+    private backupManager: BackupManager;
 
     constructor(app: App, plugin: PluginsAnnotations) {
         super(app, plugin);
         this.plugin = plugin;
+        this.backupManager = new BackupManager(plugin, () => this.update());
         this.containerEl.classList.add('plugin-comment-settings');
     }
 
@@ -35,13 +36,34 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
         return new Promise<void>((resolve) => {
             this.plugin.debouncedSaveAnnotations(() => {
-                this.uninstalledPluginsManager?.updateUninstalledPluginSettings(this.containerEl);
+                this.updateUninstalledPluginSettings();
                 resolve();
             });
         });
     }
 
+    // Re-renders the annotation previews of the no-longer-installed plugins in place,
+    // without rebuilding the whole tab, so editing a label doesn't steal focus from
+    // the field being typed into.
+    private updateUninstalledPluginSettings(): void {
+        const elements = this.containerEl.querySelectorAll('div.setting-item-description.plugin-comment-annotation');
+        elements.forEach((descEl) => {
+            if (descEl.instanceOf(HTMLElement)) {
+                const pluginId = descEl.dataset.plugin;
+                const annotation = pluginId ? this.uninstalledPlugins[pluginId] : undefined;
+                if (pluginId && annotation) {
+                    descEl.empty();
+                    new AnnotationControl(this.plugin, descEl, pluginId, annotation.name);
+                }
+            }
+        });
+    }
+
     getSettingDefinitions(): SettingDefinitionItem[] {
+        // Recomputed on every render so the list reflects plugins installed or
+        // uninstalled while the tab was open.
+        this.uninstalledPlugins = this.plugin.getUninstalledPlugins();
+
         const createPluginsPaneFragment = (): DocumentFragment => {
             return createFragment((frag) => {
                 const em = frag.createEl('em');
@@ -193,9 +215,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 items: [
                     {
                         name: 'Create a backup copy of your current settings and annotations',
-                        render: (setting, group) => {
-                            this.backupManager = new BackupManager(this.plugin, setting, group);
-                        },
+                        render: (setting) => this.backupManager.renderButtons(setting),
+                    },
+                    {
+                        name: 'Existing backups',
+                        searchable: false,
+                        visible: () => this.plugin.settings.backups.length > 0,
+                        render: (setting) => this.backupManager.renderTable(setting),
                     },
                 ],
             },
@@ -216,14 +242,41 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                         name: 'List of no longer installed plugins',
                         desc: 'If you plan to reinstall the plugin in the future, \
                             it is recommended not to remove your annotations, as you can reuse them later.',
-                        visible: () => Object.keys(this.plugin.getUninstalledPlugins()).length > 0,
-                        render: (setting, group) => {
-                            this.uninstalledPluginsManager = new UninstalledPluginsManager(this.plugin, group, () => this.update());
-                        },
+                        visible: () => Object.keys(this.uninstalledPlugins).length > 0,
                     },
+                    // One row per no-longer-installed plugin, each rendering its own
+                    // annotation preview and delete button.
+                    ...sortAnnotations(this.uninstalledPlugins).map((pluginId): SettingGroupItem => ({
+                        name: `Plugin ${this.uninstalledPlugins[pluginId].name}`,
+                        searchable: false,
+                        render: (setting) => this.renderUninstalledPlugin(setting, pluginId),
+                    })),
                 ],
             },
         ];
+    }
+
+    private renderUninstalledPlugin(setting: Setting, pluginId: string): void {
+        setting.addButton(button => button
+            .setButtonText('Delete')
+            .setCta()
+            .onClick(() => {
+                // removeAnnotation() also drops the id from sortedPluginIds, which
+                // getUninstalledPlugins() reads on the next render.
+                this.plugin.removeAnnotation(pluginId);
+                delete this.uninstalledPlugins[pluginId];
+                this.plugin.debouncedSaveAnnotations();
+                this.update();
+            }));
+
+        setting.descEl.dataset.plugin = pluginId;
+
+        // Render the annotation
+        new AnnotationControl(this.plugin, setting.descEl, pluginId, this.uninstalledPlugins[pluginId].name);
+
+        // Set the attributes by applying the correct classes
+        setting.descEl.classList.add('plugin-comment-annotation');
+        setting.settingEl.classList.add('plugin-comment-uninstalled');
     }
 
     private renderEditableToggle(setting: Setting, createPluginsPaneFragment: () => DocumentFragment): void {
@@ -234,7 +287,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.editable)
             .onChange((value: boolean) => {
                 this.plugin.settings.editable = value;
-                this.plugin.debouncedSaveAnnotations(() => { this.uninstalledPluginsManager?.updateUninstalledPluginSettings(this.containerEl); });
+                this.plugin.debouncedSaveAnnotations(() => { this.updateUninstalledPluginSettings(); });
             })
         });
 
@@ -375,26 +428,16 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
 }
 
 class BackupManager {
-    private backupTableContainer: HTMLElement;
     private UNTITLED_BACKUP = 'Untitled backup';
 
-    constructor(private plugin:PluginsAnnotations, private setting: Setting, private group: SettingGroup) {
-        this.addBackupButtons();
+    constructor(private plugin:PluginsAnnotations, private requestUpdate: () => void) {}
 
-        // Create a wrapper div for the table, as a sibling of the row within the same group.
-        this.backupTableContainer = this.group.listEl.createDiv();
-        this.backupTableContainer.classList.add('setting-item');
-        this.backupTableContainer.hide();
-
-        this.updateListBackups();
-    }
-
-    addBackupButtons() {
+    renderButtons(setting: Setting) {
         const export_label = (Platform.isDesktopApp) ? ' Use the export and import buttons \
             to copy the current settings and annnotations to an external file and, vicevera, \
             to restore them from an external file.' : '';
 
-        this.setting
+        setting
             .setDesc('Use the backup button to create an internal backup copy. \
                 You can customize the names of existing backups by clicking on their names once you have created them.'
                 + export_label)
@@ -405,14 +448,14 @@ class BackupManager {
                     const backupName = this.UNTITLED_BACKUP;
                     await backupSettings(backupName,this.plugin.settings,this.plugin.settings.backups);
                     await this.plugin.saveSettings();
-                    this.updateListBackups();
+                    this.requestUpdate();
                 })
             );
 
-        this.setting.controlEl.classList.add('plugin-comment-export-buttons');
+        setting.controlEl.classList.add('plugin-comment-export-buttons');
 
         if (Platform.isDesktopApp) {
-            this.setting.addButton(button => button
+            setting.addButton(button => button
                 .setButtonText('Export')
                 .setCta()
                 .onClick(async () => {
@@ -422,7 +465,7 @@ class BackupManager {
                 })
             );
 
-            this.setting.addButton(button => button
+            setting.addButton(button => button
                 .setButtonText('Import')
                 .setCta()
                 .onClick(async () => {
@@ -445,7 +488,7 @@ class BackupManager {
                                     if(importedData === undefined || importedData === null || typeof importedData !== 'object') throw new Error("Something went wrong with the data in the backup.");
                                     await this.plugin.loadSettings({...importedData,backups:this.plugin.settings.backups});
                                     new Notice('Settings successfully imported.');
-                                    this.updateListBackups();
+                                    this.requestUpdate();
                                 } catch (error) {
                                     console.error('Error importing settings:', error);
                                     new Notice('Failed to import settings. Please ensure the file is valid.');
@@ -462,25 +505,25 @@ class BackupManager {
         }
     }
 
-    updateListBackups() {
-        this.backupTableContainer.innerHTML = '';
+    // Renders the table of existing backups into the row it is given. The row itself
+    // becomes the table container, matching the plain `.setting-item` wrapper this
+    // table lived in before the migration to declarative settings.
+    renderTable(setting: Setting) {
+        const backupTableContainer = setting.settingEl;
+        backupTableContainer.empty();
 
-        // List Existing Backups
-        if (this.plugin.settings.backups.length > 0) {
-            this.backupTableContainer.show();
+        // Sort the backups by date (most recent first)
+        this.plugin.settings.backups.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-            // Sort the backups by date (most recent first)
-            this.plugin.settings.backups.sort((a, b) => b.date.getTime() - a.date.getTime());
+        const tableDiv = backupTableContainer.createDiv({ cls: 'plugin-comment-backup-table' });
 
-            const tableDiv = this.backupTableContainer.createDiv({ cls: 'plugin-comment-backup-table' });
+        // Create the header row
+        const headerRow = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row header' });
+        headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Backup name' + (Platform.isMobileApp ? '' : ' (click to edit)') });
+        headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Created on' });
+        headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: '' });
 
-            // Create the header row
-            const headerRow = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row header' });
-            headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Backup name' + (Platform.isMobileApp ? '' : ' (click to edit)') });
-            headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: 'Created on' });
-            headerRow.createDiv({ cls: 'plugin-comment-backup-table-cell', text: '' });
-
-            this.plugin.settings.backups.forEach((backup) => {
+        this.plugin.settings.backups.forEach((backup) => {
                 const rowDiv = tableDiv.createDiv({ cls: 'plugin-comment-backup-table-row' });
 
                 // Backup name cell
@@ -533,7 +576,7 @@ class BackupManager {
                         if(settingsToBeRestored === undefined || settingsToBeRestored === null || typeof settingsToBeRestored !== 'object') throw new Error("Something went wrong with the data in the backup.");
                         await this.plugin.loadSettings({...settingsToBeRestored, backups:this.plugin.settings.backups});
                         new Notice(`Annotations restored from backup "${backup.name}"`);
-                        this.updateListBackups();
+                        this.requestUpdate();
                     }
                 };
 
@@ -557,72 +600,17 @@ class BackupManager {
                         this.plugin.debouncedSaveAnnotations();
                         rowDiv.remove();
                         if(this.plugin.settings.backups.length===0) {
-                            this.backupTableContainer.hide();
+                            // The whole row is hidden by its `visible` predicate once
+                            // there are no backups left.
+                            this.requestUpdate();
                         }
                     }
                 };
 
                 actionCell.createEl('button', { text: 'Delete', cls: 'mod-cta' })
                     .addEventListener('click', () => { void handleDeleteClick(); });
-            });
-        } else {
-            this.backupTableContainer.hide();
-        }
+        });
     }
 
 }
 
-class UninstalledPluginsManager {
-
-    private uninstalledPlugins:PluginAnnotationDict = {};
-
-    constructor(private plugin:PluginsAnnotations, private group: SettingGroup, private onListEmptied: () => void) {
-        this.uninstalledPlugins = this.plugin.getUninstalledPlugins();
-
-        // Iterate over uninstalled plugins and add settings to the group
-        sortAnnotations(this.uninstalledPlugins).forEach(pluginId => {
-            this.group.addSetting((pluginSetting) => {
-                pluginSetting
-                    .setName(`Plugin ${this.uninstalledPlugins[pluginId].name}`)
-                    .addButton(button => button
-                        .setButtonText('Delete')
-                        .setCta()
-                        .onClick(() => {
-                            delete this.plugin.settings.annotations[pluginId];
-                            delete this.uninstalledPlugins[pluginId];
-                            this.plugin.debouncedSaveAnnotations();
-                            pluginSetting.settingEl.remove();
-
-                            // If no more uninstalled plugins, hide the whole section.
-                            if (Object.keys(this.uninstalledPlugins).length === 0) {
-                                this.onListEmptied();
-                            }
-                        }));
-
-                pluginSetting.descEl.dataset.plugin=pluginId;
-
-                // Render the annotation
-                new AnnotationControl(this.plugin,pluginSetting.descEl,pluginId,this.uninstalledPlugins[pluginId].name);
-
-                // Set the attributes by applying the correct classes
-                pluginSetting.descEl.classList.add('plugin-comment-annotation');
-                pluginSetting.settingEl.classList.add('plugin-comment-uninstalled');
-            });
-        });
-    }
-
-    updateUninstalledPluginSettings(containerEl: HTMLElement) {
-        const elements = containerEl.querySelectorAll('div.setting-item-description.plugin-comment-annotation');
-        elements.forEach((descEl) => {
-            if (descEl.instanceOf(HTMLElement)) {
-                const pluginId = descEl.dataset.plugin;
-                if(pluginId) {
-                    descEl.innerHTML = '';
-                    new AnnotationControl(this.plugin,descEl,pluginId,this.uninstalledPlugins[pluginId].name);
-                }
-            }
-        });
-    }
-
-
-}
