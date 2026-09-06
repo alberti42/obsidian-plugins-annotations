@@ -770,7 +770,7 @@ class UninstalledPluginsManager {
     updateUninstalledPluginSettings(containerEl: HTMLElement) {
         const elements = containerEl.querySelectorAll('div.setting-item-description.plugin-comment-annotation');
         elements.forEach((descEl) => {
-            if (descEl instanceof HTMLElement) {
+            if (descEl.instanceOf(HTMLElement)) {
                 const pluginId = descEl.dataset.plugin;
                 if(pluginId) {
                     descEl.innerHTML = '';

@@ -427,7 +427,7 @@ export default class PluginsAnnotations extends Plugin {
 						next.call(this, setting, manifest);
 
 						const settingEl = setting.settingEl;
-						if (settingEl instanceof HTMLElement) {
+						if (settingEl.instanceOf(HTMLElement)) {
 							self.addAnnotation(settingEl, manifest.id);
 							// (Re)add the lock icon to the group heading. It is idempotent.
 							void self.addLockIcon(this.containerEl);
@@ -552,7 +552,7 @@ export default class PluginsAnnotations extends Plugin {
                 }
                 const plugins = containerEl.querySelectorAll('.plugin-comment-annotation');
                 plugins.forEach((div:Element) => {
-                    if (div instanceof HTMLDivElement) {
+                    if (div.instanceOf(HTMLDivElement)) {
                         if(this.settings.editable) {
                             div.contentEditable = 'true';
                             div.classList.add('plugin-comment-annotation-editable');
