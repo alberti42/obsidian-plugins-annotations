@@ -23,7 +23,14 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    async display(): Promise<void> {
+    // `PluginSettingTab.display()` is declared to return void; Obsidian calls it without
+    // awaiting. The actual (async) rendering logic lives in `displayAsync()` below, and is
+    // intentionally not awaited here.
+    display(): void {
+        void this.displayAsync();
+    }
+
+    private async displayAsync(): Promise<void> {
         const createPluginsPaneFragment = (): DocumentFragment => {
             return createFragment((frag) => {
                 const em = frag.createEl('em');

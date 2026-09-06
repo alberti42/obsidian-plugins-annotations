@@ -344,7 +344,7 @@ export default class PluginsAnnotations extends Plugin {
 
         // Update the preference pane if this is currently open
         const activeTab = this.app.setting.activeTab;
-        if(activeTab && activeTab instanceof PluginsAnnotationsSettingTab) await activeTab.display();
+        if(activeTab && activeTab instanceof PluginsAnnotationsSettingTab) activeTab.display();
     }
 
     // Store the path to the vault
