@@ -21,10 +21,10 @@ import { DEFAULT_SETTINGS_1_3_0, DEFAULT_SETTINGS_1_4_0, DEFAULT_SETTINGS_1_5_0,
 import { DEFAULT_SETTINGS } from 'default_settings';
 import { PluginsAnnotationsSettingTab } from 'settings_tab'
 import { readAnnotationsFromMdFile, writeAnnotationsToMdFile } from 'manageAnnotations';
-import { backupSettings, debounceFactoryWithWaitMechanism, delay, setSvgIcon, sortAnnotations } from 'utils';
+import { backupSettings, debounceFactoryWithWaitMechanism, delay, setLockIcon, setSvgIcon, sortAnnotations } from 'utils';
 import { AnnotationControl } from 'annotation_control';
 
-import { svg_locked, svg_unlocked, svg_github_dark, svg_github_light } from "graphics";
+import { svg_github_dark, svg_github_light } from "graphics";
     
 export default class PluginsAnnotations extends Plugin {
     settings: PluginsAnnotationsSettings = structuredClone(DEFAULT_SETTINGS);
@@ -538,10 +538,10 @@ export default class PluginsAnnotations extends Plugin {
             
             if(this.settings.editable) {
                 lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                setSvgIcon(lockIcon, svg_unlocked);
+                setLockIcon(lockIcon, true);
             } else {
                 lockIcon.setAttribute('aria-label', 'Click to be able to edit personal annotations');
-                setSvgIcon(lockIcon, svg_locked);
+                setLockIcon(lockIcon, false);
             }
 
             lockIcon.addEventListener('click', (event:MouseEvent) => {
@@ -550,10 +550,10 @@ export default class PluginsAnnotations extends Plugin {
                 this.debouncedSaveAnnotations();
                 if(this.settings.editable) {
                     lockIcon.setAttribute('aria-label', 'Click to lock personal annotations');
-                    setSvgIcon(lockIcon, svg_unlocked);
+                    setLockIcon(lockIcon, true);
                 } else {
                     lockIcon.setAttribute('aria-label', 'Click to unlock personal annotations');
-                    setSvgIcon(lockIcon, svg_locked);
+                    setLockIcon(lockIcon, false);
 
                 }
                 const plugins = containerEl.querySelectorAll('.plugin-comment-annotation');

@@ -1,12 +1,9 @@
 // graphics.ts
 
 // Inline SVG sources for the icons this plugin injects. These are parsed as XML by
-// setSvgIcon(), so they must stay well-formed: the previous, base64-encoded copies of
-// the lock icons carried stray line-continuation backslashes that an XML parser rejects.
-
-export const svg_unlocked = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock-open"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11v-4c0-2.8 2.2-5 5-5 1.6 0 3.1.8 4 2"/></svg>';
-
-export const svg_locked = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+// setSvgIcon(), so they must stay well-formed. The lock icons that used to live here
+// came from Lucide, which Obsidian bundles, so they are drawn with setIcon() instead;
+// GitHub's logo is a brand mark that is not part of that set.
 
 export const svg_github_light = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-settings"><defs><style> .cls-1 { fill: #24292f; fill-rule: evenodd; stroke-width: 0px; } </style></defs><path class="cls-1" d="M12,.3C5.4.3.1,5.7.1,12.3s3.4,9.8,8.1,11.4c.6.1.8-.3.8-.6s0-1.2,0-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.7-1.3-1.7-1.1-.7,0-.7,0-.7,1.2,0,1.8,1.2,1.8,1.2,1.1,1.8,2.8,1.3,3.5,1,0-.8.4-1.3.7-1.6-2.6-.3-5.4-1.3-5.4-5.9s.5-2.4,1.2-3.2c-.1-.3-.5-1.5.1-3.2,0,0,1-.3,3.3,1.2,1-.3,2-.4,3-.4,1,0,2,.1,3,.4,2.3-1.5,3.3-1.2,3.3-1.2.7,1.6.2,2.9.1,3.2.8.8,1.2,1.9,1.2,3.2,0,4.6-2.8,5.6-5.4,5.9.4.4.8,1.1.8,2.2,0,1.6,0,2.9,0,3.3s.2.7.8.6c4.7-1.6,8.1-6.1,8.1-11.4,0-6.6-5.3-12-11.9-12Z"></path></svg>';
 

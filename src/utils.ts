@@ -1,6 +1,6 @@
 // utils.ts
 
-import { App, Modal, normalizePath, Platform, TAbstractFile, TFile, TFolder, Vault,
+import { App, Modal, normalizePath, Platform, setIcon, TAbstractFile, TFile, TFolder, Vault,
     AbstractInputSuggest, prepareFuzzySearch, SearchResult } from "obsidian";
 import { ParsedPath, PluginAnnotationDict, PluginBackup } from "types";
 
@@ -319,6 +319,14 @@ export function setSvgIcon(el: Element, svgMarkup: string): void {
     }
 
     el.appendChild(el.ownerDocument.importNode(parsed.documentElement, true));
+}
+
+// Draws the lock (or open lock) icon into `el` from Obsidian's bundled Lucide set,
+// which is where these two icons came from in the first place. The element is cleared
+// first, so the same element can be flipped between the two states.
+export function setLockIcon(el: HTMLElement, unlocked: boolean): void {
+    el.empty();
+    setIcon(el, unlocked ? 'lock-open' : 'lock');
 }
 
 /* Misc functions */
