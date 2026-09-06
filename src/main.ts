@@ -163,7 +163,7 @@ export default class PluginsAnnotations extends Plugin {
                 // Upgrade annotations format
                 const upgradedAnnotations: PluginAnnotationDict = {};
                 for (const pluginId in data.annotations) {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `type` is intentionally discarded when upgrading to the new annotation format
                     const { type, ...rest } = data.annotations[pluginId];
                     upgradedAnnotations[pluginId] = rest;
                 }
@@ -411,7 +411,7 @@ export default class PluginsAnnotations extends Plugin {
 	patchCommunityPluginSettingTab(tab:SettingTab) {
 		if(this.communityPluginSettingTabPatched) return;
 
-		// eslint-disable-next-line @typescript-eslint/no-this-alias
+		// eslint-disable-next-line @typescript-eslint/no-this-alias -- captures the plugin instance so the patched function below (which has its own `this`) can still reach it
 		const self = this;
 
         // Monkey patch the per-plugin renderer of the community-plugins tab.
@@ -442,7 +442,7 @@ export default class PluginsAnnotations extends Plugin {
     }
 
     hookOnInstallAndUninstallPlugins() {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        // eslint-disable-next-line @typescript-eslint/no-this-alias -- captures the plugin instance so the patched functions below (which have their own `this`) can still reach it
         const self = this;
 
         // Monkey patch for uninstallPlugin

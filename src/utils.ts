@@ -191,7 +191,7 @@ export class FileSuggestion extends AbstractInputSuggest<TFile> {
         // Filter out the null matches
         const validMatches = matches.filter(([, result]) => result !== null && result.score > minScore);
         // Sort the valid matches by score
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- `a`/`b` are guaranteed non-null: validMatches was already filtered above
         validMatches.sort(([, a], [, b]) => b!.score - a!.score);
         return validMatches.map((c) => c[0]).slice(0, maxResults);
     }
@@ -275,7 +275,7 @@ export async function backupSettings(backupName: string, toBeBackedUp: unknown, 
 
     // Remove the backups field from the settings to be backed up
     if (toBeBackedUp.hasOwnProperty('backups')) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `backups` is intentionally discarded so it isn't included in the backup being created
         const { backups: _, ...rest } = toBeBackedUp as { backups: unknown };
         settingsWithoutBackup = rest;
     } else {

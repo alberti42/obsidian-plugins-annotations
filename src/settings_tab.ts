@@ -535,7 +535,7 @@ class BackupManager {
                 .setButtonText('Export')
                 .setCta()
                 .onClick(async () => {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `backups` is intentionally discarded so it isn't included in the exported file
                     const {backups:_,...rest} = this.plugin.settings;
                     downloadJson(rest);
                 })
