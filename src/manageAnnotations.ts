@@ -129,9 +129,9 @@ export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations) {
             isWriting = true;
             file = await plugin.app.vault.create(filePath, content_concatenated);
             isWriting = false;
-        } else {
+        } else if (file instanceof TFile) {
             isWriting = true;
-            await plugin.app.vault.modify(file as TFile, content_concatenated);
+            await plugin.app.vault.modify(file, content_concatenated);
             isWriting = false;
         }
     } catch (error) {

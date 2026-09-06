@@ -144,7 +144,7 @@ export default class PluginsAnnotations extends Plugin {
         // Nested function to handle different versions of settings
         const getSettingsFromData = async (data: unknown): Promise<unknown> => {
             if (isPluginsAnnotationsSettings(data)) {
-                return data as PluginsAnnotationsSettings;
+                return data;
             } else if (isPluginsAnnotationsSettings_1_6_0(data)) {
                 // Make a backup
                 await backupSettings('Settings before upgrade from 1.5 to 1.6',data,importBackups);
@@ -155,7 +155,7 @@ export default class PluginsAnnotations extends Plugin {
                     "compatibility":"1.7.0",
                     show_github_icons:DEFAULT_SETTINGS.show_github_icons
                 };
-                return settings as PluginsAnnotationsSettings;
+                return settings;
             } else if (isPluginsAnnotationsSettings_1_5_0(data)) {
                 // Make a backup
                 await backupSettings('Settings before upgrade from 1.5 to 1.6',data,importBackups);
