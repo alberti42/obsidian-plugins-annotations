@@ -110,7 +110,7 @@ export async function createFolderIfNotExists(vault: Vault, folderPath: string) 
     try {
         await vault.createFolder(folderPath);
     } catch (error) {
-        throw new Error(`Failed to create folder at ${folderPath}: ${error}`);
+        throw new Error(`Failed to create folder at ${folderPath}: ${String(error)}`);
     }
 }
 
@@ -155,20 +155,24 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) =>
                     resolve();  // Reference to resolve() used when the previous execution is cancelled
                 };
 
-                // Schedule the function to run after the debounce delay
-                timeout = window.setTimeout(async () => {
+                // Schedule the function to run after the debounce delay. The callback
+                // itself stays synchronous — setTimeout expects a void return — and the
+                // awaiting happens inside, with the promise explicitly ignored.
+                timeout = window.setTimeout(() => {
                     promise = null;
                     resolvePromise = null;
                     timeout = null;
-                    try {
-                        await func(...args);  // Execute the debounced function
-                        // Clear the stored promise and resolve function after execution
-                        resolve();  // Resolve the promise once the function is done
-                    } catch (error) {
-                        // Reject the promise if the function throws an error; ensure the
-                        // rejection reason is always an Error, even if `func` threw something else.
-                        reject(error instanceof Error ? error : new Error(String(error)));
-                    }
+                    void (async () => {
+                        try {
+                            await func(...args);  // Execute the debounced function
+                            // Clear the stored promise and resolve function after execution
+                            resolve();  // Resolve the promise once the function is done
+                        } catch (error) {
+                            // Reject the promise if the function throws an error; ensure the
+                            // rejection reason is always an Error, even if `func` threw something else.
+                            reject(error instanceof Error ? error : new Error(String(error)));
+                        }
+                    })();
                 }, wait);
             });
 
@@ -195,7 +199,6 @@ export class FileSuggestion extends AbstractInputSuggest<TFile> {
         // Filter out the null matches
         const validMatches = matches.filter(([, result]) => result !== null && result.score > minScore);
         // Sort the valid matches by score
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- `a`/`b` are guaranteed non-null: validMatches was already filtered above
         validMatches.sort(([, a], [, b]) => b!.score - a!.score);
         return validMatches.map((c) => c[0]).slice(0, maxResults);
     }
@@ -279,7 +282,6 @@ export async function backupSettings(backupName: string, toBeBackedUp: unknown, 
 
     // Remove the backups field from the settings to be backed up
     if (Object.prototype.hasOwnProperty.call(toBeBackedUp, 'backups')) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `backups` is intentionally discarded so it isn't included in the backup being created
         const { backups: _, ...rest } = toBeBackedUp as { backups: unknown };
         settingsWithoutBackup = rest;
     } else {

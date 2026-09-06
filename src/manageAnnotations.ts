@@ -44,7 +44,12 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
                     e.preventDefault(); // Prevent the default anchor behavior
                     // Open the folder in the system's default file explorer
 
-                    window.require('electron').remote.shell.showItemInFolder(makePosixPathOScompatible(joinPaths(plugin.getVaultPath(),filepath))); // Adjust as necessary
+                    // `window.require` is untyped, so describe just the sliver of the
+                    // Electron API used here rather than calling through `any`.
+                    const electron = window.require('electron') as {
+                        remote: { shell: { showItemInFolder(fullPath: string): void } };
+                    };
+                    electron.remote.shell.showItemInFolder(makePosixPathOScompatible(joinPaths(plugin.getVaultPath(),filepath)));
                 });
             } else {
                 frag.createEl('strong', {

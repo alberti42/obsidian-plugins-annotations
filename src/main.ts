@@ -165,7 +165,6 @@ export default class PluginsAnnotations extends Plugin {
                 // Upgrade annotations format
                 const upgradedAnnotations: PluginAnnotationDict = {};
                 for (const pluginId in data.annotations) {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `type` is intentionally discarded when upgrading to the new annotation format
                     const { type, ...rest } = data.annotations[pluginId];
                     upgradedAnnotations[pluginId] = rest;
                 }

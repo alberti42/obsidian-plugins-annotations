@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "npm run grammar && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"lint": "eslint .",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"grammar": "peggy --format es src/grammar.pegjs -o src/peggy.mjs"
 	},
@@ -14,14 +15,15 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
-		"@typescript-eslint/eslint-plugin": "5.29.0",
-		"@typescript-eslint/parser": "5.29.0",
 		"esbuild": "0.17.3",
 		"esbuild-plugin-copy": "^2.1.1",
+		"eslint": "^9.39.5",
+		"eslint-plugin-obsidianmd": "^0.4.2",
 		"obsidian": "^1.13.1",
 		"peggy": "^4.0.3",
 		"tslib": "2.4.0",
-		"typescript": "4.7.4"
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.69.0"
 	},
 	"dependencies": {
 		"monkey-around": "^3.0.0"

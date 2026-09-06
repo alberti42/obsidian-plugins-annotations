@@ -477,7 +477,6 @@ class BackupManager {
                 .setButtonText('Export')
                 .setCta()
                 .onClick(async () => {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `backups` is intentionally discarded so it isn't included in the exported file
                     const {backups:_,...rest} = this.plugin.settings;
                     downloadJson(rest);
                 })
@@ -500,7 +499,7 @@ class BackupManager {
                             reader.onload = async (event) => {
                                 try {
                                     // Parse the JSON file
-                                    const importedData = JSON.parse(event.target?.result as string);
+                                    const importedData: unknown = JSON.parse(event.target?.result as string);
 
                                     // Validate and merge the imported settings
                                     if(importedData === undefined || importedData === null || typeof importedData !== 'object') throw new Error("Something went wrong with the data in the backup.");
