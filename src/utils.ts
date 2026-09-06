@@ -165,7 +165,9 @@ export function debounceFactoryWithWaitMechanism<F extends (...args: never[]) =>
                         // Clear the stored promise and resolve function after execution
                         resolve();  // Resolve the promise once the function is done
                     } catch (error) {
-                        reject(error);  // Reject the promise if the function throws an error
+                        // Reject the promise if the function throws an error; ensure the
+                        // rejection reason is always an Error, even if `func` threw something else.
+                        reject(error instanceof Error ? error : new Error(String(error)));
                     }
                 }, wait);
             });

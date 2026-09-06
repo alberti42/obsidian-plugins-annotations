@@ -574,7 +574,7 @@ class BackupManager {
                                     this.updateListBackups();
                                 } catch (error) {
                                     console.error('Error importing settings:', error);
-                                    alert('Failed to import settings. Please ensure the file is valid.');
+                                    new Notice('Failed to import settings. Please ensure the file is valid.');
                                 }
                             };
                             reader.readAsText(file);
