@@ -17,12 +17,6 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
     private uninstalledPlugins: PluginAnnotationDict = {};
     private backupManager: BackupManager;
 
-    // Last configured Markdown file path. Turning "Store annotations in a Markdown
-    // file" off clears the path from the settings and unmounts the path row, so the
-    // row itself cannot remember it; keeping it here lets turning the toggle back on
-    // restore the path instead of making the user retype it.
-    private lastMarkdownFilePath = '';
-
     // True after the user turns "Store annotations in a Markdown file" on. With no
     // path configured yet, the path is still empty, so the toggle state and the
     // visibility of the path row cannot be derived from the path alone.
@@ -354,16 +348,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
             .setValue(this.isMarkdownFileEnabled())
             .onChange(async (value: boolean) => {
                 this.isMarkdownFileToggleOn = value;
-                if (value) {
-                    // Restore the path configured before the toggle was last turned
-                    // off; empty when none was ever set, leaving the row's field blank
-                    // for the user to fill in.
-                    this.plugin.settings.markdown_file_path = this.lastMarkdownFilePath;
-                } else {
-                    this.lastMarkdownFilePath = this.plugin.settings.markdown_file_path;
+                // Turning the toggle on shows an empty field: every path goes through
+                // handleMarkdownFilePathChange(), which asks whether to create, import or
+                // replace the file. Turning it off forgets the path.
+                if (!value) {
                     this.plugin.settings.markdown_file_path = '';
+                    this.plugin.debouncedSaveAnnotations();
                 }
-                this.plugin.debouncedSaveAnnotations();
                 // Rebuild rather than refreshDomState(): the "Markdown File Path" row is
                 // gated by a `visible` predicate on this value, and a hidden row never had
                 // its render callback run, so it has no DOM to reveal in place.
