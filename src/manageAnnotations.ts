@@ -2,13 +2,18 @@
 
 import PluginsAnnotations from "main";
 import { Platform, TFile } from "obsidian";
-import { createFolderIfNotExists, getFileCaseInsensitive, joinPaths, makePosixPathOScompatible, parseFilePath, showConfirmationDialog } from "utils";
+import { createFolderIfNotExists, getFileCaseInsensitive, joinPaths, makePosixPathOScompatible, parseFilePath, showChoiceDialog, showConfirmationDialog } from "utils";
 import { parse, SyntaxError } from "./peggy.mjs";
 import { PluginAnnotationDict } from "types";
 
 let isWriting = false;
 
-export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, filepath: string): Promise<boolean> {
+// What to do with the Markdown file the user selected: 'import' reads the annotations
+// from the existing file, 'write' writes the current annotations to it.
+export type MarkdownFileAction = 'import' | 'write';
+
+// Asks the user how to use the selected Markdown file; resolves to null if they cancel.
+export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, filepath: string): Promise<MarkdownFileAction | null> {
     const file = plugin.app.vault.getAbstractFileByPath(filepath);
 
     const {base} = parseFilePath(filepath);
@@ -26,9 +31,10 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
 
         // File doesn't exist, ask user if they want to create it
         const createFile = await showConfirmationDialog(plugin.app, 'Create file', message);
-        if (!createFile) return false;
+        if (!createFile) return null;
+        return 'write';
     } else {
-        // File exists, ask user if they want to overwrite it
+        // File exists, ask user whether to import the annotations from it or overwrite it
 
         const {base} = parseFilePath(filepath);
         
@@ -56,18 +62,21 @@ export async function handleMarkdownFilePathChange(plugin: PluginsAnnotations, f
                     text: base
                 });
             }
-            frag.appendText(' already exists. Do you want to replace the file with your personal annotations about the installed plugins? If you reply yes, the existing file is moved to the trash.');
+            frag.appendText(' already exists. Do you want to import your personal annotations from this file, or replace the file with your current annotations? Importing replaces all your current annotations with those in the file. If you choose to replace the file, the existing file is moved to the trash.');
         });
-        
-        const overwriteFile = await showConfirmationDialog(plugin.app, 'Overwrite file', message);
-        if (!overwriteFile) return false;
+
+        const choice = await showChoiceDialog(plugin.app, 'File already exists', message, ['Import', 'Replace', 'Cancel']);
+        if (choice === 'Import') return 'import';
+        if (choice !== 'Replace') return null;
         await plugin.app.vault.adapter.trashSystem(file.path);
+        return 'write';
     }
-    return true;
 }
 
-export async function readAnnotationsFromMdFile(plugin: PluginsAnnotations): Promise<void> {
-    if(isWriting) return;
+// Returns true if the annotations were read from the file, false if the file could
+// not be read or parsed.
+export async function readAnnotationsFromMdFile(plugin: PluginsAnnotations): Promise<boolean> {
+    if(isWriting) return false;
 
     const filePath = plugin.settings.markdown_file_path;
 
@@ -76,7 +85,7 @@ export async function readAnnotationsFromMdFile(plugin: PluginsAnnotations): Pro
     if(!file) {
         // If the file does not exist but we have annotation in memory, write them down
         await writeAnnotationsToMdFile(plugin);
-        return;
+        return false;
     }
 
     try {
@@ -85,16 +94,18 @@ export async function readAnnotationsFromMdFile(plugin: PluginsAnnotations): Pro
         try {
             const md_content_parsed = parse(md_content) as PluginAnnotationDict;
             plugin.settings.annotations = md_content_parsed;
+            return true;
         } catch(error) {             
             if (error instanceof SyntaxError) {
                 console.error("Syntax error:", error);
             } else {
                 console.error("Unexpected error:", error);
             }
+            return false;
         }   
     } catch (error) {
         console.error('Failed to read annotations from file:', error);
-        return;
+        return false;
     }
 }
 

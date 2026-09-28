@@ -18,17 +18,24 @@ export function parseFilePath(filePath: string): ParsedPath {
 }
 
 // Helper function to show a confirmation dialog
-export function showConfirmationDialog(app: App, title: string, message: DocumentFragment | string): Promise<boolean> {
+export async function showConfirmationDialog(app: App, title: string, message: DocumentFragment | string): Promise<boolean> {
+    return await showChoiceDialog(app, title, message, ['Yes', 'No']) === 'Yes';
+}
+
+// Shows a dialog with one button per choice; the first choice is highlighted as the
+// default. Resolves to the label of the button clicked, or null if the dialog is
+// closed without clicking one.
+export function showChoiceDialog<T extends string>(app: App, title: string, message: DocumentFragment | string, choices: T[]): Promise<T | null> {
     return new Promise((resolve) => {
         const modal = new class extends Modal {
-            resolveState: boolean;
+            choice: T | null;
 
             constructor(app:App) {
                 super(app);
-                this.resolveState = false;
+                this.choice = null;
             }
             onClose() {
-                resolve(this.resolveState); // Resolve the promise as 'false' when the modal is closed without explicit confirmation
+                resolve(this.choice);
             }
         }(app);
 
@@ -41,13 +48,11 @@ export function showConfirmationDialog(app: App, title: string, message: Documen
         }
 
         const buttonContainer = modal.contentEl.createDiv({ cls: 'modal-button-container' });
-        buttonContainer.createEl('button', { text: 'Yes', cls: 'mod-cta' }).addEventListener('click', () => {
-            modal.resolveState = true;
-            modal.close();
-        });
-        buttonContainer.createEl('button', { text: 'No' }).addEventListener('click', () => {
-            modal.resolveState = false;
-            modal.close();
+        choices.forEach((choice, index) => {
+            buttonContainer.createEl('button', { text: choice, cls: index === 0 ? 'mod-cta' : undefined }).addEventListener('click', () => {
+                modal.choice = choice;
+                modal.close();
+            });
         });
 
         modal.open();

@@ -1,7 +1,7 @@
 // settings_tab.ts
 
 import PluginsAnnotations from "main";
-import { handleMarkdownFilePathChange } from "manageAnnotations";
+import { handleMarkdownFilePathChange, readAnnotationsFromMdFile } from "manageAnnotations";
 import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, SettingDefinitionItem, SettingGroupItem, ToggleComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, setLockIcon, sortAnnotations } from "utils";
@@ -22,6 +22,11 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
     // row itself cannot remember it; keeping it here lets turning the toggle back on
     // restore the path instead of making the user retype it.
     private lastMarkdownFilePath = '';
+
+    // True after the user turns "Store annotations in a Markdown file" on. With no
+    // path configured yet, the path is still empty, so the toggle state and the
+    // visibility of the path row cannot be derived from the path alone.
+    private isMarkdownFileToggleOn = false;
 
     constructor(app: App, plugin: PluginsAnnotations) {
         super(app, plugin);
@@ -133,16 +138,25 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 items: [
                     {
                         name: 'Store annotations in a Markdown file',
-                        desc: 'With this option enabled, you can select a Markdown file in your vault to \
-                            contain your personal annotations for the installed plugins. This feature is intended \
-                            for power users who prefer to edit annotations directly from a Markdown file. \
-                            A second advantage of this mode is that if you use links to some of your notes in \
-                            the vault, those links will be automatically updated if your notes are later renamed.',
+                        desc: createFragment((frag) => {
+                            frag.appendText('With this option enabled, you can select a Markdown file in your vault to \
+                            contain your personal annotations for the installed plugins; your annotations \
+                            stored in this file will become the ground truth, and the ');
+                            frag.createEl('code', {cls: 'plugin-comment-selectable'}).appendText('data.json');
+                            frag.appendText(' file keeps a copy of them. If you select a file that already exists, \
+                            you can either import your personal annotations from it or replace it with your \
+                            current annotations. This feature is intended for power users who \
+                            prefer to edit annotations directly from a Markdown file. \
+                            A second advantage of this mode is that if you use links in your personal annotations \
+                            to some of your notes in the vault, Obsidian updates those links when the notes are \
+                            later renamed, provided "Automatically update internal links" is enabled in \
+                            Settings → Files and links.');
+                        }),
                         render: (setting) => this.renderMarkdownFileToggle(setting),
                     },
                     {
                         name: 'Markdown File Path',
-                        visible: () => this.plugin.settings.markdown_file_path !== '',
+                        visible: () => this.isMarkdownFileEnabled(),
                         render: (setting) => this.renderMarkdownFilePath(setting),
                     },
                 ],
@@ -321,11 +335,16 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         }));
     }
 
+    private isMarkdownFileEnabled(): boolean {
+        return this.isMarkdownFileToggleOn || this.plugin.settings.markdown_file_path !== '';
+    }
+
     private renderMarkdownFileToggle(setting: Setting): void {
         setting.addToggle(toggle => {
             toggle
-            .setValue(this.plugin.settings.markdown_file_path !== '')
+            .setValue(this.isMarkdownFileEnabled())
             .onChange(async (value: boolean) => {
+                this.isMarkdownFileToggleOn = value;
                 if (value) {
                     // Restore the path configured before the toggle was last turned
                     // off; empty when none was ever set, leaving the row's field blank
@@ -342,6 +361,25 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 this.update();
             })
         });
+    }
+
+    // Adopts an existing Markdown file: its annotations replace the current ones.
+    // Saves data.json only; saveSettings() would also write the current annotations
+    // back over the file before it has been read.
+    private async importMarkdownFile(filepath: string): Promise<void> {
+        const previousFilePath = this.plugin.settings.markdown_file_path;
+        this.plugin.settings.markdown_file_path = filepath;
+        const isImported = await readAnnotationsFromMdFile(this.plugin);
+        if (!isImported) {
+            this.plugin.settings.markdown_file_path = previousFilePath;
+            new Notice('The annotations could not be imported from the selected file. See the developer console for details.');
+            return;
+        }
+        this.plugin.sortPluginAnnotationsByName();
+        await this.plugin.saveDataJson();
+        await this.plugin.updateCommunityPluginPaneIfOpened();
+        // Rebuild so the list of no-longer-installed plugins reflects the imported annotations.
+        this.update();
     }
 
     private renderMarkdownFilePath(setting: Setting): void {
@@ -402,11 +440,13 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     }
 
                     md_filepath_error_div.hide();
-                    const answer = await handleMarkdownFilePathChange(this.plugin, filepath);
-                    if(answer) {
+                    const action = await handleMarkdownFilePathChange(this.plugin, filepath);
+                    if(action === 'write') {
                         this.plugin.settings.markdown_file_path = filepath;
                         await this.plugin.saveSettings();
                         updateVaultFiles();
+                    } else if(action === 'import') {
+                        await this.importMarkdownFile(filepath);
                     }
                     text.setValue(this.plugin.settings.markdown_file_path);
                 }
