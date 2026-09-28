@@ -1,7 +1,7 @@
 // settings_tab.ts
 
 import PluginsAnnotations from "main";
-import { handleMarkdownFilePathChange, readAnnotationsFromMdFile } from "manageAnnotations";
+import { handleMarkdownFilePathChange, readAnnotationsFromMdFile, writeAnnotationsToMdFile } from "manageAnnotations";
 import { App, normalizePath, Notice, Platform, PluginSettingTab, Setting, SettingDefinitionItem, SettingGroupItem, ToggleComponent } from "obsidian";
 import { PluginAnnotationDict } from "types";
 import { parseFilePath, FileSuggestion, downloadJson, showConfirmationDialog, backupSettings, setLockIcon, sortAnnotations } from "utils";
@@ -33,6 +33,15 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
         this.plugin = plugin;
         this.backupManager = new BackupManager(plugin, () => this.update());
         this.containerEl.classList.add('plugin-comment-settings');
+    }
+
+    // Leaving the tab with the toggle on but no path configured turns the toggle off,
+    // so the next time the tab is opened it does not show the toggle on with an empty field.
+    hide(): void {
+        if (this.plugin.settings.markdown_file_path === '') {
+            this.isMarkdownFileToggleOn = false;
+        }
+        super.hide();
     }
 
     // Declarative settings (Obsidian 1.13.0+) read/write `this.plugin.settings` directly.
@@ -388,7 +397,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                 frag.appendText('Markdown file where the plugins\' annotations are stored (e.g, ');
                 frag.createEl('code', {'cls': 'plugin-comment-selectable'}).appendText('00 Meta/Misc/Plugins annotations.md');
                 frag.appendText(').');
-                md_filepath_error_div = frag.createDiv({text: 'Error: the filename must end with .md extension.', cls: "mod-warning" });
+                md_filepath_error_div = frag.createDiv({cls: "mod-warning" });
                 md_filepath_error_div.hide();
             }));
 
@@ -432,6 +441,7 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     filepath = normalizePath(filepath);
 
                     if (parseFilePath(filepath).ext !== '.md') {
+                        md_filepath_error_div.setText('Error: the filename must end with .md extension.');
                         md_filepath_error_div.show();
                         this.plugin.settings.markdown_file_path = DEFAULT_SETTINGS.markdown_file_path; // reverts to the default behavior
                         await this.plugin.saveSettings();
@@ -443,7 +453,18 @@ export class PluginsAnnotationsSettingTab extends PluginSettingTab {
                     const action = await handleMarkdownFilePathChange(this.plugin, filepath);
                     if(action === 'write') {
                         this.plugin.settings.markdown_file_path = filepath;
-                        await this.plugin.saveSettings();
+                        const isWritten = await writeAnnotationsToMdFile(this.plugin);
+                        if(!isWritten) {
+                            // Same handling as a missing .md extension: keep the typed text in
+                            // the field, and clear the path so hide() turns the toggle off.
+                            md_filepath_error_div.setText('Error: the file could not be created. Check that the file name is valid.');
+                            md_filepath_error_div.show();
+                            this.plugin.settings.markdown_file_path = DEFAULT_SETTINGS.markdown_file_path;
+                            await this.plugin.saveDataJson();
+                            processingChange = false;
+                            return;
+                        }
+                        await this.plugin.saveDataJson();
                         updateVaultFiles();
                     } else if(action === 'import') {
                         await this.importMarkdownFile(filepath);

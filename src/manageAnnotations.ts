@@ -109,10 +109,11 @@ export async function readAnnotationsFromMdFile(plugin: PluginsAnnotations): Pro
     }
 }
 
-export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations) {
-    if(!plugin.pluginNameToIdMap) return;
+// Returns true if the annotations were written to the file, false otherwise.
+export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations): Promise<boolean> {
+    if(!plugin.pluginNameToIdMap) return false;
     const filePath = plugin.settings.markdown_file_path;
-    if(filePath === "") return;
+    if(filePath === "") return false;
     const annotations = plugin.settings.annotations;
     // if(Object.keys(annotations).length === 0) return;
 
@@ -140,18 +141,21 @@ export async function writeAnnotationsToMdFile(plugin: PluginsAnnotations) {
                 await createFolderIfNotExists(plugin.app.vault,dir);
             } catch (error) {
                 console.error('Failed to create folder for Markdown file with annotations:', error);
-                return;
+                return false;
             }
             isWriting = true;
             file = await plugin.app.vault.create(filePath, content_concatenated);
-            isWriting = false;
         } else if (file instanceof TFile) {
             isWriting = true;
             await plugin.app.vault.modify(file, content_concatenated);
-            isWriting = false;
         }
     } catch (error) {
         console.error('Failed to write Markdown file with annotations:', error);
-        return;
+        return false;
+    } finally {
+        // Reset even when create/modify throws; otherwise readAnnotationsFromMdFile
+        // would ignore every later change to the file.
+        isWriting = false;
     }
+    return true;
 }
